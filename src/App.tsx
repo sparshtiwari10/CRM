@@ -15,6 +15,7 @@ import Packages from "./pages/Packages";
 import Payments from "./pages/Payments";
 import Settings from "./pages/Settings";
 import EmployeeManagement from "./pages/EmployeeManagement";
+import RequestManagement from "./pages/RequestManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
