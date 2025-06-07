@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { mockPackages, mockCustomers } from "@/data/mockData";
 import { Package, Customer } from "@/types";
+import { PackageMetrics } from "@/components/packages/PackageMetrics";
 
 export default function Packages() {
   const [packages, setPackages] = useState<Package[]>(mockPackages);
@@ -152,7 +153,7 @@ export default function Packages() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
@@ -165,19 +166,6 @@ export default function Packages() {
               <p className="text-xs text-gray-600">
                 {activePackages} active packages
               </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total Customers
-              </CardTitle>
-              <Users className="h-4 w-4 text-gray-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalCustomers}</div>
-              <p className="text-xs text-gray-600">Across all packages</p>
             </CardContent>
           </Card>
 
@@ -234,23 +222,15 @@ export default function Packages() {
               <CardContent className="space-y-4">
                 <p className="text-gray-600">{pkg.description}</p>
 
-                <div className="space-y-2">
+                <div className="space-y-4">
+                  {/* Channel Info */}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Channels:</span>
                     <span className="font-medium">{pkg.channels}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Customers:</span>
-                    <span className="font-medium">
-                      {getCustomerCount(pkg.name)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Monthly Revenue:</span>
-                    <span className="font-medium">
-                      ${getTotalRevenue(pkg).toFixed(2)}
-                    </span>
-                  </div>
+
+                  {/* Package Metrics */}
+                  <PackageMetrics package={pkg} customers={customers} />
                 </div>
 
                 <div className="space-y-2">
