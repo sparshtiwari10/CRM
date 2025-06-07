@@ -245,7 +245,7 @@ export function CustomerTable({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setActionRequestCustomer(customer)}
+                              onClick={() => handleActivationRequest(customer)}
                               className="h-8 px-2"
                               title="Request Activation"
                               disabled={customer.isActive}
@@ -255,7 +255,9 @@ export function CustomerTable({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setActionRequestCustomer(customer)}
+                              onClick={() =>
+                                handleDeactivationRequest(customer)
+                              }
                               className="h-8 px-2"
                               title="Request Deactivation"
                               disabled={!customer.isActive}
@@ -265,7 +267,7 @@ export function CustomerTable({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setActionRequestCustomer(customer)}
+                              onClick={() => handlePlanChangeRequest(customer)}
                               className="h-8 px-2"
                               title="Request Plan Change"
                             >
