@@ -347,4 +347,6 @@ class AuthService {
   }
 }
 
+// Export both the class and the singleton instance
+export { AuthService };
 export const authService = new AuthService();
