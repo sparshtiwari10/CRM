@@ -176,9 +176,15 @@ class FirestoreService {
         throw new Error("Only administrators can add customers");
       }
 
+      // Validate required fields before processing
+      this.validateCustomerData(customer);
+
       const customersRef = collection(db, "customers");
       const customerData: FirestoreCustomer =
         this.convertCustomerToFirestoreCustomer(customer);
+
+      // Additional sanitization check
+      this.sanitizeFirestoreData(customerData);
 
       const docRef = await addDoc(customersRef, customerData);
       console.log(`✅ Customer ${customer.name} added successfully`);
@@ -539,6 +545,64 @@ class FirestoreService {
     }
 
     return sanitizedData;
+  }
+
+  /**
+   * Validate customer data before saving to Firestore
+   */
+  private validateCustomerData(customer: Customer): void {
+    const errors: string[] = [];
+
+    if (!customer.name || customer.name.trim() === "") {
+      errors.push("Customer name is required");
+    }
+
+    if (!customer.phoneNumber || customer.phoneNumber.trim() === "") {
+      errors.push("Phone number is required");
+    }
+
+    if (!customer.address || customer.address.trim() === "") {
+      errors.push("Address is required");
+    }
+
+    if (!customer.collectorName || customer.collectorName.trim() === "") {
+      errors.push("Collector name is required");
+    }
+
+    if (!customer.vcNumber || customer.vcNumber.trim() === "") {
+      errors.push("VC Number is required");
+    }
+
+    // Validate email format if provided
+    if (customer.email && customer.email.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(customer.email.trim())) {
+        errors.push("Invalid email format");
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Validation failed: ${errors.join(", ")}`);
+    }
+  }
+
+  /**
+   * Sanitize data to ensure Firestore compatibility
+   */
+  private sanitizeFirestoreData(data: any): void {
+    for (const [key, value] of Object.entries(data)) {
+      if (value === undefined) {
+        console.warn(
+          `⚠️ Removing undefined field '${key}' from Firestore data`,
+        );
+        delete data[key];
+      } else if (typeof value === "string" && value.trim() === "") {
+        // Convert empty strings to null for optional fields
+        if (key === "email" || key === "remark") {
+          delete data[key];
+        }
+      }
+    }
   }
 
   private convertFirestoreBillingToBillingRecord(
