@@ -676,7 +676,14 @@ export function CustomerModal({
 
                 {isAdmin && (
                   <div>
-                    <Label htmlFor="portalBill">Portal Bill (₹)</Label>
+                    <Label htmlFor="portalBill">
+                      Portal Bill (₹)
+                      {!showCustomPlan && formData.currentPackage && (
+                        <span className="text-green-600 text-xs ml-1">
+                          (Auto-filled)
+                        </span>
+                      )}
+                    </Label>
                     <Input
                       id="portalBill"
                       type="number"
@@ -690,7 +697,17 @@ export function CustomerModal({
                         )
                       }
                       disabled={isSaving}
+                      className={
+                        !showCustomPlan && formData.currentPackage
+                          ? "bg-green-50 border-green-200"
+                          : ""
+                      }
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {!showCustomPlan && formData.currentPackage
+                        ? "Auto-populated from package amount"
+                        : "Monthly billing amount"}
+                    </p>
                   </div>
                 )}
 
@@ -704,6 +721,16 @@ export function CustomerModal({
                       <div>
                         <Label htmlFor="packageAmount">
                           Package Amount (₹)
+                          {!showCustomPlan && formData.currentPackage && (
+                            <span className="text-green-600 text-xs ml-1">
+                              (Auto-filled from {formData.currentPackage})
+                            </span>
+                          )}
+                          {showCustomPlan && (
+                            <span className="text-blue-600 text-xs ml-1">
+                              (From custom plan)
+                            </span>
+                          )}
                         </Label>
                         <Input
                           id="packageAmount"
@@ -718,9 +745,16 @@ export function CustomerModal({
                             )
                           }
                           disabled={isSaving}
+                          className={
+                            !showCustomPlan && formData.currentPackage
+                              ? "bg-green-50 border-green-200"
+                              : ""
+                          }
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Monthly package amount
+                          {!showCustomPlan && formData.currentPackage
+                            ? "Auto-populated from selected package"
+                            : "Monthly package amount"}
                         </p>
                       </div>
 
