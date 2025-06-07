@@ -114,17 +114,44 @@ export default function EmployeeManagement() {
     });
   };
 
-  const handleDeleteEmployee = () => {
-    if (deleteEmployee) {
+  const handleDeleteEmployee = async () => {
+    if (!deleteEmployee) return;
+
+    try {
+      // Check if employee has any active assignments
+      if (
+        deleteEmployee.assignedCustomers &&
+        deleteEmployee.assignedCustomers.length > 0
+      ) {
+        toast({
+          title: "Cannot delete employee",
+          description: `${deleteEmployee.name} has ${deleteEmployee.assignedCustomers.length} assigned customers. Please reassign customers before deleting.`,
+          variant: "destructive",
+        });
+        setDeleteEmployee(null);
+        return;
+      }
+
+      // Simulate API call to delete from Firebase
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       setEmployees((prev) =>
         prev.filter((emp) => emp.id !== deleteEmployee.id),
       );
+
       toast({
         title: "Employee deleted",
         description: `${deleteEmployee.name} has been removed from the system.`,
         variant: "destructive",
       });
+
       setDeleteEmployee(null);
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete employee. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
