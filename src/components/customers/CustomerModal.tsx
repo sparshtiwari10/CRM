@@ -735,26 +735,6 @@ export function CustomerModal({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="billingStatus">Billing Status</Label>
-                  <Select
-                    value={formData.billingStatus}
-                    onValueChange={(value) =>
-                      handleInputChange("billingStatus", value)
-                    }
-                    disabled={isSaving}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Paid">Paid</SelectItem>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Overdue">Overdue</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 {isAdmin && (
                   <div>
                     <Label htmlFor="portalBill">
