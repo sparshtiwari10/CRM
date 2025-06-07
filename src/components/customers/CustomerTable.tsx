@@ -384,7 +384,7 @@ export function CustomerTable({
                         {/* Request Action - Employees Only */}
                         {!isAdmin && canAccessCustomer(customer.id) && (
                           <DropdownMenuItem
-                            onClick={() => setActionRequestCustomer(customer)}
+                            onClick={() => handleGenericActionRequest(customer)}
                           >
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Request Action
