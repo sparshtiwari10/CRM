@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { InvoiceGenerator } from "@/components/invoice/InvoiceGenerator";
 import { mockBillingRecords } from "@/data/mockData";
 import { BillingRecord } from "@/types";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ export default function Billing() {
   const [billingRecords] = useState<BillingRecord[]>(mockBillingRecords);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
 
   const filteredRecords = billingRecords.filter((record) => {
     const matchesSearch =
@@ -95,7 +97,7 @@ export default function Billing() {
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
-            <Button>
+            <Button onClick={() => setShowInvoiceGenerator(true)}>
               <FileText className="mr-2 h-4 w-4" />
               Generate Invoice
             </Button>
@@ -246,6 +248,12 @@ export default function Billing() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Invoice Generator Modal */}
+        <InvoiceGenerator
+          open={showInvoiceGenerator}
+          onOpenChange={setShowInvoiceGenerator}
+        />
       </div>
     </DashboardLayout>
   );
