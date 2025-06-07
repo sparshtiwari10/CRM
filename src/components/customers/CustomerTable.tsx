@@ -168,7 +168,6 @@ export function CustomerTable({
                   <TableHead>Package</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Collector Name</TableHead>
-                  <TableHead>Billing</TableHead>
                   <TableHead>Last Payment</TableHead>
                   {isAdmin && <TableHead>Portal Bill</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
