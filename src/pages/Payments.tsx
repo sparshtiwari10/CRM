@@ -219,7 +219,6 @@ export default function Payments() {
                   <SelectValue placeholder="Method" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All methods</SelectItem>
                   <SelectItem value="Card">Card</SelectItem>
                   <SelectItem value="Cash">Cash</SelectItem>
                   <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
