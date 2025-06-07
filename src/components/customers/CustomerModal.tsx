@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -47,68 +47,72 @@ export function CustomerModal({
   const { isAdmin } = useAuth();
   const isEditing = !!customer;
 
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    phoneNumber: "",
-    email: "",
-    address: "",
-    vcNumber: "",
-    currentPackage: "",
-    collectorName: "",
-    billingStatus: "Pending" as const,
-    isActive: true,
-    portalBill: 0,
-  });
+  // Initialize with either customer data or empty form
+  const initialData = customer
+    ? {
+        name: customer.name || "",
+        phoneNumber: customer.phoneNumber || "",
+        email: customer.email || "",
+        address: customer.address || "",
+        vcNumber: customer.vcNumber || "",
+        currentPackage: customer.currentPackage || "",
+        collectorName: customer.collectorName || "",
+        billingStatus: customer.billingStatus || "Pending",
+        isActive: customer.isActive !== undefined ? customer.isActive : true,
+        portalBill: customer.portalBill || 0,
+      }
+    : {
+        name: "",
+        phoneNumber: "",
+        email: "",
+        address: "",
+        vcNumber: `VC${Math.random().toString().substr(2, 6)}`,
+        currentPackage: "",
+        collectorName: "",
+        billingStatus: "Pending" as const,
+        isActive: true,
+        portalBill: 0,
+      };
 
+  const [formData, setFormData] = useState(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Generate VC Number - simple function
-  function generateVCNumber() {
-    return `VC${Math.random().toString().substr(2, 6)}`;
+  // Reset form when modal opens with different customer
+  if (open && customer && formData.vcNumber !== customer.vcNumber) {
+    setFormData({
+      name: customer.name || "",
+      phoneNumber: customer.phoneNumber || "",
+      email: customer.email || "",
+      address: customer.address || "",
+      vcNumber: customer.vcNumber || "",
+      currentPackage: customer.currentPackage || "",
+      collectorName: customer.collectorName || "",
+      billingStatus: customer.billingStatus || "Pending",
+      isActive: customer.isActive !== undefined ? customer.isActive : true,
+      portalBill: customer.portalBill || 0,
+    });
+    setErrors({});
   }
 
-  // Reset form when modal opens/closes or customer changes
-  useEffect(() => {
-    if (open) {
-      if (customer) {
-        // Editing existing customer
-        console.log("Loading customer for edit:", customer.id);
-        setFormData({
-          name: customer.name || "",
-          phoneNumber: customer.phoneNumber || "",
-          email: customer.email || "",
-          address: customer.address || "",
-          vcNumber: customer.vcNumber || "",
-          currentPackage: customer.currentPackage || "",
-          collectorName: customer.collectorName || "",
-          billingStatus: customer.billingStatus || "Pending",
-          isActive: customer.isActive || true,
-          portalBill: customer.portalBill || 0,
-        });
-      } else {
-        // Creating new customer
-        console.log("Setting up form for new customer");
-        setFormData({
-          name: "",
-          phoneNumber: "",
-          email: "",
-          address: "",
-          vcNumber: generateVCNumber(),
-          currentPackage: "",
-          collectorName: "",
-          billingStatus: "Pending",
-          isActive: true,
-          portalBill: 0,
-        });
-      }
-      setErrors({});
-    }
-  }, [open, customer?.id]); // Only depend on open and customer ID
+  // Reset form when switching from edit to add
+  if (open && !customer && formData.name !== "") {
+    setFormData({
+      name: "",
+      phoneNumber: "",
+      email: "",
+      address: "",
+      vcNumber: `VC${Math.random().toString().substr(2, 6)}`,
+      currentPackage: "",
+      collectorName: "",
+      billingStatus: "Pending",
+      isActive: true,
+      portalBill: 0,
+    });
+    setErrors({});
+  }
 
   function handleInputChange(field: string, value: any) {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
@@ -164,251 +168,220 @@ export function CustomerModal({
           : customer?.deactivationDate,
     };
 
-    console.log("Submitting customer data:", customerData);
     onSave(customerData);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Edit Customer" : "Add New Customer"}
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update customer information and settings"
-              : "Enter customer details to create a new account"}
+              ? "Update customer information"
+              : "Enter customer details"}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-6">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Basic Information</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    placeholder="Enter customer name"
-                    disabled={isSaving}
-                    className={errors.name ? "border-red-500" : ""}
-                  />
-                  {errors.name && (
-                    <p className="text-sm text-red-500 mt-1">{errors.name}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="phoneNumber">Phone Number *</Label>
-                  <Input
-                    id="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={(e) =>
-                      handleInputChange("phoneNumber", e.target.value)
-                    }
-                    placeholder="+1 (555) 123-4567"
-                    disabled={isSaving}
-                    className={errors.phoneNumber ? "border-red-500" : ""}
-                  />
-                  {errors.phoneNumber && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {errors.phoneNumber}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    placeholder="customer@email.com"
-                    disabled={isSaving}
-                    className={errors.email ? "border-red-500" : ""}
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-red-500 mt-1">{errors.email}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="vcNumber">VC Number *</Label>
-                  <Input
-                    id="vcNumber"
-                    value={formData.vcNumber}
-                    onChange={(e) =>
-                      handleInputChange("vcNumber", e.target.value)
-                    }
-                    placeholder="VC123456"
-                    disabled={isSaving}
-                    className={errors.vcNumber ? "border-red-500" : ""}
-                  />
-                  {errors.vcNumber && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {errors.vcNumber}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="address">Address *</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => handleInputChange("address", e.target.value)}
-                  placeholder="Enter full address"
-                  disabled={isSaving}
-                  className={errors.address ? "border-red-500" : ""}
-                />
-                {errors.address && (
-                  <p className="text-sm text-red-500 mt-1">{errors.address}</p>
-                )}
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="name">Name *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                disabled={isSaving}
+                className={errors.name ? "border-red-500" : ""}
+              />
+              {errors.name && (
+                <p className="text-sm text-red-500 mt-1">{errors.name}</p>
+              )}
             </div>
 
-            {/* Service Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Service Information</h3>
+            <div>
+              <Label htmlFor="phoneNumber">Phone *</Label>
+              <Input
+                id="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={(e) =>
+                  handleInputChange("phoneNumber", e.target.value)
+                }
+                disabled={isSaving}
+                className={errors.phoneNumber ? "border-red-500" : ""}
+              />
+              {errors.phoneNumber && (
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.phoneNumber}
+                </p>
+              )}
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="currentPackage">Package *</Label>
-                  <Select
-                    value={formData.currentPackage}
-                    onValueChange={(value) =>
-                      handleInputChange("currentPackage", value)
-                    }
-                    disabled={isSaving}
-                  >
-                    <SelectTrigger
-                      className={errors.currentPackage ? "border-red-500" : ""}
-                    >
-                      <SelectValue placeholder="Select package" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockPackages.map((pkg) => (
-                        <SelectItem key={pkg.id} value={pkg.name}>
-                          {pkg.name} - ${pkg.price}/month
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.currentPackage && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {errors.currentPackage}
-                    </p>
-                  )}
-                </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
+                disabled={isSaving}
+                className={errors.email ? "border-red-500" : ""}
+              />
+              {errors.email && (
+                <p className="text-sm text-red-500 mt-1">{errors.email}</p>
+              )}
+            </div>
 
-                <div>
-                  <Label htmlFor="collectorName">Assigned Collector *</Label>
-                  <Select
-                    value={formData.collectorName}
-                    onValueChange={(value) =>
-                      handleInputChange("collectorName", value)
-                    }
-                    disabled={isSaving}
-                  >
-                    <SelectTrigger
-                      className={errors.collectorName ? "border-red-500" : ""}
-                    >
-                      <SelectValue placeholder="Select collector" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockCollectors.map((collector) => (
-                        <SelectItem key={collector} value={collector}>
-                          {collector}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.collectorName && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {errors.collectorName}
-                    </p>
-                  )}
-                </div>
+            <div>
+              <Label htmlFor="vcNumber">VC Number *</Label>
+              <Input
+                id="vcNumber"
+                value={formData.vcNumber}
+                onChange={(e) => handleInputChange("vcNumber", e.target.value)}
+                disabled={isSaving}
+                className={errors.vcNumber ? "border-red-500" : ""}
+              />
+              {errors.vcNumber && (
+                <p className="text-sm text-red-500 mt-1">{errors.vcNumber}</p>
+              )}
+            </div>
+          </div>
 
-                <div>
-                  <Label htmlFor="billingStatus">Billing Status</Label>
-                  <Select
-                    value={formData.billingStatus}
-                    onValueChange={(value) =>
-                      handleInputChange("billingStatus", value)
-                    }
-                    disabled={isSaving}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Paid">Paid</SelectItem>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Overdue">Overdue</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div>
+            <Label htmlFor="address">Address *</Label>
+            <Input
+              id="address"
+              value={formData.address}
+              onChange={(e) => handleInputChange("address", e.target.value)}
+              disabled={isSaving}
+              className={errors.address ? "border-red-500" : ""}
+            />
+            {errors.address && (
+              <p className="text-sm text-red-500 mt-1">{errors.address}</p>
+            )}
+          </div>
 
-                {isAdmin && (
-                  <div>
-                    <Label htmlFor="portalBill">
-                      Portal Bill Amount (Admin Only)
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="portalBill"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.portalBill}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "portalBill",
-                            parseFloat(e.target.value) || 0,
-                          )
-                        }
-                        placeholder="0.00"
-                        disabled={isSaving}
-                        className="pl-8"
-                      />
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                        $
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="currentPackage">Package *</Label>
+              <Select
+                value={formData.currentPackage}
+                onValueChange={(value) =>
+                  handleInputChange("currentPackage", value)
+                }
+                disabled={isSaving}
+              >
+                <SelectTrigger
+                  className={errors.currentPackage ? "border-red-500" : ""}
+                >
+                  <SelectValue placeholder="Select package" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mockPackages.map((pkg) => (
+                    <SelectItem key={pkg.id} value={pkg.name}>
+                      {pkg.name} - ${pkg.price}/month
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.currentPackage && (
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.currentPackage}
+                </p>
+              )}
+            </div>
 
-              {/* Active Status */}
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div>
-                  <Label className="text-base">Active Status</Label>
-                  <div className="text-sm text-gray-500">
-                    Customer service is currently{" "}
-                    {formData.isActive ? "active" : "inactive"}
-                  </div>
-                </div>
-                <Switch
-                  checked={formData.isActive}
-                  onCheckedChange={(checked) =>
-                    handleInputChange("isActive", checked)
+            <div>
+              <Label htmlFor="collectorName">Collector *</Label>
+              <Select
+                value={formData.collectorName}
+                onValueChange={(value) =>
+                  handleInputChange("collectorName", value)
+                }
+                disabled={isSaving}
+              >
+                <SelectTrigger
+                  className={errors.collectorName ? "border-red-500" : ""}
+                >
+                  <SelectValue placeholder="Select collector" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mockCollectors.map((collector) => (
+                    <SelectItem key={collector} value={collector}>
+                      {collector}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.collectorName && (
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.collectorName}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="billingStatus">Billing Status</Label>
+              <Select
+                value={formData.billingStatus}
+                onValueChange={(value) =>
+                  handleInputChange("billingStatus", value)
+                }
+                disabled={isSaving}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Paid">Paid</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Overdue">Overdue</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {isAdmin && (
+              <div>
+                <Label htmlFor="portalBill">Portal Bill</Label>
+                <Input
+                  id="portalBill"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.portalBill}
+                  onChange={(e) =>
+                    handleInputChange(
+                      "portalBill",
+                      parseFloat(e.target.value) || 0,
+                    )
                   }
                   disabled={isSaving}
                 />
               </div>
-            </div>
+            )}
           </div>
 
-          <DialogFooter className="mt-6">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div>
+              <Label>Active Status</Label>
+              <div className="text-sm text-gray-500">
+                Service is {formData.isActive ? "active" : "inactive"}
+              </div>
+            </div>
+            <Switch
+              checked={formData.isActive}
+              onCheckedChange={(checked) =>
+                handleInputChange("isActive", checked)
+              }
+              disabled={isSaving}
+            />
+          </div>
+
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
@@ -418,11 +391,7 @@ export function CustomerModal({
               Cancel
             </Button>
             <Button type="submit" disabled={isSaving}>
-              {isSaving
-                ? "Saving..."
-                : isEditing
-                  ? "Update Customer"
-                  : "Add Customer"}
+              {isSaving ? "Saving..." : isEditing ? "Update" : "Add"} Customer
             </Button>
           </DialogFooter>
         </form>
