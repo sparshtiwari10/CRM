@@ -1,45 +1,59 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, connectAuthEmulator } from "firebase/auth";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
-import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getFunctions } from "firebase/functions";
 
-// Your Firebase config object
-// In production, these should be environment variables
+// Firebase config - using demo values that will fall back to mock auth
+// To use real Firebase, replace these with your actual Firebase config
 const firebaseConfig = {
   apiKey: "demo-api-key",
-  authDomain: "cabletv-dashboard.firebaseapp.com",
-  projectId: "cabletv-dashboard",
-  storageBucket: "cabletv-dashboard.appspot.com",
+  authDomain: "demo-project.firebaseapp.com",
+  projectId: "demo-project",
+  storageBucket: "demo-project.appspot.com",
   messagingSenderId: "123456789",
   appId: "1:123456789:web:abcdef123456",
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app: any;
+let auth: any;
+let db: any;
+let functions: any;
 
-// Initialize Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const functions = getFunctions(app);
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  functions = getFunctions(app);
 
-// For development - connect to emulators if running locally
-if (import.meta.env.DEV) {
-  try {
-    // Only connect to emulators if not already connected
-    if (!auth.config.emulator) {
-      connectAuthEmulator(auth, "http://localhost:9099");
-    }
-    // Note: Firestore emulator connection should be done before any other Firestore operations
-    if (!db._delegate._databaseId.projectId.includes("demo-")) {
-      connectFirestoreEmulator(db, "localhost", 8080);
-    }
-    if (!functions.customDomain) {
-      connectFunctionsEmulator(functions, "localhost", 5001);
-    }
-  } catch (error) {
-    // Emulators might already be connected, ignore the error
-    console.log("Firebase emulators already connected or not available");
-  }
+  console.log("Firebase initialized with demo configuration");
+  console.log(
+    "📝 To use real Firebase, update the config in src/lib/firebase.ts",
+  );
+  console.log("📖 See FIREBASE_SETUP.md for detailed setup instructions");
+} catch (error) {
+  console.warn(
+    "Firebase initialization failed, mock authentication will be used:",
+    error,
+  );
+
+  // Create minimal mock objects to prevent errors
+  auth = {
+    currentUser: null,
+    onAuthStateChanged: () => () => {},
+    signInWithEmailAndPassword: () =>
+      Promise.reject(new Error("Firebase not available")),
+    signOut: () => Promise.reject(new Error("Firebase not available")),
+  };
+
+  db = {
+    collection: () => ({
+      get: () => Promise.reject(new Error("Firebase not available")),
+    }),
+  };
+
+  functions = {};
 }
 
+export { auth, db, functions };
 export default app;
