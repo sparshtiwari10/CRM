@@ -207,15 +207,20 @@ export function CustomerTable({
                       <Badge variant="outline">{customer.currentPackage}</Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">{customer.collectorName}</span>
-                    </TableCell>
-                    <TableCell>
                       <Badge
                         variant="outline"
                         className={cn(getActiveStatusColor(customer.isActive))}
                       >
                         {customer.isActive ? "Active" : "Inactive"}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">
+                          {customer.collectorName}
+                        </span>
+                        <span className="text-xs text-gray-500">Collector</span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -228,7 +233,12 @@ export function CustomerTable({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {formatDate(customer.lastPaymentDate)}
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">
+                          {formatDate(customer.lastPaymentDate)}
+                        </span>
+                        <span className="text-xs text-gray-500">Last paid</span>
+                      </div>
                     </TableCell>
                     {isAdmin && (
                       <TableCell>
