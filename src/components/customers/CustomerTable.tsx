@@ -376,7 +376,7 @@ export function CustomerTable({
                       ) : null}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-2">
-                          {!isAdmin && (
+                          {!isAdmin ? (
                             <>
                               <Button
                                 variant="outline"
@@ -414,7 +414,7 @@ export function CustomerTable({
                                 <RefreshCw className="h-3 w-3" />
                               </Button>
                             </>
-                          )}
+                          ) : null}
 
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -440,15 +440,15 @@ export function CustomerTable({
                                 Full Billing History
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {isAdmin && (
+                              {isAdmin ? (
                                 <DropdownMenuItem
                                   onClick={() => onEdit(customer)}
                                 >
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit Customer
                                 </DropdownMenuItem>
-                              )}
-                              {!isAdmin && canAccessCustomer(customer.id) && (
+                              ) : null}
+                              {!isAdmin && canAccessCustomer(customer.id) ? (
                                 <DropdownMenuItem
                                   onClick={() =>
                                     handleGenericActionRequest(customer)
@@ -457,8 +457,8 @@ export function CustomerTable({
                                   <RefreshCw className="mr-2 h-4 w-4" />
                                   Request Action
                                 </DropdownMenuItem>
-                              )}
-                              {isAdmin && (
+                              ) : null}
+                              {isAdmin ? (
                                 <DropdownMenuItem
                                   onClick={() => setDeleteCustomer(customer)}
                                   className="text-red-600"
@@ -466,7 +466,7 @@ export function CustomerTable({
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Delete Customer
                                 </DropdownMenuItem>
-                              )}
+                              ) : null}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
