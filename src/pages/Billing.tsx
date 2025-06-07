@@ -202,6 +202,10 @@ export default function Billing() {
     );
   });
 
+  console.log("Total billing records:", billingRecords.length);
+  console.log("Filtered billing records:", filteredBillingRecords.length);
+  console.log("Status filter:", statusFilter);
+
   // Get unique employees from billing records for filter dropdown
   const uniqueEmployees = Array.from(
     new Set(
