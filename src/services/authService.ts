@@ -103,16 +103,42 @@ class AuthService {
   }
 
   /**
+   * Test Firebase connectivity quickly
+   */
+  private async testFirebaseConnectivity(): Promise<boolean> {
+    try {
+      // Try a simple query to test if Firebase is accessible
+      const usersRef = collection(db, "users");
+      const testQuery = query(usersRef);
+      await getDocs(testQuery);
+      return true;
+    } catch (error: any) {
+      console.warn("Firebase connectivity test failed:", error.message);
+      return false;
+    }
+  }
+
+  /**
    * Login with Firebase with timeout
    */
-  private async loginWithFirebaseTimeout(
-    credentials: LoginCredentials,
-  ): Promise<User> {
+  private async loginWithFirebaseTimeout(credentials: LoginCredentials): Promise<User> {
+    // First do a quick connectivity test
+    const isConnected = await Promise.race([
+      this.testFirebaseConnectivity(),
+      new Promise<boolean>((resolve) => {
+        setTimeout(() => resolve(false), 1000); // 1 second timeout for connectivity test
+      })
+    ]);
+
+    if (!isConnected) {
+      throw new Error("Firebase connection test failed - using demo mode");
+    }
+
     return new Promise((resolve, reject) => {
-      // Set a 3-second timeout for Firebase operations
+      // Set a 5-second timeout for actual login
       const timeoutId = setTimeout(() => {
         reject(new Error("Firebase authentication timeout - using demo mode"));
-      }, 3000);
+      }, 5000);
 
       this.loginWithFirebase(credentials)
         .then((user) => {
@@ -124,6 +150,7 @@ class AuthService {
           reject(error);
         });
     });
+  }
   }
 
   /**
