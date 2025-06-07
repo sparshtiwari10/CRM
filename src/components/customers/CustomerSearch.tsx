@@ -93,7 +93,7 @@ export function CustomerSearch({
                     onValueChange={(value) => onFilterChange("package", value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="All packages" />
+                      <SelectValue placeholder="Filter by package" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Basic">Basic</SelectItem>
