@@ -501,7 +501,7 @@ export function InvoiceGenerator({
                         />
                       </div>
                       <div className="text-xs text-blue-600">
-                        Default amount: ${defaultAmount.toFixed(2)}
+                        Default amount: ₹{defaultAmount.toFixed(2)}
                       </div>
                     </div>
                   ) : (
