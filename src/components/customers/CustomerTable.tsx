@@ -504,7 +504,7 @@ export function CustomerTable({
                     {/* Enhanced Expandable Row Content - Focus on Billing & Invoice History */}
                     {expandedRows.has(customer.id) ? (
                       <TableRow>
-                        <TableCell colSpan={isAdmin ? 13 : 12}>
+                        <TableCell colSpan={isAdmin ? 12 : 11}>
                           <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-200">
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                               <Card className="lg:col-span-1">
