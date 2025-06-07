@@ -116,6 +116,26 @@ export function CustomerTable({
     });
   };
 
+  const handleActivationRequest = (customer: Customer) => {
+    setActionType("activation");
+    setActionRequestCustomer(customer);
+  };
+
+  const handleDeactivationRequest = (customer: Customer) => {
+    setActionType("deactivation");
+    setActionRequestCustomer(customer);
+  };
+
+  const handlePlanChangeRequest = (customer: Customer) => {
+    setActionType("plan_change");
+    setActionRequestCustomer(customer);
+  };
+
+  const handleGenericActionRequest = (customer: Customer) => {
+    setActionType("activation"); // Default action type
+    setActionRequestCustomer(customer);
+  };
+
   if (accessibleCustomers.length === 0) {
     return (
       <Card>
