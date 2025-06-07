@@ -178,31 +178,33 @@ export default function RequestManagement() {
     setIsProcessing(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const updatedRequest = {
+        ...requests.find((r) => r.id === requestId),
+        status: action === "approve" ? "approved" : "rejected",
+        reviewDate: new Date().toISOString().split("T")[0],
+        reviewedBy: user?.name || "System Administrator",
+        adminNotes: adminNotes || `Request ${action}ed by admin`,
+      };
 
+      // Save to Firebase
+      await CustomerService.updateRequest(requestId, updatedRequest);
+
+      // Update local state
       setRequests((prevRequests) =>
         prevRequests.map((request) =>
-          request.id === requestId
-            ? {
-                ...request,
-                status: action === "approve" ? "approved" : "rejected",
-                reviewDate: new Date().toISOString().split("T")[0],
-                reviewedBy: "System Administrator",
-                adminNotes: adminNotes || `Request ${action}ed by admin`,
-              }
-            : request,
+          request.id === requestId ? updatedRequest : request,
         ),
       );
 
       toast({
         title: "Request Updated",
-        description: `Request has been ${action}ed successfully.`,
+        description: `Request has been ${action}ed successfully and saved to database.`,
       });
 
       setSelectedRequest(null);
       setAdminNotes("");
     } catch (error) {
+      console.error(`Failed to ${action} request:`, error);
       toast({
         title: "Error",
         description: `Failed to ${action} request. Please try again.`,
