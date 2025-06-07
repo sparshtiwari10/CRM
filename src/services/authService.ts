@@ -333,6 +333,21 @@ class AuthService {
       throw new Error("Only administrators can view all users");
     }
 
+    if (!isFirebaseAvailable || !db) {
+      // Return mock users in demo mode
+      return mockUsers.map((mockUser) => ({
+        id: mockUser.id,
+        username: mockUser.username,
+        name: mockUser.name,
+        role: mockUser.role,
+        access_scope: mockUser.access_scope || [],
+        collector_name: mockUser.collector_name,
+        created_at: mockUser.created_at,
+        last_login: mockUser.last_login,
+        is_active: mockUser.is_active,
+      }));
+    }
+
     try {
       const usersRef = collection(db, "users");
       const querySnapshot = await getDocs(usersRef);
