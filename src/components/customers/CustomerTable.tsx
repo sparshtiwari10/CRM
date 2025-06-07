@@ -227,14 +227,7 @@ export function CustomerTable({
                         </Collapsible>
                       </TableCell>
                       <TableCell className="font-medium">
-                        <div>
-                          <div className="font-medium">{customer.name}</div>
-                          {customer.email && (
-                            <div className="text-sm text-gray-500">
-                              {customer.email}
-                            </div>
-                          )}
-                        </div>
+                        <div className="font-medium">{customer.name}</div>
                       </TableCell>
                       <TableCell>
                         <span className="font-mono text-sm">
