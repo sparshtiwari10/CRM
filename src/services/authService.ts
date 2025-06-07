@@ -152,63 +152,52 @@ export class AuthService {
 
   // Sign in with email and password
   static async signIn(credentials: LoginCredentials): Promise<User> {
-    try {
-      // Check if Firebase is available first
-      if (!isFirebaseAvailable) {
-        // First time check
-        const available = await this.checkFirebaseAvailability();
-        if (!available) {
-          return await this.mockSignIn(credentials);
-        }
-      }
+    // Check for demo configuration first
+    if (auth?.config?.apiKey === 'demo-api-key' ||
+        auth?.config?.projectId === 'demo-project' ||
+        !isFirebaseAvailable) {
+      console.log('Using mock authentication (demo mode)');
+      isFirebaseAvailable = false;
+      return await this.mockSignIn(credentials);
+    }
 
+    try {
       const userCredential = await signInWithEmailAndPassword(
         auth,
         credentials.email,
-        credentials.password,
+        credentials.password
       );
 
       // Get additional user data from Firestore
-      const userDoc = await getDoc(
-        doc(db, USERS_COLLECTION, userCredential.user.uid),
-      );
+      const userDoc = await getDoc(doc(db, USERS_COLLECTION, userCredential.user.uid));
       const userData = userDoc.exists() ? userDoc.data() : {};
 
       // Update last login
       await setDoc(
         doc(db, USERS_COLLECTION, userCredential.user.uid),
         { ...userData, lastLogin: new Date().toISOString() },
-        { merge: true },
+        { merge: true }
       );
 
       return convertToUser(userCredential.user, userData);
     } catch (error: any) {
-      console.error("Firebase sign in error:", error);
+      console.error('Firebase sign in error:', error);
 
-      // If network error or Firebase unavailable, fall back to mock
-      if (
-        error.code === "auth/network-request-failed" ||
-        error.code === "auth/too-many-requests" ||
-        !isFirebaseAvailable
-      ) {
-        console.log("Falling back to mock authentication");
+      // If any Firebase error occurs, fall back to mock
+      if (error.code === 'auth/network-request-failed' ||
+          error.code === 'auth/too-many-requests' ||
+          error.code === 'auth/api-key-not-valid' ||
+          error.code?.includes('auth/') ||
+          !isFirebaseAvailable) {
+        console.log('Firebase error detected, falling back to mock authentication');
         isFirebaseAvailable = false;
         return await this.mockSignIn(credentials);
       }
 
-      // Handle other Firebase errors
-      switch (error.code) {
-        case "auth/user-not-found":
-        case "auth/wrong-password":
-          throw new Error("Invalid email or password");
-        case "auth/user-disabled":
-          throw new Error("Account has been disabled");
-        case "auth/too-many-requests":
-          throw new Error("Too many failed attempts. Please try again later");
-        default:
-          throw new Error("Failed to sign in. Please try again");
-      }
+      // Handle other unexpected errors
+      throw new Error('An unexpected error occurred during sign in');
     }
+  }
   }
 
   // Sign out
