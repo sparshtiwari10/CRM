@@ -868,6 +868,12 @@ export function CustomerTable({
                     {/* Other Details */}
                     <div className="space-y-2">
                       <div className="flex justify-between">
+                        <span className="text-gray-500">VC Number:</span>
+                        <span className="font-mono text-blue-600">
+                          {customer.vcNumber}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
                         <span className="text-gray-500">Package:</span>
                         <Badge variant="outline">
                           {customer.currentPackage}
