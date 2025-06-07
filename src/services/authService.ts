@@ -97,7 +97,9 @@ class AuthService {
   /**
    * Login with Firebase
    */
-  private async loginWithFirebase(credentials: LoginCredentials): Promise<User> {
+  private async loginWithFirebase(
+    credentials: LoginCredentials,
+  ): Promise<User> {
     try {
       // Query users collection for matching username
       const usersRef = collection(db, "users");
@@ -107,61 +109,67 @@ class AuthService {
       if (querySnapshot.empty) {
         throw new Error("Invalid username or password");
       }
+
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+
+      // Verify password
+      const isPasswordValid = await bcrypt.compare(
+        credentials.password,
+        userData.password_hash,
+      );
+
+      if (!isPasswordValid) {
+        throw new Error("Invalid username or password");
+      }
+
+      // Check if user is active
+      if (!userData.is_active) {
+        throw new Error(
+          "Account is deactivated. Please contact administrator.",
+        );
+      }
+
+      // Update last login
+      await updateDoc(doc(db, "users", userDoc.id), {
+        last_login: Timestamp.now(),
+      });
+
+      // Create user object
+      const user: User = {
+        id: userDoc.id,
+        username: userData.username,
+        name: userData.name,
+        role: userData.role,
+        access_scope: userData.access_scope || [],
+        collector_name: userData.collector_name,
+        created_at: userData.created_at.toDate(),
+        last_login: new Date(),
+        is_active: userData.is_active,
+      };
+
+      // Store user in session
+      this.currentUser = user;
+      this.saveUserToStorage(user);
+
+      console.log(
+        `✅ User ${user.name} logged in successfully as ${user.role} (Firebase)`,
+      );
+      return user;
     } catch (error: any) {
       // Handle specific Firebase errors
-      if (error.code === 'permission-denied' || error.message.includes('PERMISSION_DENIED')) {
-        console.error("Firebase permission denied - falling back to mock authentication");
+      if (
+        error.code === "permission-denied" ||
+        error.message.includes("PERMISSION_DENIED")
+      ) {
+        console.error(
+          "Firebase permission denied - falling back to mock authentication",
+        );
         // Fall back to mock authentication if Firebase permissions aren't set up
         return await this.loginWithMockData(credentials);
       }
       throw error;
     }
-    }
-
-    const userDoc = querySnapshot.docs[0];
-    const userData = userDoc.data();
-
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(
-      credentials.password,
-      userData.password_hash,
-    );
-
-    if (!isPasswordValid) {
-      throw new Error("Invalid username or password");
-    }
-
-    // Check if user is active
-    if (!userData.is_active) {
-      throw new Error("Account is deactivated. Please contact administrator.");
-    }
-
-    // Update last login
-    await updateDoc(doc(db, "users", userDoc.id), {
-      last_login: Timestamp.now(),
-    });
-
-    // Create user object
-    const user: User = {
-      id: userDoc.id,
-      username: userData.username,
-      name: userData.name,
-      role: userData.role,
-      access_scope: userData.access_scope || [],
-      collector_name: userData.collector_name,
-      created_at: userData.created_at.toDate(),
-      last_login: new Date(),
-      is_active: userData.is_active,
-    };
-
-    // Store user in session
-    this.currentUser = user;
-    this.saveUserToStorage(user);
-
-    console.log(
-      `✅ User ${user.name} logged in successfully as ${user.role} (Firebase)`,
-    );
-    return user;
   }
 
   /**
