@@ -53,6 +53,7 @@ export function ActionRequestModal({
   onOpenChange,
   customer,
   onSubmit,
+  defaultActionType = "activation",
 }: ActionRequestModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
@@ -60,7 +61,7 @@ export function ActionRequestModal({
   const form = useForm<ActionRequestFormValues>({
     resolver: zodResolver(actionRequestSchema),
     defaultValues: {
-      actionType: "activation",
+      actionType: defaultActionType,
       requestedPlan: "",
       reason: "",
     },
