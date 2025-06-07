@@ -70,6 +70,18 @@ export default function Dashboard() {
   );
   const monthlyRevenue = totalRevenue; // For now, treat all as monthly
 
+  // Calculate new customers this month
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const newCustomersThisMonth = customers.filter((customer) => {
+    if (!customer.joinDate) return false;
+    const joinDate = new Date(customer.joinDate);
+    return (
+      joinDate.getMonth() === currentMonth &&
+      joinDate.getFullYear() === currentYear
+    );
+  }).length;
+
   const recentCustomers = customers.slice(0, 5);
 
   // Mock payment data for today/yesterday (for employee view)
