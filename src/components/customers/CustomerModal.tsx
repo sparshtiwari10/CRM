@@ -154,6 +154,20 @@ export function CustomerModal({
 
   function handleInputChange(field: string, value: any) {
     setFormData((prev) => ({ ...prev, [field]: value }));
+
+    // Auto-populate package amount when selecting a package
+    if (field === "currentPackage" && value && !showCustomPlan) {
+      const selectedPackage = mockPackages.find((pkg) => pkg.name === value);
+      if (selectedPackage) {
+        setFormData((prev) => ({
+          ...prev,
+          [field]: value,
+          packageAmount: selectedPackage.price,
+          portalBill: selectedPackage.price, // Also update portal bill for consistency
+        }));
+      }
+    }
+
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
@@ -228,11 +242,18 @@ export function CustomerModal({
   }
 
   function handleCustomPlanChange(field: string, value: any) {
+    const newCustomPlan = formData.customPlan
+      ? { ...formData.customPlan, [field]: value }
+      : { name: "", price: 0, description: "", [field]: value };
+
     setFormData((prev) => ({
       ...prev,
-      customPlan: prev.customPlan
-        ? { ...prev.customPlan, [field]: value }
-        : { name: "", price: 0, description: "", [field]: value },
+      customPlan: newCustomPlan,
+      // Auto-populate package amount and portal bill when custom plan price changes
+      ...(field === "price" && {
+        packageAmount: value || 0,
+        portalBill: value || 0,
+      }),
     }));
   }
 
@@ -511,7 +532,30 @@ export function CustomerModal({
                 <div className="flex items-center space-x-2">
                   <Switch
                     checked={showCustomPlan}
-                    onCheckedChange={setShowCustomPlan}
+                    onCheckedChange={(checked) => {
+                      setShowCustomPlan(checked);
+                      // Reset package amount when switching between custom and regular packages
+                      if (checked) {
+                        // Switching to custom plan - reset amounts to allow manual entry
+                        setFormData((prev) => ({
+                          ...prev,
+                          packageAmount: formData.customPlan?.price || 0,
+                          portalBill: formData.customPlan?.price || 0,
+                        }));
+                      } else {
+                        // Switching to regular package - auto-populate if package selected
+                        const selectedPackage = mockPackages.find(
+                          (pkg) => pkg.name === formData.currentPackage,
+                        );
+                        if (selectedPackage) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            packageAmount: selectedPackage.price,
+                            portalBill: selectedPackage.price,
+                          }));
+                        }
+                      }
+                    }}
                     disabled={isSaving}
                   />
                   <Label>Use Custom Plan</Label>
