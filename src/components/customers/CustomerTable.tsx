@@ -311,7 +311,7 @@ export function CustomerTable({
                             {!isAdmin && canAccessCustomer(customer.id) && (
                               <DropdownMenuItem
                                 onClick={() =>
-                                  setActionRequestCustomer(customer)
+                                  handleGenericActionRequest(customer)
                                 }
                               >
                                 <RefreshCw className="mr-2 h-4 w-4" />
