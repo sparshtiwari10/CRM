@@ -99,12 +99,13 @@ export default function Customers() {
     }
 
     if (filters.package && filters.package !== "all") {
-      filtered = filtered.filter(customer => customer.currentPackage === filters.package);
+      filtered = filtered.filter(
+        (customer) => customer.currentPackage === filters.package,
+      );
     }
 
     if (filters.billingStatus && filters.billingStatus !== "all") {
-      filtered = filtered.filter(customer => customer.billingStatus === filters.billingStatus);
-    }
+      filtered = filtered.filter(
         (customer) => customer.billingStatus === filters.billingStatus,
       );
     }
@@ -393,7 +394,9 @@ export default function Customers() {
                   <SelectItem value="Overdue">Overdue</SelectItem>
                 </SelectContent>
               </Select>
-              {(searchTerm || (filters.package !== "all") || (filters.billingStatus !== "all")) && (
+              {(searchTerm ||
+                filters.package !== "all" ||
+                filters.billingStatus !== "all") && (
                 <Button variant="outline" onClick={handleClearFilters}>
                   <X className="mr-2 h-4 w-4" />
                   Clear
