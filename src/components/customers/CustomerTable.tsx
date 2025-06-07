@@ -222,16 +222,6 @@ export function CustomerTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          getBillingStatusColor(customer.billingStatus),
-                        )}
-                      >
-                        {customer.billingStatus}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
                       <div className="flex flex-col">
                         <span className="text-sm font-medium">
                           {formatDate(customer.lastPaymentDate)}
