@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { Search, Download, Calendar, FileText, X } from "lucide-react";
+import { useState, useEffect, useContext } from "react";
+import { Search, Save, Calendar, FileText, X } from "lucide-react";
+import { AuthContext } from "@/contexts/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +53,7 @@ export function InvoiceGenerator({
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
+  const { user } = useContext(AuthContext);
 
   // Load customers on component mount
   useEffect(() => {
@@ -137,7 +139,7 @@ export function InvoiceGenerator({
   };
 
   const handleGenerateInvoice = async () => {
-    if (!selectedCustomer || !selectedMonth || !selectedYear) {
+    if (!selectedCustomer || !selectedMonth || !selectedYear || !user) {
       toast({
         title: "Missing Information",
         description:
@@ -150,8 +152,8 @@ export function InvoiceGenerator({
     setIsGenerating(true);
 
     try {
-      // Simulate invoice generation
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Simulate invoice generation processing
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
       const invoiceData: InvoiceData = {
         customer: selectedCustomer,
@@ -166,43 +168,29 @@ export function InvoiceGenerator({
         ),
       };
 
-      // In a real app, this would generate and download a PDF
-      const invoiceText = `
-CABLE TV OPERATOR - INVOICE
+      // Create billing record instead of downloading
+      const billingRecord = {
+        customerId: selectedCustomer.id,
+        customerName: selectedCustomer.name,
+        packageName: selectedCustomer.currentPackage,
+        amount: invoiceData.amount,
+        dueDate: invoiceData.dueDate,
+        status: "Pending" as const,
+        invoiceNumber: invoiceData.invoiceNumber,
+        generatedDate: new Date().toISOString().split("T")[0],
+        generatedBy: user.name,
+        employeeId: user.id,
+        billingMonth: selectedMonth,
+        billingYear: selectedYear,
+        vcNumber: selectedCustomer.vcNumber,
+      };
 
-Invoice #: ${invoiceData.invoiceNumber}
-Date: ${new Date().toLocaleDateString()}
-
-Customer Information:
-Name: ${invoiceData.customer.name}
-VC Number: ${invoiceData.customer.vcNumber}
-Address: ${invoiceData.customer.address}
-Phone: ${invoiceData.customer.phoneNumber}
-
-Service Period: ${selectedMonth} ${selectedYear}
-Package: ${invoiceData.customer.currentPackage}
-Amount: $${invoiceData.amount.toFixed(2)}
-Due Date: ${new Date(invoiceData.dueDate).toLocaleDateString()}
-
-Collector: ${invoiceData.customer.collectorName}
-
-Thank you for your business!
-      `;
-
-      // Create and download the invoice as a text file
-      const blob = new Blob([invoiceText], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${invoiceData.invoiceNumber}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Save the billing record
+      await CustomerService.addBillingRecord(billingRecord);
 
       toast({
         title: "Invoice Generated",
-        description: `Invoice ${invoiceData.invoiceNumber} has been generated and downloaded.`,
+        description: `Invoice ${invoiceData.invoiceNumber} has been created and added to billing records.`,
       });
 
       onOpenChange(false);
@@ -470,12 +458,12 @@ Thank you for your business!
               {isGenerating ? (
                 <>
                   <Calendar className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
+                  Creating Invoice...
                 </>
               ) : (
                 <>
-                  <Download className="mr-2 h-4 w-4" />
-                  Generate Invoice
+                  <Save className="mr-2 h-4 w-4" />
+                  Create Invoice
                 </>
               )}
             </Button>
