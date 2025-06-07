@@ -4,6 +4,7 @@ import {
   Payment,
   BillingRecord,
   DashboardStats,
+  Connection,
 } from "@/types";
 
 export const mockCustomers: Customer[] = [
@@ -22,6 +23,16 @@ export const mockCustomers: Customer[] = [
     portalBill: 59.99,
     isActive: true,
     activationDate: "2023-06-15",
+    numberOfConnections: 1,
+    connections: [
+      {
+        id: "conn-1",
+        vcNumber: "VC001234",
+        planName: "Premium HD",
+        planPrice: 59.99,
+        isCustomPlan: false,
+      },
+    ],
   },
   {
     id: "2",
@@ -38,13 +49,30 @@ export const mockCustomers: Customer[] = [
     portalBill: 29.99,
     isActive: true,
     activationDate: "2023-03-10",
+    numberOfConnections: 2,
+    connections: [
+      {
+        id: "conn-1",
+        vcNumber: "VC001235",
+        planName: "Basic",
+        planPrice: 29.99,
+        isCustomPlan: false,
+      },
+      {
+        id: "conn-2",
+        vcNumber: "VC001235-2",
+        planName: "Family Bundle",
+        planPrice: 49.99,
+        isCustomPlan: false,
+      },
+    ],
   },
   {
     id: "3",
     name: "Michael Brown",
     phoneNumber: "+1 (555) 345-6789",
     address: "789 Pine Rd, Riverside, TX 75001",
-    currentPackage: "Sports Package",
+    currentPackage: "Custom Plan",
     billingStatus: "Overdue",
     lastPaymentDate: "2023-11-25",
     email: "mbrown@email.com",
@@ -55,6 +83,21 @@ export const mockCustomers: Customer[] = [
     isActive: false,
     activationDate: "2022-12-05",
     deactivationDate: "2024-01-05",
+    numberOfConnections: 1,
+    connections: [
+      {
+        id: "conn-1",
+        vcNumber: "VC001236",
+        planName: "Enterprise Package",
+        planPrice: 89.99,
+        isCustomPlan: true,
+      },
+    ],
+    customPlan: {
+      name: "Enterprise Package",
+      price: 89.99,
+      description: "Custom enterprise solution with dedicated support",
+    },
   },
   {
     id: "4",
@@ -71,6 +114,30 @@ export const mockCustomers: Customer[] = [
     portalBill: 59.99,
     isActive: true,
     activationDate: "2023-08-22",
+    numberOfConnections: 3,
+    connections: [
+      {
+        id: "conn-1",
+        vcNumber: "VC001237",
+        planName: "Premium HD",
+        planPrice: 59.99,
+        isCustomPlan: false,
+      },
+      {
+        id: "conn-2",
+        vcNumber: "VC001237-2",
+        planName: "Basic",
+        planPrice: 29.99,
+        isCustomPlan: false,
+      },
+      {
+        id: "conn-3",
+        vcNumber: "VC001237-3",
+        planName: "Sports Package",
+        planPrice: 79.99,
+        isCustomPlan: false,
+      },
+    ],
   },
   {
     id: "5",
@@ -87,22 +154,48 @@ export const mockCustomers: Customer[] = [
     portalBill: 49.99,
     isActive: true,
     activationDate: "2023-04-30",
+    numberOfConnections: 1,
+    connections: [
+      {
+        id: "conn-1",
+        vcNumber: "VC001238",
+        planName: "Family Bundle",
+        planPrice: 49.99,
+        isCustomPlan: false,
+      },
+    ],
   },
   {
     id: "6",
     name: "Lisa Anderson",
     phoneNumber: "+1 (555) 678-9012",
     address: "987 Cedar Ln, Greenfield, OR 97001",
-    currentPackage: "Basic",
+    currentPackage: "Business Plan",
     billingStatus: "Pending",
     lastPaymentDate: "2023-12-28",
     email: "lisa.anderson@email.com",
     joinDate: "2023-07-14",
     vcNumber: "VC001239",
     collectorName: "Sarah Collector",
-    portalBill: 29.99,
+    portalBill: 129.99,
     isActive: true,
     activationDate: "2023-07-14",
+    numberOfConnections: 1,
+    connections: [
+      {
+        id: "conn-1",
+        vcNumber: "VC001239",
+        planName: "Business Plan",
+        planPrice: 129.99,
+        isCustomPlan: true,
+      },
+    ],
+    customPlan: {
+      name: "Business Plan",
+      price: 129.99,
+      description:
+        "Tailored business solution with priority support and advanced features",
+    },
   },
 ];
 
@@ -175,7 +268,7 @@ export const mockPayments: Payment[] = [
     id: "2",
     customerId: "4",
     customerName: "Emily Davis",
-    amount: 59.99,
+    amount: 169.97, // Total for 3 connections
     date: "2024-01-18",
     method: "Online",
     status: "Completed",
@@ -191,6 +284,28 @@ export const mockPayments: Payment[] = [
     status: "Completed",
     invoiceNumber: "INV-2024-003",
   },
+  {
+    id: "4",
+    customerId: "1",
+    customerName: "John Smith",
+    amount: 59.99,
+    date: new Date().toISOString().split("T")[0], // Today
+    method: "Card",
+    status: "Completed",
+    invoiceNumber: "INV-2024-004",
+  },
+  {
+    id: "5",
+    customerId: "2",
+    customerName: "Sarah Johnson",
+    amount: 79.98, // Total for 2 connections
+    date: new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0], // Yesterday
+    method: "Online",
+    status: "Completed",
+    invoiceNumber: "INV-2024-005",
+  },
 ];
 
 export const mockBillingRecords: BillingRecord[] = [
@@ -198,11 +313,11 @@ export const mockBillingRecords: BillingRecord[] = [
     id: "1",
     customerId: "2",
     customerName: "Sarah Johnson",
-    packageName: "Basic",
-    amount: 29.99,
+    packageName: "Basic + Family Bundle",
+    amount: 79.98,
     dueDate: "2024-01-25",
     status: "Pending",
-    invoiceNumber: "INV-2024-004",
+    invoiceNumber: "INV-2024-006",
     generatedDate: "2024-01-01",
     generatedBy: "John Collector",
     employeeId: "emp-1",
@@ -214,33 +329,53 @@ export const mockBillingRecords: BillingRecord[] = [
     id: "2",
     customerId: "3",
     customerName: "Michael Brown",
-    packageName: "Sports Package",
-    amount: 79.99,
+    packageName: "Custom: Enterprise Package",
+    amount: 89.99,
     dueDate: "2024-01-10",
     status: "Overdue",
-    invoiceNumber: "INV-2024-005",
+    invoiceNumber: "INV-2024-007",
     generatedDate: "2023-12-15",
     generatedBy: "Sarah Collector",
     employeeId: "emp-2",
     billingMonth: "December",
     billingYear: "2023",
     vcNumber: "VC001236",
+    customAmount: 89.99,
   },
   {
     id: "3",
     customerId: "6",
     customerName: "Lisa Anderson",
-    packageName: "Basic",
-    amount: 29.99,
+    packageName: "Custom: Business Plan",
+    amount: 129.99,
     dueDate: "2024-01-30",
     status: "Pending",
-    invoiceNumber: "INV-2024-006",
-    generatedDate: "2024-01-05",
+    invoiceNumber: "INV-2024-008",
+    generatedDate: new Date().toISOString().split("T")[0], // Today
     generatedBy: "Sarah Collector",
     employeeId: "emp-2",
     billingMonth: "January",
     billingYear: "2024",
     vcNumber: "VC001239",
+    customAmount: 129.99,
+  },
+  {
+    id: "4",
+    customerId: "4",
+    customerName: "Emily Davis",
+    packageName: "Multi-Connection Package",
+    amount: 169.97,
+    dueDate: "2024-02-15",
+    status: "Paid",
+    invoiceNumber: "INV-2024-009",
+    generatedDate: new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0], // Yesterday
+    generatedBy: "John Collector",
+    employeeId: "emp-1",
+    billingMonth: "January",
+    billingYear: "2024",
+    vcNumber: "VC001237",
   },
 ];
 

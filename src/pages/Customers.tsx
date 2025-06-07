@@ -66,11 +66,30 @@ export default function Customers() {
   );
 
   function handleAdd() {
+    // Only admins can add customers
+    if (!isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "Only administrators can add new customers.",
+        variant: "destructive",
+      });
+      return;
+    }
     setEditingCustomer(null);
     setIsModalOpen(true);
   }
 
   function handleEdit(customer: Customer) {
+    // Only admins can edit customers
+    if (!isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "Only administrators can edit customer details.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     console.log("Edit clicked for:", customer.name);
     // Create a simple copy without complex operations
     const customerCopy = {
@@ -89,6 +108,9 @@ export default function Customers() {
       joinDate: customer.joinDate,
       activationDate: customer.activationDate,
       deactivationDate: customer.deactivationDate,
+      numberOfConnections: customer.numberOfConnections || 1,
+      connections: customer.connections || [],
+      customPlan: customer.customPlan,
     };
     setEditingCustomer(customerCopy);
     setIsModalOpen(true);
@@ -129,6 +151,16 @@ export default function Customers() {
   }
 
   async function handleDelete(customerId: string) {
+    // Only admins can delete customers
+    if (!isAdmin) {
+      toast({
+        title: "Access Denied",
+        description: "Only administrators can delete customers.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await CustomerService.deleteCustomer(customerId);
       setCustomers((prev) => prev.filter((c) => c.id !== customerId));
@@ -168,13 +200,18 @@ export default function Customers() {
           <div>
             <h2 className="text-2xl font-bold">Customer Management</h2>
             <p className="text-gray-600">
-              Manage customers with Status, Collector Name, and Last Payment
+              {isAdmin
+                ? "Manage customers with Status, Collector Name, and Last Payment"
+                : "View customers assigned to you"}
             </p>
           </div>
-          <Button onClick={handleAdd} disabled={isSaving}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Customer
-          </Button>
+          {/* Only show Add Customer button for admins */}
+          {isAdmin && (
+            <Button onClick={handleAdd} disabled={isSaving}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Customer
+            </Button>
+          )}
         </div>
 
         {/* Simple Search */}
@@ -189,14 +226,12 @@ export default function Customers() {
           </CardContent>
         </Card>
 
-        {/* Results Summary */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-sm text-gray-600">
-              Showing {filteredCustomers.length} of {customers.length} customers
-            </div>
-          </CardContent>
-        </Card>
+        {/* Results Summary - Made smaller and cleaner */}
+        <div className="bg-gray-50 rounded-lg p-3 border">
+          <div className="text-sm text-gray-600">
+            Showing {filteredCustomers.length} of {customers.length} customers
+          </div>
+        </div>
 
         {/* Simple Table */}
         <Card>
@@ -219,7 +254,9 @@ export default function Customers() {
                     <TableHead>Status</TableHead>
                     <TableHead>Collector Name</TableHead>
                     <TableHead>Last Payment</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {(isAdmin || filteredCustomers.some((c) => c.id)) && (
+                      <TableHead className="text-right">Actions</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -258,9 +295,16 @@ export default function Customers() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {customer.currentPackage}
-                          </Badge>
+                          <div>
+                            <Badge variant="outline">
+                              {customer.currentPackage}
+                            </Badge>
+                            {customer.customPlan && (
+                              <div className="text-xs text-blue-600 mt-1">
+                                Custom: {customer.customPlan.name}
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -292,14 +336,19 @@ export default function Customers() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(customer)}
-                              disabled={isSaving}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                            {/* Only show edit button for admins */}
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEdit(customer)}
+                                disabled={isSaving}
+                                title="Edit Customer (Admin Only)"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {/* Only show delete button for admins */}
                             {isAdmin && (
                               <Button
                                 variant="ghost"
@@ -307,9 +356,16 @@ export default function Customers() {
                                 onClick={() => handleDelete(customer.id)}
                                 disabled={isSaving}
                                 className="text-red-600 hover:text-red-700"
+                                title="Delete Customer (Admin Only)"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
+                            )}
+                            {/* For employees, show view-only indicator */}
+                            {!isAdmin && (
+                              <span className="text-xs text-gray-500 italic">
+                                View Only
+                              </span>
                             )}
                           </div>
                         </TableCell>
@@ -322,14 +378,16 @@ export default function Customers() {
           </CardContent>
         </Card>
 
-        {/* Modal */}
-        <CustomerModal
-          open={isModalOpen}
-          onOpenChange={setIsModalOpen}
-          customer={editingCustomer}
-          onSave={handleSave}
-          isSaving={isSaving}
-        />
+        {/* Customer Modal - Only for admins */}
+        {isAdmin && (
+          <CustomerModal
+            open={isModalOpen}
+            onOpenChange={setIsModalOpen}
+            customer={editingCustomer}
+            onSave={handleSave}
+            isSaving={isSaving}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

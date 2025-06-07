@@ -14,6 +14,8 @@ import {
   CreditCard,
   UserPlus,
   Clock,
+  FileText,
+  ClipboardList,
 } from "lucide-react";
 import {
   mockDashboardStats,
@@ -31,6 +33,28 @@ export default function Dashboard() {
   const stats = mockDashboardStats;
   const recentCustomers = mockCustomers.slice(0, 5);
   const recentPayments = mockPayments.slice(0, 5);
+
+  // Filter payments for today and yesterday (for employees)
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+
+  const todayPayments = mockPayments.filter(
+    (payment) => payment.date === today,
+  );
+  const yesterdayPayments = mockPayments.filter(
+    (payment) => payment.date === yesterday,
+  );
+
+  const todayTotal = todayPayments.reduce(
+    (sum, payment) => sum + payment.amount,
+    0,
+  );
+  const yesterdayTotal = yesterdayPayments.reduce(
+    (sum, payment) => sum + payment.amount,
+    0,
+  );
 
   const StatCard = ({
     title,
@@ -71,13 +95,11 @@ export default function Dashboard() {
     </Card>
   );
 
-  // Quick action handlers
+  // Quick action handlers for admins
   const handleAddCustomer = () => {
     if (isAdmin) {
       navigate("/customers");
-      // Small delay to ensure navigation completes, then trigger add customer
       setTimeout(() => {
-        // This would trigger the add customer modal
         toast({
           title: "Add Customer",
           description:
@@ -94,7 +116,7 @@ export default function Dashboard() {
   };
 
   const handleProcessPayment = () => {
-    navigate("/payments");
+    navigate("/billing");
     toast({
       title: "Process Payment",
       description: "Navigate to payments section to process customer payments.",
@@ -124,171 +146,412 @@ export default function Dashboard() {
     });
   };
 
+  const handleGenerateRequest = () => {
+    navigate("/requests");
+    toast({
+      title: "Generate Request",
+      description: "Navigate to requests section to create a new request.",
+    });
+  };
+
+  // Render admin dashboard
+  if (isAdmin) {
+    return (
+      <DashboardLayout title="Dashboard">
+        <div className="p-6 space-y-6">
+          {/* Admin Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              title="Total Customers"
+              value={stats.totalCustomers.toLocaleString()}
+              icon={Users}
+              change="+5.2% from last month"
+              changeType="positive"
+            />
+            <StatCard
+              title="Active Customers"
+              value={stats.activeCustomers.toLocaleString()}
+              icon={TrendingUp}
+              change="+2.1% from last month"
+              changeType="positive"
+            />
+            <StatCard
+              title="Monthly Revenue"
+              value={`$${stats.monthlyRevenue.toLocaleString()}`}
+              icon={DollarSign}
+              change="+8.3% from last month"
+              changeType="positive"
+            />
+            <StatCard
+              title="Pending Payments"
+              value={stats.pendingPayments}
+              icon={Clock}
+              change="3 less than yesterday"
+              changeType="positive"
+            />
+          </div>
+
+          {/* Admin Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Package className="h-5 w-5" />
+                <span>Quick Actions</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Button
+                  className="h-16 flex flex-col space-y-2 hover:bg-blue-600"
+                  onClick={handleAddCustomer}
+                >
+                  <UserPlus className="h-6 w-6" />
+                  <span>Add Customer</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
+                  onClick={handleProcessPayment}
+                >
+                  <CreditCard className="h-6 w-6" />
+                  <span>Process Payment</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
+                  onClick={handleManagePackages}
+                >
+                  <Package className="h-6 w-6" />
+                  <span>Manage Packages</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
+                  onClick={handleViewAlerts}
+                >
+                  <AlertCircle className="h-6 w-6" />
+                  <span>View Alerts</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Customers */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Customers</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {recentCustomers.map((customer) => (
+                    <div
+                      key={customer.id}
+                      className="flex items-center justify-between py-2"
+                    >
+                      <div>
+                        <p className="font-medium">{customer.name}</p>
+                        <p className="text-sm text-gray-500">
+                          {customer.currentPackage}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={
+                          customer.billingStatus === "Paid"
+                            ? "bg-green-100 text-green-800"
+                            : customer.billingStatus === "Pending"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                        }
+                      >
+                        {customer.billingStatus}
+                      </Badge>
+                    </div>
+                  ))}
+
+                  <div className="pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => navigate("/customers")}
+                    >
+                      View All Customers
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recent Payments */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Payments</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {recentPayments.map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="flex items-center justify-between py-2"
+                    >
+                      <div>
+                        <p className="font-medium">{payment.customerName}</p>
+                        <p className="text-sm text-gray-500">
+                          {payment.method} •{" "}
+                          {new Date(payment.date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">${payment.amount}</p>
+                        <Badge
+                          variant="outline"
+                          className="bg-green-100 text-green-800"
+                        >
+                          {payment.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => navigate("/billing")}
+                    >
+                      View All Payments
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Admin Alerts Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <AlertCircle className="h-5 w-5 text-orange-500" />
+                <span>System Alerts</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-start space-x-3 p-3 bg-red-50 rounded-lg">
+                  <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-red-800">
+                      {stats.overdueAccounts} Overdue Accounts
+                    </p>
+                    <p className="text-sm text-red-600">
+                      Multiple customers have overdue payments requiring
+                      immediate attention.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/customers")}
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                  >
+                    View
+                  </Button>
+                </div>
+
+                <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
+                  <Clock className="h-5 w-5 text-yellow-500 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-yellow-800">
+                      {stats.pendingPayments} Pending Payments
+                    </p>
+                    <p className="text-sm text-yellow-600">
+                      Payments due within the next 7 days.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/billing")}
+                    className="text-yellow-600 border-yellow-300 hover:bg-yellow-50"
+                  >
+                    Review
+                  </Button>
+                </div>
+
+                <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-green-500 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-green-800">
+                      {stats.newCustomersThisMonth} New Customers This Month
+                    </p>
+                    <p className="text-sm text-green-600">
+                      Customer acquisition is up 12% compared to last month.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/customers")}
+                    className="text-green-600 border-green-300 hover:bg-green-50"
+                  >
+                    View
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Render employee dashboard (restricted content)
   return (
-    <DashboardLayout title="Dashboard">
+    <DashboardLayout title="Employee Dashboard">
       <div className="p-6 space-y-6">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Employee: Only Payment Stats for Today & Yesterday */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <StatCard
-            title="Total Customers"
-            value={stats.totalCustomers.toLocaleString()}
-            icon={Users}
-            change="+5.2% from last month"
-            changeType="positive"
-          />
-          <StatCard
-            title="Active Customers"
-            value={stats.activeCustomers.toLocaleString()}
-            icon={TrendingUp}
-            change="+2.1% from last month"
-            changeType="positive"
-          />
-          <StatCard
-            title="Monthly Revenue"
-            value={`$${stats.monthlyRevenue.toLocaleString()}`}
+            title="Today's Payments"
+            value={`$${todayTotal.toFixed(2)}`}
             icon={DollarSign}
-            change="+8.3% from last month"
+            change={`${todayPayments.length} payments collected`}
             changeType="positive"
           />
           <StatCard
-            title="Pending Payments"
-            value={stats.pendingPayments}
+            title="Yesterday's Payments"
+            value={`$${yesterdayTotal.toFixed(2)}`}
             icon={Clock}
-            change="3 less than yesterday"
-            changeType="positive"
+            change={`${yesterdayPayments.length} payments collected`}
+            changeType="neutral"
           />
         </div>
 
-        {/* Quick Actions */}
+        {/* Employee: Action Buttons */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Package className="h-5 w-5" />
-              <span>Quick Actions</span>
+              <CreditCard className="h-5 w-5" />
+              <span>Employee Actions</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Button
                 className="h-16 flex flex-col space-y-2 hover:bg-blue-600"
-                onClick={handleAddCustomer}
+                onClick={() => setShowInvoiceGenerator(true)}
               >
-                <UserPlus className="h-6 w-6" />
-                <span>Add Customer</span>
+                <FileText className="h-6 w-6" />
+                <span>Generate Invoice</span>
               </Button>
               <Button
                 variant="outline"
                 className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
-                onClick={handleProcessPayment}
+                onClick={handleGenerateRequest}
               >
-                <CreditCard className="h-6 w-6" />
-                <span>Process Payment</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
-                onClick={handleManagePackages}
-              >
-                <Package className="h-6 w-6" />
-                <span>Manage Packages</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
-                onClick={handleViewAlerts}
-              >
-                <AlertCircle className="h-6 w-6" />
-                <span>View Alerts</span>
+                <ClipboardList className="h-6 w-6" />
+                <span>Generate Request</span>
               </Button>
             </div>
           </CardContent>
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Customers */}
+          {/* Employee: Today's Payments */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Customers</CardTitle>
+              <CardTitle>Today's Payments</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentCustomers.map((customer) => (
-                  <div
-                    key={customer.id}
-                    className="flex items-center justify-between py-2"
-                  >
-                    <div>
-                      <p className="font-medium">{customer.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {customer.currentPackage}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={
-                        customer.billingStatus === "Paid"
-                          ? "bg-green-100 text-green-800"
-                          : customer.billingStatus === "Pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                      }
+                {todayPayments.length > 0 ? (
+                  todayPayments.slice(0, 5).map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="flex items-center justify-between py-2"
                     >
-                      {customer.billingStatus}
-                    </Badge>
-                  </div>
-                ))}
+                      <div>
+                        <p className="font-medium">{payment.customerName}</p>
+                        <p className="text-sm text-gray-500">
+                          {payment.method} •{" "}
+                          {new Date(payment.date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">${payment.amount}</p>
+                        <Badge
+                          variant="outline"
+                          className="bg-green-100 text-green-800"
+                        >
+                          {payment.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-gray-500 py-4">
+                    No payments today
+                  </p>
+                )}
 
                 <div className="pt-4 border-t">
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => navigate("/customers")}
+                    onClick={() => navigate("/billing")}
                   >
-                    View All Customers
+                    View Today's Billing
                   </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Recent Payments */}
+          {/* Employee: Yesterday's Payments */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Payments</CardTitle>
+              <CardTitle>Yesterday's Payments</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentPayments.map((payment) => (
-                  <div
-                    key={payment.id}
-                    className="flex items-center justify-between py-2"
-                  >
-                    <div>
-                      <p className="font-medium">{payment.customerName}</p>
-                      <p className="text-sm text-gray-500">
-                        {payment.method} •{" "}
-                        {new Date(payment.date).toLocaleDateString()}
-                      </p>
+                {yesterdayPayments.length > 0 ? (
+                  yesterdayPayments.slice(0, 5).map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="flex items-center justify-between py-2"
+                    >
+                      <div>
+                        <p className="font-medium">{payment.customerName}</p>
+                        <p className="text-sm text-gray-500">
+                          {payment.method} •{" "}
+                          {new Date(payment.date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">${payment.amount}</p>
+                        <Badge
+                          variant="outline"
+                          className="bg-green-100 text-green-800"
+                        >
+                          {payment.status}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">${payment.amount}</p>
-                      <Badge
-                        variant="outline"
-                        className="bg-green-100 text-green-800"
-                      >
-                        {payment.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-center text-gray-500 py-4">
+                    No payments yesterday
+                  </p>
+                )}
 
                 <div className="pt-4 border-t">
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => navigate("/payments")}
+                    onClick={() => navigate("/billing")}
                   >
-                    View All Payments
+                    View Yesterday's Billing
                   </Button>
                 </div>
               </div>
@@ -296,79 +559,11 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Alerts Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <AlertCircle className="h-5 w-5 text-orange-500" />
-              <span>System Alerts</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-start space-x-3 p-3 bg-red-50 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-medium text-red-800">
-                    {stats.overdueAccounts} Overdue Accounts
-                  </p>
-                  <p className="text-sm text-red-600">
-                    Multiple customers have overdue payments requiring immediate
-                    attention.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/customers")}
-                  className="text-red-600 border-red-300 hover:bg-red-50"
-                >
-                  View
-                </Button>
-              </div>
-
-              <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
-                <Clock className="h-5 w-5 text-yellow-500 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-medium text-yellow-800">
-                    {stats.pendingPayments} Pending Payments
-                  </p>
-                  <p className="text-sm text-yellow-600">
-                    Payments due within the next 7 days.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/billing")}
-                  className="text-yellow-600 border-yellow-300 hover:bg-yellow-50"
-                >
-                  Review
-                </Button>
-              </div>
-
-              <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-green-500 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-medium text-green-800">
-                    {stats.newCustomersThisMonth} New Customers This Month
-                  </p>
-                  <p className="text-sm text-green-600">
-                    Customer acquisition is up 12% compared to last month.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/customers")}
-                  className="text-green-600 border-green-300 hover:bg-green-50"
-                >
-                  View
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Invoice Generator Modal */}
+        <InvoiceGenerator
+          open={showInvoiceGenerator}
+          onOpenChange={setShowInvoiceGenerator}
+        />
       </div>
     </DashboardLayout>
   );

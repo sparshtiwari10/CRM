@@ -1,3 +1,11 @@
+export interface Connection {
+  id: string;
+  vcNumber: string;
+  planName: string;
+  planPrice: number;
+  isCustomPlan: boolean;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -14,6 +22,14 @@ export interface Customer {
   isActive: boolean;
   activationDate?: string;
   deactivationDate?: string;
+  // New fields for multiple connections and custom plans
+  numberOfConnections: number;
+  connections: Connection[];
+  customPlan?: {
+    name: string;
+    price: number;
+    description: string;
+  };
 }
 
 export interface Package {
@@ -52,6 +68,7 @@ export interface BillingRecord {
   billingMonth: string; // e.g., "January 2024"
   billingYear: string;
   vcNumber: string; // Customer VC Number
+  customAmount?: number; // For custom invoice amounts
 }
 
 export interface DashboardStats {
