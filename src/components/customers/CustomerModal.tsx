@@ -45,6 +45,7 @@ export function CustomerModal({
   const { isAdmin } = useAuth();
   const { toast } = useToast();
   const isEditing = !!customer;
+  const [availableCollectors, setAvailableCollectors] = useState<string[]>([]);
 
   // Initialize with either customer data or empty form
   const getInitialData = () => {
