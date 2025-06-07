@@ -479,6 +479,11 @@ export function CustomerModal({
 
     onSave(customerData);
 
+    // Reset form state after save
+    setFormData(initialData);
+    setShowCustomPlan(false);
+    setErrors({});
+
     // Show toast notification at bottom for mobile
     toast({
       title: isEditing ? "Customer Updated" : "Customer Added",
