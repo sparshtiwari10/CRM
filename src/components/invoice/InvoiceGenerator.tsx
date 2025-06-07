@@ -507,7 +507,7 @@ export function InvoiceGenerator({
                   ) : (
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-800">
-                        ${defaultAmount.toFixed(2)}
+                        ₹{defaultAmount.toFixed(2)}
                       </div>
                       <div className="text-sm text-blue-600">
                         Using default package rate
