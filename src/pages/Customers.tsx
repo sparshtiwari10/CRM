@@ -118,75 +118,81 @@ export default function Customers() {
     [toast],
   );
 
-  const handleSave = async (customer: Customer) => {
-    console.log("Save started:", customer.id, customer.name);
-    setIsSaving(true);
+  const handleSave = useCallback(
+    async (customer: Customer) => {
+      console.log("Save started:", customer.id, customer.name);
+      setIsSaving(true);
 
-    try {
-      if (editingCustomer) {
-        console.log("Updating customer...");
-        await CustomerService.updateCustomer(customer.id, customer);
+      try {
+        if (editingCustomer) {
+          console.log("Updating customer...");
+          await CustomerService.updateCustomer(customer.id, customer);
 
-        // Simple state update - no complex logic
-        setCustomers((prev) =>
-          prev.map((c) => (c.id === customer.id ? customer : c)),
-        );
+          // Simple state update - no complex logic
+          setCustomers((prev) =>
+            prev.map((c) => (c.id === customer.id ? customer : c)),
+          );
 
+          toast({
+            title: "Success",
+            description: "Customer updated successfully.",
+          });
+        } else {
+          console.log("Adding customer...");
+          const newId = await CustomerService.addCustomer(customer);
+          const newCustomer = { ...customer, id: newId };
+
+          setCustomers((prev) => [...prev, newCustomer]);
+
+          toast({
+            title: "Success",
+            description: "Customer added successfully.",
+          });
+        }
+
+        console.log("Closing modal...");
+        setIsModalOpen(false);
+        setEditingCustomer(null);
+      } catch (error) {
+        console.error("Save error:", error);
         toast({
-          title: "Success",
-          description: "Customer updated successfully.",
+          title: "Error",
+          description: "Failed to save customer",
+          variant: "destructive",
         });
-      } else {
-        console.log("Adding customer...");
-        const newId = await CustomerService.addCustomer(customer);
-        const newCustomer = { ...customer, id: newId };
+      } finally {
+        console.log("Save completed");
+        setIsSaving(false);
+      }
+    },
+    [editingCustomer, toast],
+  );
 
-        setCustomers((prev) => [...prev, newCustomer]);
+  const handleDelete = useCallback(
+    async (customerId: string) => {
+      const customer = customers.find((c) => c.id === customerId);
+      console.log("Delete customer:", customerId);
+
+      try {
+        await CustomerService.deleteCustomer(customerId);
+        setCustomers((prev) => prev.filter((c) => c.id !== customerId));
 
         toast({
           title: "Success",
-          description: "Customer added successfully.",
+          description: `${customer?.name} deleted successfully.`,
+          variant: "destructive",
+        });
+      } catch (error) {
+        console.error("Delete error:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete customer",
+          variant: "destructive",
         });
       }
-
-      console.log("Closing modal...");
-      setIsModalOpen(false);
-      setEditingCustomer(null);
-    } catch (error) {
-      console.error("Save error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save customer",
-        variant: "destructive",
-      });
-    } finally {
-      console.log("Save completed");
-      setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async (customerId: string) => {
-    const customer = customers.find((c) => c.id === customerId);
-    console.log("Delete customer:", customerId);
-
-    try {
-      await CustomerService.deleteCustomer(customerId);
-      setCustomers((prev) => prev.filter((c) => c.id !== customerId));
-
-      toast({
-        title: "Success",
-        description: `${customer?.name} deleted successfully.`,
-        variant: "destructive",
-      });
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete customer",
-        variant: "destructive",
-      });
-    }
-  };
+    },
+    [customers, toast],
+  );
 
   const uniquePackages = Array.from(
     new Set(customers.map((c) => c.currentPackage)),
