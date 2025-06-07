@@ -25,8 +25,8 @@ export default function Customers() {
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
 
-  // Simple data loading - no dependencies
-  const loadData = async () => {
+  // Simple data loading - wrapped in useCallback to prevent re-creation
+  const loadData = useCallback(async () => {
     if (!user) return;
 
     console.log("Loading customers...");
@@ -49,7 +49,7 @@ export default function Customers() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, isAdmin, toast]);
 
   // Load once on mount and when user changes
   useEffect(() => {
