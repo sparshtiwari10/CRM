@@ -121,6 +121,22 @@ export default function Customers() {
     setSearchTerm("");
   };
 
+  const handleActionRequest = (request: Omit<ActionRequest, "id">) => {
+    const newRequest = {
+      ...request,
+      id: `req-${Date.now()}`,
+    };
+    setActionRequests((prev) => [newRequest, ...prev]);
+  };
+
+  const handleViewHistory = (customer: Customer) => {
+    // For now, just show a toast - you can implement a history modal later
+    toast({
+      title: "History",
+      description: `Viewing change history for ${customer.name}`,
+    });
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
