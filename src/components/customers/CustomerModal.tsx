@@ -108,7 +108,6 @@ export function CustomerModal({
         vcNumber: customer.vcNumber || "",
         currentPackage: customer.currentPackage || "",
         collectorName: customer.collectorName || "",
-        billingStatus: customer.billingStatus || "Pending",
         isActive: customer.isActive !== undefined ? customer.isActive : true,
         portalBill: customer.portalBill || 0,
         numberOfConnections: customer.numberOfConnections || 1,
@@ -129,7 +128,6 @@ export function CustomerModal({
         vcNumber: "", // Start blank as requested
         currentPackage: "",
         collectorName: "",
-        billingStatus: "Pending" as const,
         isActive: true,
         portalBill: 0,
         numberOfConnections: 1,
@@ -160,7 +158,6 @@ export function CustomerModal({
       vcNumber: customer.vcNumber || "",
       currentPackage: customer.currentPackage || "",
       collectorName: customer.collectorName || "",
-      billingStatus: customer.billingStatus || "Pending",
       isActive: customer.isActive !== undefined ? customer.isActive : true,
       portalBill: customer.portalBill || 0,
       numberOfConnections: customer.numberOfConnections || "",
@@ -209,7 +206,6 @@ export function CustomerModal({
       vcNumber: "",
       currentPackage: "",
       collectorName: "",
-      billingStatus: "Pending",
       isActive: true,
       portalBill: 0,
       numberOfConnections: "",
@@ -415,7 +411,6 @@ export function CustomerModal({
         ? formData.customPlan?.name || "Custom"
         : formData.currentPackage,
       collectorName: formData.collectorName,
-      billingStatus: formData.billingStatus,
       isActive: formData.isActive,
       portalBill: formData.portalBill,
       lastPaymentDate:
