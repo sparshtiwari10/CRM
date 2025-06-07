@@ -34,6 +34,7 @@ export default function Customers() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
+  const [actionRequests, setActionRequests] = useState(mockActionRequests);
   const { toast } = useToast();
 
   // Filter and search customers
