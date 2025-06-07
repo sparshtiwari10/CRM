@@ -122,7 +122,6 @@ export function CustomerSearch({
                       <SelectValue placeholder="All statuses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All statuses</SelectItem>
                       <SelectItem value="Paid">Paid</SelectItem>
                       <SelectItem value="Pending">Pending</SelectItem>
                       <SelectItem value="Overdue">Overdue</SelectItem>
