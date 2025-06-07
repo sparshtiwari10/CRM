@@ -108,6 +108,9 @@ export default function Dashboard() {
     0,
   );
 
+  // Combine recent payments for the Recent Payments section
+  const recentPayments = [...todayPayments, ...yesterdayPayments].slice(0, 5);
+
   const StatCard = ({
     title,
     value,
