@@ -274,24 +274,40 @@ class FirestoreService {
         throw new Error("User not authenticated");
       }
 
+      // Validate billing record data
+      this.validateBillingRecordData(record);
+
       const billingRef = collection(db, "billing");
+
+      // Build record data with proper handling of optional fields
       const recordData: FirestoreBillingRecord = {
-        customer_id: record.customerId,
-        customer_name: record.customerName,
-        package_name: record.packageName,
-        amount: record.amount,
+        customer_id: record.customerId || "",
+        customer_name: record.customerName || "",
+        package_name: record.packageName || "",
+        amount: record.amount || 0,
         due_date: Timestamp.fromDate(new Date(record.dueDate)),
-        status: record.status,
-        invoice_number: record.invoiceNumber,
+        status: record.status || "Pending",
+        invoice_number: record.invoiceNumber || "",
         generated_date: Timestamp.fromDate(new Date(record.generatedDate)),
-        generated_by: record.generatedBy,
-        employee_id: record.employeeId,
-        billing_month: record.billingMonth,
-        billing_year: record.billingYear,
-        vc_number: record.vcNumber,
-        custom_amount: record.customAmount,
+        generated_by: record.generatedBy || "",
+        employee_id: record.employeeId || "",
+        billing_month: record.billingMonth || "",
+        billing_year: record.billingYear || "",
+        vc_number: record.vcNumber || "",
         created_at: Timestamp.now(),
       };
+
+      // Only add optional fields if they have valid values
+      if (
+        record.customAmount !== undefined &&
+        record.customAmount !== null &&
+        record.customAmount > 0
+      ) {
+        recordData.custom_amount = record.customAmount;
+      }
+
+      // Additional sanitization check
+      this.sanitizeFirestoreData(recordData);
 
       const docRef = await addDoc(billingRef, recordData);
       console.log(
