@@ -98,6 +98,10 @@ export default function Customers() {
         description: "New customer has been successfully added.",
       });
     }
+
+    // Close modal and reset state
+    setIsModalOpen(false);
+    setEditingCustomer(null);
   };
 
   const handleDeleteCustomer = (customerId: string) => {
