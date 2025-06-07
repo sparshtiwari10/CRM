@@ -92,10 +92,18 @@ export function CustomerTable({
   const { user, isAdmin, canAccessCustomer } = useAuth();
   const { toast } = useToast();
 
-  // Filter customers based on user role and permissions
-  const accessibleCustomers = customers.filter(
-    (customer) => isAdmin || canAccessCustomer(customer.id),
-  );
+  // Filter customers based on user role and permissions and ensure data integrity
+  const accessibleCustomers = customers
+    .filter((customer) => isAdmin || canAccessCustomer(customer.id))
+    .map((customer) => ({
+      ...customer,
+      // Ensure all billing fields have default values
+      packageAmount: customer.packageAmount ?? 0,
+      previousOutstanding: customer.previousOutstanding ?? 0,
+      planBill: customer.planBill ?? 0,
+      currentOutstanding: customer.currentOutstanding ?? 0,
+      portalBill: customer.portalBill ?? 0,
+    }));
 
   const getBillingStatusColor = (status: Customer["billingStatus"]) => {
     switch (status) {
