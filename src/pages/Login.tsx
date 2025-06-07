@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Eye, EyeOff, Shield, Users, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { FirebaseStatus } from "@/components/common/FirebaseStatus";
 
 export default function Login() {
   const [username, setUsername] = useState("");
