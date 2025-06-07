@@ -59,11 +59,13 @@ export function TopBar({ title }: TopBarProps) {
 
       {/* Right side - Notifications and User Menu */}
       <div className="flex items-center space-x-4">
+        {/* Firebase Status */}
+        <FirebaseStatus />
+
         {/* Mobile Search */}
         <Button variant="ghost" size="icon" className="md:hidden">
           <Search className="h-5 w-5" />
         </Button>
-
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
