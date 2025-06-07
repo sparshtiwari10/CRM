@@ -155,7 +155,7 @@ export function CustomerModal({
   function handleInputChange(field: string, value: any) {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Auto-populate package amount when selecting a package
+    // Auto-populate package amount and portal bill when selecting a package
     if (field === "currentPackage" && value && !showCustomPlan) {
       const selectedPackage = mockPackages.find((pkg) => pkg.name === value);
       if (selectedPackage) {
@@ -163,7 +163,8 @@ export function CustomerModal({
           ...prev,
           [field]: value,
           packageAmount: selectedPackage.price,
-          portalBill: selectedPackage.price, // Also update portal bill for consistency
+          portalBill: selectedPackage.portalAmount || selectedPackage.price, // Use portal amount if available
+          planBill: selectedPackage.price, // Set plan bill
         }));
       }
     }
