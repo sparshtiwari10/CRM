@@ -1,7 +1,4 @@
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,14 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -29,42 +18,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Customer } from "@/types";
 import { mockPackages } from "@/data/mockData";
 import { useAuth } from "@/contexts/AuthContext";
-
-const customerFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  phoneNumber: z
-    .string()
-    .min(10, "Phone number must be at least 10 characters"),
-  email: z.string().email("Invalid email address").optional().or(z.literal("")),
-  address: z.string().min(5, "Address must be at least 5 characters"),
-  vcNumber: z.string().min(3, "VC Number must be at least 3 characters"),
-  currentPackage: z.string().min(1, "Please select a package"),
-  collectorName: z
-    .string()
-    .min(2, "Collector name must be at least 2 characters"),
-  billingStatus: z.enum(["Paid", "Pending", "Overdue"]),
-  isActive: z.boolean(),
-  portalBill: z
-    .number()
-    .min(0, "Portal bill must be a positive number")
-    .optional(),
-});
-
-type CustomerFormValues = z.infer<typeof customerFormSchema>;
 
 interface CustomerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   customer?: Customer | null;
-  onSave: (customer: Omit<Customer, "id"> & { id?: string }) => void;
-  isLoading?: boolean;
+  onSave: (customer: Customer) => void;
+  isSaving?: boolean;
 }
 
-// Mock collectors for the dropdown - in real app this would come from employee data
 const mockCollectors = [
   "John Collector",
   "Sarah Collector",
@@ -77,87 +42,127 @@ export function CustomerModal({
   onOpenChange,
   customer,
   onSave,
-  isLoading = false,
+  isSaving = false,
 }: CustomerModalProps) {
   const { isAdmin } = useAuth();
   const isEditing = !!customer;
 
-  const form = useForm<CustomerFormValues>({
-    resolver: zodResolver(customerFormSchema),
-    defaultValues: {
-      name: "",
-      phoneNumber: "",
-      email: "",
-      address: "",
-      vcNumber: "",
-      currentPackage: "",
-      collectorName: "",
-      billingStatus: "Pending",
-      isActive: true,
-      portalBill: 0,
-    },
+  // Form state
+  const [formData, setFormData] = useState({
+    name: "",
+    phoneNumber: "",
+    email: "",
+    address: "",
+    vcNumber: "",
+    currentPackage: "",
+    collectorName: "",
+    billingStatus: "Pending" as const,
+    isActive: true,
+    portalBill: 0,
   });
 
-  useEffect(() => {
-    if (customer) {
-      form.reset({
-        name: customer.name,
-        phoneNumber: customer.phoneNumber,
-        email: customer.email || "",
-        address: customer.address,
-        vcNumber: customer.vcNumber,
-        currentPackage: customer.currentPackage,
-        collectorName: customer.collectorName,
-        billingStatus: customer.billingStatus,
-        isActive: customer.isActive,
-        portalBill: customer.portalBill || 0,
-      });
-    } else {
-      form.reset({
-        name: "",
-        phoneNumber: "",
-        email: "",
-        address: "",
-        vcNumber: "",
-        currentPackage: "",
-        collectorName: "",
-        billingStatus: "Pending",
-        isActive: true,
-        portalBill: 0,
-      });
-    }
-  }, [customer, form]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const onSubmit = async (values: CustomerFormValues) => {
-    const customerData = {
-      ...values,
-      id: customer?.id,
+  // Generate VC Number
+  const generateVCNumber = useCallback(() => {
+    return `VC${Math.random().toString().substr(2, 6)}`;
+  }, []);
+
+  // Reset form when modal opens/closes or customer changes
+  useEffect(() => {
+    if (open) {
+      if (customer) {
+        // Editing existing customer
+        setFormData({
+          name: customer.name,
+          phoneNumber: customer.phoneNumber,
+          email: customer.email || "",
+          address: customer.address,
+          vcNumber: customer.vcNumber,
+          currentPackage: customer.currentPackage,
+          collectorName: customer.collectorName,
+          billingStatus: customer.billingStatus,
+          isActive: customer.isActive,
+          portalBill: customer.portalBill || 0,
+        });
+      } else {
+        // Creating new customer
+        setFormData({
+          name: "",
+          phoneNumber: "",
+          email: "",
+          address: "",
+          vcNumber: generateVCNumber(),
+          currentPackage: "",
+          collectorName: "",
+          billingStatus: "Pending",
+          isActive: true,
+          portalBill: 0,
+        });
+      }
+      setErrors({});
+    }
+  }, [open, customer, generateVCNumber]);
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.name.trim()) newErrors.name = "Name is required";
+    if (!formData.phoneNumber.trim())
+      newErrors.phoneNumber = "Phone number is required";
+    if (!formData.address.trim()) newErrors.address = "Address is required";
+    if (!formData.vcNumber.trim()) newErrors.vcNumber = "VC Number is required";
+    if (!formData.currentPackage)
+      newErrors.currentPackage = "Package is required";
+    if (!formData.collectorName)
+      newErrors.collectorName = "Collector is required";
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Invalid email format";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
+
+    const customerData: Customer = {
+      id: customer?.id || Date.now().toString(),
+      name: formData.name.trim(),
+      phoneNumber: formData.phoneNumber.trim(),
+      email: formData.email.trim() || undefined,
+      address: formData.address.trim(),
+      vcNumber: formData.vcNumber.trim(),
+      currentPackage: formData.currentPackage,
+      collectorName: formData.collectorName,
+      billingStatus: formData.billingStatus,
+      isActive: formData.isActive,
+      portalBill: formData.portalBill,
       lastPaymentDate:
         customer?.lastPaymentDate || new Date().toISOString().split("T")[0],
       joinDate: customer?.joinDate || new Date().toISOString().split("T")[0],
-      activationDate: values.isActive
+      activationDate: formData.isActive
         ? customer?.activationDate || new Date().toISOString().split("T")[0]
         : customer?.activationDate,
       deactivationDate:
-        !values.isActive && customer?.isActive
+        !formData.isActive && customer?.isActive
           ? new Date().toISOString().split("T")[0]
           : customer?.deactivationDate,
     };
 
     onSave(customerData);
-  };
-
-  const handleClose = () => {
-    // Reset form state first
-    form.reset();
-    // Close the modal
-    onOpenChange(false);
-  };
-
-  const generateVCNumber = () => {
-    const prefix = "VC";
-    const randomNum = Math.floor(Math.random() * 900000) + 100000; // 6 digit number
-    return `${prefix}${randomNum}`;
   };
 
   return (
@@ -169,307 +174,255 @@ export function CustomerModal({
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update the customer information below."
-              : "Enter the customer details to create a new account."}
+              ? "Update customer information and settings"
+              : "Enter customer details to create a new account"}
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-6">
             {/* Basic Information */}
             <div className="space-y-4">
-              <h4 className="text-sm font-medium text-gray-900">
-                Basic Information
-              </h4>
+              <h3 className="text-lg font-medium">Basic Information</h3>
 
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="John Doe"
-                        {...field}
-                        disabled={isLoading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="phoneNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="+1 (555) 123-4567"
-                          {...field}
-                          disabled={isLoading}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Full Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    placeholder="Enter customer name"
+                    disabled={isSaving}
+                    className={errors.name ? "border-red-500" : ""}
+                  />
+                  {errors.name && (
+                    <p className="text-sm text-red-500 mt-1">{errors.name}</p>
                   )}
-                />
+                </div>
 
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="john@example.com"
-                          {...field}
-                          disabled={isLoading}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                <div>
+                  <Label htmlFor="phoneNumber">Phone Number *</Label>
+                  <Input
+                    id="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={(e) =>
+                      handleInputChange("phoneNumber", e.target.value)
+                    }
+                    placeholder="+1 (555) 123-4567"
+                    disabled={isSaving}
+                    className={errors.phoneNumber ? "border-red-500" : ""}
+                  />
+                  {errors.phoneNumber && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.phoneNumber}
+                    </p>
                   )}
-                />
+                </div>
+
+                <div>
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    placeholder="customer@email.com"
+                    disabled={isSaving}
+                    className={errors.email ? "border-red-500" : ""}
+                  />
+                  {errors.email && (
+                    <p className="text-sm text-red-500 mt-1">{errors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="vcNumber">VC Number *</Label>
+                  <Input
+                    id="vcNumber"
+                    value={formData.vcNumber}
+                    onChange={(e) =>
+                      handleInputChange("vcNumber", e.target.value)
+                    }
+                    placeholder="VC123456"
+                    disabled={isSaving}
+                    className={errors.vcNumber ? "border-red-500" : ""}
+                  />
+                  {errors.vcNumber && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.vcNumber}
+                    </p>
+                  )}
+                </div>
               </div>
 
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Address</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="123 Main St, City, State, ZIP"
-                        {...field}
-                        disabled={isLoading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              <div>
+                <Label htmlFor="address">Address *</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => handleInputChange("address", e.target.value)}
+                  placeholder="Enter full address"
+                  disabled={isSaving}
+                  className={errors.address ? "border-red-500" : ""}
+                />
+                {errors.address && (
+                  <p className="text-sm text-red-500 mt-1">{errors.address}</p>
                 )}
-              />
+              </div>
             </div>
-
-            <Separator />
 
             {/* Service Information */}
             <div className="space-y-4">
-              <h4 className="text-sm font-medium text-gray-900">
-                Service Information
-              </h4>
+              <h3 className="text-lg font-medium">Service Information</h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="vcNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>VC Number</FormLabel>
-                      <div className="flex space-x-2">
-                        <FormControl>
-                          <Input
-                            placeholder="VC123456"
-                            {...field}
-                            className="font-mono"
-                            disabled={isLoading}
-                          />
-                        </FormControl>
-                        {!isEditing && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => field.onChange(generateVCNumber())}
-                            disabled={isLoading}
-                          >
-                            Generate
-                          </Button>
-                        )}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="currentPackage">Package *</Label>
+                  <Select
+                    value={formData.currentPackage}
+                    onValueChange={(value) =>
+                      handleInputChange("currentPackage", value)
+                    }
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger
+                      className={errors.currentPackage ? "border-red-500" : ""}
+                    >
+                      <SelectValue placeholder="Select package" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockPackages.map((pkg) => (
+                        <SelectItem key={pkg.id} value={pkg.name}>
+                          {pkg.name} - ${pkg.price}/month
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.currentPackage && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.currentPackage}
+                    </p>
                   )}
-                />
+                </div>
 
-                <FormField
-                  control={form.control}
-                  name="currentPackage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Package</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isLoading}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a package" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {mockPackages.map((pkg) => (
-                            <SelectItem key={pkg.id} value={pkg.name}>
-                              {pkg.name} - ${pkg.price}/month
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
+                <div>
+                  <Label htmlFor="collectorName">Assigned Collector *</Label>
+                  <Select
+                    value={formData.collectorName}
+                    onValueChange={(value) =>
+                      handleInputChange("collectorName", value)
+                    }
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger
+                      className={errors.collectorName ? "border-red-500" : ""}
+                    >
+                      <SelectValue placeholder="Select collector" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockCollectors.map((collector) => (
+                        <SelectItem key={collector} value={collector}>
+                          {collector}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.collectorName && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.collectorName}
+                    </p>
                   )}
-                />
-              </div>
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="collectorName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Assigned Collector</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isLoading}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select collector" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {mockCollectors.map((collector) => (
-                            <SelectItem key={collector} value={collector}>
-                              {collector}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div>
+                  <Label htmlFor="billingStatus">Billing Status</Label>
+                  <Select
+                    value={formData.billingStatus}
+                    onValueChange={(value) =>
+                      handleInputChange("billingStatus", value)
+                    }
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Paid">Paid</SelectItem>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Overdue">Overdue</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                <FormField
-                  control={form.control}
-                  name="billingStatus"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Billing Status</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={isLoading}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Paid">Paid</SelectItem>
-                          <SelectItem value="Pending">Pending</SelectItem>
-                          <SelectItem value="Overdue">Overdue</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Status and Admin Settings */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-gray-900">
-                Status & Settings
-              </h4>
-
-              <FormField
-                control={form.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Active Status</FormLabel>
-                      <div className="text-sm text-gray-500">
-                        Customer service is currently{" "}
-                        {field.value ? "active" : "inactive"}
-                      </div>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        disabled={isLoading}
+                {isAdmin && (
+                  <div>
+                    <Label htmlFor="portalBill">
+                      Portal Bill Amount (Admin Only)
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="portalBill"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.portalBill}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "portalBill",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
+                        placeholder="0.00"
+                        disabled={isSaving}
+                        className="pl-8"
                       />
-                    </FormControl>
-                  </FormItem>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                        $
+                      </span>
+                    </div>
+                  </div>
                 )}
-              />
+              </div>
 
-              {/* Portal Bill - Admin Only */}
-              {isAdmin && (
-                <FormField
-                  control={form.control}
-                  name="portalBill"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Portal Bill Amount (Admin Only)</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="0.00"
-                            {...field}
-                            onChange={(e) =>
-                              field.onChange(parseFloat(e.target.value) || 0)
-                            }
-                            className="pl-8"
-                            disabled={isLoading}
-                          />
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                            $
-                          </span>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              {/* Active Status */}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label className="text-base">Active Status</Label>
+                  <div className="text-sm text-gray-500">
+                    Customer service is currently{" "}
+                    {formData.isActive ? "active" : "inactive"}
+                  </div>
+                </div>
+                <Switch
+                  checked={formData.isActive}
+                  onCheckedChange={(checked) =>
+                    handleInputChange("isActive", checked)
+                  }
+                  disabled={isSaving}
                 />
-              )}
+              </div>
             </div>
+          </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading
-                  ? "Saving..."
-                  : isEditing
-                    ? "Update Customer"
-                    : "Add Customer"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          <DialogFooter className="mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving
+                ? "Saving..."
+                : isEditing
+                  ? "Update Customer"
+                  : "Add Customer"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
