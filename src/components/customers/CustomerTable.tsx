@@ -645,19 +645,18 @@ export function CustomerTable({
                                 ) : customerInvoices[customer.id] &&
                                   customerInvoices[customer.id].length > 0 ? (
                                   <div className="space-y-2">
-                                    <div className="grid grid-cols-5 gap-2 text-xs font-medium text-gray-500 border-b pb-2">
+                                    <div className="grid grid-cols-4 gap-2 text-xs font-medium text-gray-500 border-b pb-2">
                                       <div>Invoice #</div>
                                       <div>Date</div>
                                       <div>Amount</div>
-                                      <div>Status</div>
-                                      <div>Payment Mode</div>
+                                      <div>VC Numbers</div>
                                     </div>
                                     {customerInvoices[customer.id]
                                       .slice(0, 10)
                                       .map((invoice) => (
                                         <div
                                           key={invoice.id}
-                                          className="grid grid-cols-5 gap-2 text-sm py-2 border-b border-gray-100 hover:bg-gray-50 rounded"
+                                          className="grid grid-cols-4 gap-2 text-sm py-2 border-b border-gray-100 hover:bg-gray-50 rounded"
                                         >
                                           <div className="font-mono text-xs">
                                             {invoice.invoiceNumber}
@@ -668,21 +667,20 @@ export function CustomerTable({
                                           <div className="font-medium">
                                             {formatCurrency(invoice.amount)}
                                           </div>
-                                          <div>
-                                            <Badge
-                                              variant="outline"
-                                              className={cn(
-                                                "text-xs",
-                                                getBillingStatusColor(
-                                                  invoice.status,
-                                                ),
-                                              )}
-                                            >
-                                              {invoice.status}
-                                            </Badge>
-                                          </div>
-                                          <div className="text-xs text-gray-500">
-                                            {invoice.paymentMethod || "N/A"}
+                                          <div className="text-xs text-blue-600">
+                                            <div className="font-mono">
+                                              {invoice.allVcNumbers
+                                                ? invoice.allVcNumbers.join(
+                                                    ", ",
+                                                  )
+                                                : invoice.vcNumber}
+                                            </div>
+                                            <div className="text-gray-500 text-xs">
+                                              {invoice.allVcNumbers &&
+                                              invoice.allVcNumbers.length > 1
+                                                ? `${invoice.allVcNumbers.length} connections`
+                                                : "1 connection"}
+                                            </div>
                                           </div>
                                         </div>
                                       ))}
