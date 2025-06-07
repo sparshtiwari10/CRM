@@ -209,7 +209,6 @@ export default function Payments() {
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
                   <SelectItem value="Completed">Completed</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="Failed">Failed</SelectItem>
