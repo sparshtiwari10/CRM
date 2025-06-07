@@ -215,31 +215,55 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
               title="Total Customers"
-              value={stats.totalCustomers.toLocaleString()}
+              value={isLoading ? "..." : totalCustomers.toLocaleString()}
               icon={Users}
-              change="+5.2% from last month"
-              changeType="positive"
+              change={
+                totalCustomers > 0
+                  ? `${activeCustomers} active, ${inactiveCustomers} inactive`
+                  : "No customers yet"
+              }
+              changeType={totalCustomers > 0 ? "positive" : "neutral"}
             />
             <StatCard
               title="Active Customers"
-              value={stats.activeCustomers.toLocaleString()}
+              value={isLoading ? "..." : activeCustomers.toLocaleString()}
               icon={TrendingUp}
-              change="+2.1% from last month"
-              changeType="positive"
+              change={
+                activeCustomers > 0
+                  ? `${pendingCustomers} pending payments`
+                  : "No active customers"
+              }
+              changeType={activeCustomers > 0 ? "positive" : "neutral"}
             />
             <StatCard
               title="Monthly Revenue"
-              value={`₹${stats.monthlyRevenue.toLocaleString()}`}
+              value={isLoading ? "..." : `₹${totalRevenue.toLocaleString()}`}
               icon={DollarSign}
-              change="+8.3% from last month"
-              changeType="positive"
+              change={
+                totalRevenue > 0
+                  ? `From ${totalCustomers} customers`
+                  : "No revenue yet"
+              }
+              changeType={totalRevenue > 0 ? "positive" : "neutral"}
             />
             <StatCard
               title="Pending Payments"
-              value={stats.pendingPayments}
+              value={isLoading ? "..." : pendingCustomers}
               icon={Clock}
-              change="3 less than yesterday"
-              changeType="positive"
+              change={
+                overdueCustomers > 0
+                  ? `${overdueCustomers} overdue`
+                  : pendingCustomers > 0
+                    ? "All pending on time"
+                    : "No pending payments"
+              }
+              changeType={
+                overdueCustomers > 0
+                  ? "negative"
+                  : pendingCustomers > 0
+                    ? "neutral"
+                    : "positive"
+              }
             />
           </div>
 
