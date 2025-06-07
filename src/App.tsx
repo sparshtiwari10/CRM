@@ -74,6 +74,14 @@ function AppContent() {
           }
         />
         <Route
+          path="/requests"
+          element={
+            <ProtectedRoute adminOnly>
+              <RequestManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/employees"
           element={
             <ProtectedRoute adminOnly>
