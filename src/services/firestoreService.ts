@@ -528,10 +528,15 @@ class FirestoreService {
         .toISOString()
         .split("T")[0],
       isActive: data.status === "active",
-      portalBill: data.bill_amount,
+      portalBill: data.bill_amount || 0,
       numberOfConnections: data.number_of_connections,
       connections: data.connections,
       customPlan: data.custom_plan,
+      // Add billing fields with defaults
+      packageAmount: data.bill_amount || 0,
+      previousOutstanding: data.prev_os || 0,
+      planBill: data.bill_amount || 0,
+      currentOutstanding: data.current_os || 0,
     };
   }
 
