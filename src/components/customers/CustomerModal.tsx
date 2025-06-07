@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { authService } from "@/services/authService";
 import {
   Dialog,
   DialogContent,
@@ -699,7 +700,7 @@ export function CustomerModal({
                 {isAdmin && (
                   <div>
                     <Label htmlFor="portalBill">
-                      Portal Bill (���)
+                      Portal Bill (₹)
                       {!showCustomPlan && formData.currentPackage && (
                         <span className="text-green-600 text-xs ml-1">
                           (Auto-filled)
