@@ -304,6 +304,14 @@ export default function Packages() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">
+                      Portal Amount
+                    </label>
+                    <p className="text-lg font-bold text-green-600">
+                      ₹{viewingPackage.portalAmount || 0}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
                       Total Channels
                     </label>
                     <p className="text-lg font-medium">
