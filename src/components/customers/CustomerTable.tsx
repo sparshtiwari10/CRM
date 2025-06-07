@@ -258,7 +258,7 @@ export function CustomerTable({
   }
 
   return (
-    <React.Fragment>
+    <>
       <Card>
         <CardContent className="p-0">
           {/* Desktop Table */}
@@ -1155,10 +1155,11 @@ export function CustomerTable({
         open={!!actionRequestCustomer}
         onOpenChange={(open) => {
           if (!open) {
-            setActionRequestCustomer(null);
-            setActionType("activation"); // Reset action type
-          }
-        }}
+        />
+      )}
+    </>
+  );
+}
         customer={actionRequestCustomer}
         onSubmit={handleActionRequest}
         defaultActionType={actionType}
