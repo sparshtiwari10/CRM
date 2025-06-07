@@ -319,6 +319,9 @@ export function CustomerModal({
       numberOfConnections: finalNumberOfConnections,
       connections: formData.connections.slice(0, finalNumberOfConnections),
       customPlan: showCustomPlan ? formData.customPlan || undefined : undefined,
+      packageAmount: formData.packageAmount,
+      previousOutstanding: formData.previousOutstanding,
+      currentOutstanding: formData.currentOutstanding,
     };
 
     onSave(customerData);
