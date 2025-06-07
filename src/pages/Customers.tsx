@@ -38,7 +38,8 @@ export default function Customers() {
         customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.phoneNumber.includes(searchTerm) ||
         customer.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.email?.toLowerCase().includes(searchTerm.toLowerCase());
+        customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.vcNumber.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesPackage =
         !filters.package || customer.currentPackage === filters.package;
@@ -49,7 +50,6 @@ export default function Customers() {
       return matchesSearch && matchesPackage && matchesStatus;
     });
   }, [customers, searchTerm, filters]);
-
   const handleAddCustomer = () => {
     setEditingCustomer(null);
     setIsModalOpen(true);
