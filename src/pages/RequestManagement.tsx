@@ -62,17 +62,29 @@ export default function RequestManagement() {
     console.log("RequestManagement - Mock requests:", mockActionRequests);
   }, [user, isAdmin]);
 
-  // Initialize requests from mock data
+  // Load requests dynamically from Firebase
   useEffect(() => {
-    try {
-      console.log("Loading mock action requests...");
-      setRequests(mockActionRequests || []);
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error loading requests:", error);
-      setRequests([]);
-      setIsLoading(false);
-    }
+    const loadRequests = async () => {
+      try {
+        console.log("Loading action requests from Firebase...");
+        const requestsData = await CustomerService.getAllRequests();
+        setRequests(requestsData || []);
+        console.log("Loaded requests:", requestsData.length);
+      } catch (error) {
+        console.error("Error loading requests:", error);
+        // Fallback to empty array if Firebase fails
+        setRequests([]);
+        toast({
+          title: "Loading Error",
+          description: "Failed to load requests. Using offline mode.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadRequests();
   }, []);
 
   // Load customers for employees to create requests
