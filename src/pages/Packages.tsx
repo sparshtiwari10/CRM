@@ -218,6 +218,11 @@ export default function Packages() {
                     /month
                   </span>
                 </div>
+                {pkg.portalAmount && (
+                  <div className="text-sm text-gray-600">
+                    Portal Amount: ₹{pkg.portalAmount}
+                  </div>
+                )}
               </CardHeader>
 
               <CardContent className="flex flex-col h-full space-y-4">
