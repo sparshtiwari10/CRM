@@ -50,45 +50,8 @@ import { Label } from "@/components/ui/label";
 import { User } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 
-// Mock employees data
-const initialEmployees: User[] = [
-  {
-    id: "emp-1",
-    email: "john.collector@cabletv.com",
-    phone: "+1 (555) 111-1111",
-    name: "John Collector",
-    role: "employee",
-    isActive: true,
-    createdAt: "2024-01-01",
-    lastLogin: "2024-01-20T08:30:00Z",
-    assignedCustomers: ["1", "2", "5"],
-  },
-  {
-    id: "emp-2",
-    email: "sarah.collector@cabletv.com",
-    phone: "+1 (555) 222-2222",
-    name: "Sarah Collector",
-    role: "employee",
-    isActive: true,
-    createdAt: "2024-01-01",
-    lastLogin: "2024-01-19T16:45:00Z",
-    assignedCustomers: ["3", "4", "6"],
-  },
-  {
-    id: "emp-3",
-    email: "mike.field@cabletv.com",
-    phone: "+1 (555) 333-3333",
-    name: "Mike Field",
-    role: "employee",
-    isActive: false,
-    createdAt: "2023-12-15",
-    lastLogin: "2024-01-10T12:00:00Z",
-    assignedCustomers: [],
-  },
-];
-
 export default function EmployeeManagement() {
-  const [employees, setEmployees] = useState<User[]>(initialEmployees);
+  const [employees, setEmployees] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteEmployee, setDeleteEmployee] = useState<User | null>(null);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
