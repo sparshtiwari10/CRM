@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { Eye, Edit, Trash2, MoreHorizontal } from "lucide-react";
+import {
+  Eye,
+  Edit,
+  Trash2,
+  MoreHorizontal,
+  Power,
+  PowerOff,
+  RefreshCw,
+  History,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -12,6 +21,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -28,6 +38,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Customer } from "@/types";
+import { ActionRequest } from "@/types/auth";
+import { ActionRequestModal } from "./ActionRequestModal";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 interface CustomerTableProps {

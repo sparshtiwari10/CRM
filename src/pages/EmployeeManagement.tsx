@@ -1,0 +1,430 @@
+import { useState } from "react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Shield,
+  UserCheck,
+  UserX,
+  MoreHorizontal,
+} from "lucide-react";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { User } from "@/types/auth";
+import { useToast } from "@/hooks/use-toast";
+
+// Mock employees data
+const initialEmployees: User[] = [
+  {
+    id: "emp-1",
+    email: "john.collector@cabletv.com",
+    phone: "+1 (555) 111-1111",
+    name: "John Collector",
+    role: "employee",
+    isActive: true,
+    createdAt: "2024-01-01",
+    lastLogin: "2024-01-20T08:30:00Z",
+    assignedCustomers: ["1", "2", "5"],
+  },
+  {
+    id: "emp-2",
+    email: "sarah.collector@cabletv.com",
+    phone: "+1 (555) 222-2222",
+    name: "Sarah Collector",
+    role: "employee",
+    isActive: true,
+    createdAt: "2024-01-01",
+    lastLogin: "2024-01-19T16:45:00Z",
+    assignedCustomers: ["3", "4", "6"],
+  },
+  {
+    id: "emp-3",
+    email: "mike.field@cabletv.com",
+    phone: "+1 (555) 333-3333",
+    name: "Mike Field",
+    role: "employee",
+    isActive: false,
+    createdAt: "2023-12-15",
+    lastLogin: "2024-01-10T12:00:00Z",
+    assignedCustomers: [],
+  },
+];
+
+export default function EmployeeManagement() {
+  const [employees, setEmployees] = useState<User[]>(initialEmployees);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [deleteEmployee, setDeleteEmployee] = useState<User | null>(null);
+  const { toast } = useToast();
+
+  const filteredEmployees = employees.filter(
+    (employee) =>
+      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.phone?.includes(searchTerm),
+  );
+
+  const handleToggleStatus = (employee: User) => {
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.id === employee.id ? { ...emp, isActive: !emp.isActive } : emp,
+      ),
+    );
+
+    toast({
+      title: `Employee ${employee.isActive ? "deactivated" : "activated"}`,
+      description: `${employee.name} has been ${employee.isActive ? "deactivated" : "activated"} successfully.`,
+    });
+  };
+
+  const handleDeleteEmployee = () => {
+    if (deleteEmployee) {
+      setEmployees((prev) =>
+        prev.filter((emp) => emp.id !== deleteEmployee.id),
+      );
+      toast({
+        title: "Employee deleted",
+        description: `${deleteEmployee.name} has been removed from the system.`,
+        variant: "destructive",
+      });
+      setDeleteEmployee(null);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const activeEmployees = employees.filter((emp) => emp.isActive).length;
+  const totalCustomersAssigned = employees.reduce(
+    (sum, emp) => sum + (emp.assignedCustomers?.length || 0),
+    0,
+  );
+
+  return (
+    <DashboardLayout title="Employee Management">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Employee Management
+            </h2>
+            <p className="text-gray-600">
+              Manage employee accounts and permissions
+            </p>
+          </div>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Employee
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total Employees
+              </CardTitle>
+              <UserCheck className="h-4 w-4 text-gray-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{employees.length}</div>
+              <p className="text-xs text-gray-600">{activeEmployees} active</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Active Employees
+              </CardTitle>
+              <Shield className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {activeEmployees}
+              </div>
+              <p className="text-xs text-gray-600">
+                {employees.length - activeEmployees} inactive
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Assigned Customers
+              </CardTitle>
+              <UserCheck className="h-4 w-4 text-gray-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalCustomersAssigned}</div>
+              <p className="text-xs text-gray-600">Total assignments</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Search */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex space-x-4">
+              <div className="flex-1">
+                <Input
+                  placeholder="Search employees by name, email, or phone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Employee Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Employee Directory</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {/* Desktop Table */}
+            <div className="hidden lg:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Assigned Customers</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Login</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEmployees.map((employee) => (
+                    <TableRow key={employee.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{employee.name}</div>
+                          <div className="text-sm text-gray-500">
+                            {employee.email}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {employee.phone || "No phone"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {employee.assignedCustomers?.length || 0} customers
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={employee.isActive ? "default" : "secondary"}
+                          className={employee.isActive ? "bg-green-600" : ""}
+                        >
+                          {employee.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {employee.lastLogin
+                            ? formatDate(employee.lastLogin)
+                            : "Never"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {formatDate(employee.createdAt)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Employee
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleToggleStatus(employee)}
+                            >
+                              {employee.isActive ? (
+                                <>
+                                  <UserX className="mr-2 h-4 w-4" />
+                                  Deactivate
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  Activate
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setDeleteEmployee(employee)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="lg:hidden space-y-4 p-4">
+              {filteredEmployees.map((employee) => (
+                <Card key={employee.id} className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-medium text-lg">{employee.name}</h3>
+                      <p className="text-sm text-gray-500">{employee.email}</p>
+                      {employee.phone && (
+                        <p className="text-sm text-gray-500">
+                          {employee.phone}
+                        </p>
+                      )}
+                    </div>
+                    <Badge
+                      variant={employee.isActive ? "default" : "secondary"}
+                      className={employee.isActive ? "bg-green-600" : ""}
+                    >
+                      {employee.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Assigned Customers:</span>
+                      <Badge variant="outline">
+                        {employee.assignedCustomers?.length || 0}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Last Login:</span>
+                      <span>
+                        {employee.lastLogin
+                          ? formatDate(employee.lastLogin)
+                          : "Never"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Created:</span>
+                      <span>{formatDate(employee.createdAt)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-2 mt-4">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Eye className="mr-2 h-4 w-4" />
+                      View
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleStatus(employee)}
+                      className="flex-1"
+                    >
+                      {employee.isActive ? (
+                        <>
+                          <UserX className="mr-2 h-4 w-4" />
+                          Deactivate
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck className="mr-2 h-4 w-4" />
+                          Activate
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog
+          open={!!deleteEmployee}
+          onOpenChange={() => setDeleteEmployee(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Employee</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete {deleteEmployee?.name}? This
+                action cannot be undone. All assigned customers will need to be
+                reassigned to other employees.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteEmployee}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete Employee
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </DashboardLayout>
+  );
+}
