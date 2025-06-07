@@ -161,23 +161,39 @@ export default function Login() {
               </Button>
             </form>
 
-            {/* Demo credentials for testing */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
-                Demo Credentials:
-              </h4>
-              <div className="space-y-1 text-xs text-gray-600">
-                <p>
-                  <strong>Admin:</strong> admin@cabletv.com / admin123
-                </p>
-                <p>
-                  <strong>Employee:</strong> john.collector@cabletv.com /
-                  employee123
-                </p>
-                <p>
-                  <strong>Employee:</strong> sarah.collector@cabletv.com /
-                  employee123
-                </p>
+            {/* Demo credentials and Firebase status */}
+            <div className="mt-6 space-y-4">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="text-sm font-medium text-blue-800 mb-2">
+                  🚀 Demo Mode Active
+                </h4>
+                <div className="space-y-1 text-xs text-blue-700">
+                  <p>
+                    The app is running with mock data for immediate testing.
+                  </p>
+                  <p>
+                    To use real Firebase, see <strong>FIREBASE_SETUP.md</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  Demo Credentials:
+                </h4>
+                <div className="space-y-1 text-xs text-gray-600">
+                  <p>
+                    <strong>Admin:</strong> admin@cabletv.com / admin123
+                  </p>
+                  <p>
+                    <strong>Employee:</strong> john.collector@cabletv.com /
+                    employee123
+                  </p>
+                  <p>
+                    <strong>Employee:</strong> sarah.collector@cabletv.com /
+                    employee123
+                  </p>
+                </div>
               </div>
             </div>
           </CardContent>
