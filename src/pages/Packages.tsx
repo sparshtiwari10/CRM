@@ -1,12 +1,13 @@
 import { useState } from "react";
 import {
   Plus,
+  Eye,
   Edit,
   Trash2,
-  Eye,
   Package as PackageIcon,
   Users,
   DollarSign,
+  TrendingUp,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,11 +17,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Package } from "@/types";
 import { mockPackages, mockCustomers } from "@/data/mockData";
+import { Package, Customer } from "@/types";
 
 export default function Packages() {
   const [packages] = useState<Package[]>(mockPackages);
@@ -29,9 +31,8 @@ export default function Packages() {
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Calculate customers per package
   const getCustomerCount = (packageName: string) => {
-    return mockCustomers.filter(
+    return customers.filter(
       (customer) => customer.currentPackage === packageName,
     ).length;
   };
@@ -43,17 +44,28 @@ export default function Packages() {
 
   const totalPackages = packages.length;
   const activePackages = packages.filter((pkg) => pkg.isActive).length;
+  const totalCustomers = customers.length;
   const totalRevenue = packages.reduce(
     (sum, pkg) => sum + getTotalRevenue(pkg),
     0,
   );
-  const totalCustomers = packages.reduce(
-    (sum, pkg) => sum + getCustomerCount(pkg.name),
-    0,
-  );
+  const averageRevenuePerCustomer =
+    totalCustomers > 0 ? totalRevenue / totalCustomers : 0;
+
+  const handleSavePackage = () => {
+    // In a real app, this would save to backend
+    console.log("Saving package...");
+    setShowCreateModal(false);
+    setEditingPackage(null);
+  };
+
+  const closeModals = () => {
+    setShowCreateModal(false);
+    setEditingPackage(null);
+  };
 
   return (
-    <DashboardLayout title="Packages">
+    <DashboardLayout title="Package Management">
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
@@ -62,13 +74,13 @@ export default function Packages() {
               Package Management
             </h2>
             <p className="text-gray-600">
-              Manage cable TV packages and pricing
+              Manage your cable TV packages and pricing
             </p>
           </div>
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Package
-            </Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Package
+          </Button>
         </div>
 
         {/* Stats Cards */}
@@ -121,14 +133,11 @@ export default function Packages() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 Avg. Revenue per Customer
               </CardTitle>
-              <DollarSign className="h-4 w-4 text-gray-600" />
+              <TrendingUp className="h-4 w-4 text-gray-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                $
-                {totalCustomers > 0
-                  ? (totalRevenue / totalCustomers).toFixed(2)
-                  : "0.00"}
+                ${averageRevenuePerCustomer.toFixed(2)}
               </div>
               <p className="text-xs text-gray-600">Monthly average</p>
             </CardContent>
@@ -139,7 +148,7 @@ export default function Packages() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {packages.map((pkg) => (
             <Card key={pkg.id} className="relative">
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-xl">{pkg.name}</CardTitle>
                   <Badge variant={pkg.isActive ? "default" : "secondary"}>
@@ -148,7 +157,9 @@ export default function Packages() {
                 </div>
                 <div className="text-3xl font-bold text-blue-600">
                   ${pkg.price}
-                  <span className="text-sm text-gray-500">/month</span>
+                  <span className="text-base font-normal text-gray-500">
+                    /month
+                  </span>
                 </div>
               </CardHeader>
 
@@ -235,7 +246,6 @@ export default function Packages() {
 
             {viewingPackage && (
               <div className="space-y-6">
-                {/* Basic Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">
@@ -255,77 +265,66 @@ export default function Packages() {
                     <label className="text-sm font-medium text-gray-500">
                       Total Channels
                     </label>
-                    <p className="text-lg">{viewingPackage.channels}</p>
+                    <p className="text-lg font-medium">
+                      {viewingPackage.channels}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">
                       Status
                     </label>
-                    <div className="mt-1">
-                      <Badge
-                        variant={
-                          viewingPackage.isActive ? "default" : "secondary"
-                        }
-                      >
-                        {viewingPackage.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
+                    <Badge
+                      variant={
+                        viewingPackage.isActive ? "default" : "secondary"
+                      }
+                    >
+                      {viewingPackage.isActive ? "Active" : "Inactive"}
+                    </Badge>
                   </div>
                 </div>
 
-                {/* Description */}
                 <div>
                   <label className="text-sm font-medium text-gray-500">
                     Description
                   </label>
-                  <p className="text-lg mt-1">{viewingPackage.description}</p>
+                  <p className="mt-1 text-gray-900">
+                    {viewingPackage.description}
+                  </p>
                 </div>
 
-                {/* Features */}
                 <div>
                   <label className="text-sm font-medium text-gray-500">
                     Features
                   </label>
-                  <ul className="mt-2 space-y-2">
+                  <ul className="mt-1 space-y-1">
                     {viewingPackage.features.map((feature, index) => (
-                      <li key={index} className="flex items-center text-sm">
-                        <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
+                      <li
+                        key={index}
+                        className="flex items-center text-gray-900"
+                      >
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2" />
                         {feature}
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                {/* Statistics */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">
-                    Package Statistics
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Active Customers</p>
-                      <p className="text-xl font-bold">
-                        {getCustomerCount(viewingPackage.name)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Monthly Revenue</p>
-                      <p className="text-xl font-bold">
-                        ${getTotalRevenue(viewingPackage).toFixed(2)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">
-                        Revenue per Channel
-                      </p>
-                      <p className="text-xl font-bold">
-                        $
-                        {(
-                          getTotalRevenue(viewingPackage) /
-                          viewingPackage.channels
-                        ).toFixed(2)}
-                      </p>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Current Customers
+                    </label>
+                    <p className="text-lg font-medium">
+                      {getCustomerCount(viewingPackage.name)}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Monthly Revenue
+                    </label>
+                    <p className="text-lg font-bold text-green-600">
+                      ${getTotalRevenue(viewingPackage).toFixed(2)}
+                    </p>
                   </div>
                 </div>
 
@@ -336,21 +335,24 @@ export default function Packages() {
                   >
                     Close
                   </Button>
-                  <Button>Edit Package</Button>
+                  <Button
+                    onClick={() => {
+                      setViewingPackage(null);
+                      setEditingPackage(viewingPackage);
+                    }}
+                  >
+                    Edit Package
+                  </Button>
                 </div>
-            </div>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
 
         {/* Create/Edit Package Modal */}
         <Dialog
           open={showCreateModal || !!editingPackage}
-          onOpenChange={(open) => {
-            if (!open) {
-              setShowCreateModal(false);
-              setEditingPackage(null);
-            }
-          }}
+          onOpenChange={closeModals}
         >
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
@@ -360,8 +362,7 @@ export default function Packages() {
               <DialogDescription>
                 {editingPackage
                   ? "Update package details and features"
-                  : "Add a new package to your service offerings"
-                }
+                  : "Add a new package to your service offerings"}
               </DialogDescription>
             </DialogHeader>
 
@@ -377,7 +378,9 @@ export default function Packages() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Monthly Price ($)</label>
+                  <label className="text-sm font-medium">
+                    Monthly Price ($)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -400,7 +403,9 @@ export default function Packages() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Number of Channels</label>
+                  <label className="text-sm font-medium">
+                    Number of Channels
+                  </label>
                   <input
                     type="number"
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -412,7 +417,9 @@ export default function Packages() {
                   <label className="text-sm font-medium">Status</label>
                   <select
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    defaultValue={editingPackage?.isActive ? "active" : "inactive"}
+                    defaultValue={
+                      editingPackage?.isActive ? "active" : "inactive"
+                    }
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -426,30 +433,19 @@ export default function Packages() {
                   className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={4}
                   placeholder="Enter features, one per line"
-                  defaultValue={editingPackage?.features.join('\n') || ""}
+                  defaultValue={editingPackage?.features.join("\n") || ""}
                 />
-                <p className="text-xs text-gray-500 mt-1">Enter each feature on a new line</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter each feature on a new line
+                </p>
               </div>
             </div>
 
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setEditingPackage(null);
-                }}
-              >
+              <Button variant="outline" onClick={closeModals}>
                 Cancel
               </Button>
-              <Button
-                onClick={() => {
-                  // Here you would handle the save logic
-                  console.log("Saving package...");
-                  setShowCreateModal(false);
-                  setEditingPackage(null);
-                }}
-              >
+              <Button onClick={handleSavePackage}>
                 {editingPackage ? "Update Package" : "Create Package"}
               </Button>
             </DialogFooter>
