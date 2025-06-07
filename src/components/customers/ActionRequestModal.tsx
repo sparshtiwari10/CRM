@@ -101,6 +101,17 @@ export function ActionRequestModal({
     form.reset();
   };
 
+  // Reset form when modal opens with new action type
+  React.useEffect(() => {
+    if (open) {
+      form.reset({
+        actionType: defaultActionType,
+        requestedPlan: "",
+        reason: "",
+      });
+    }
+  }, [open, defaultActionType, form]);
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
