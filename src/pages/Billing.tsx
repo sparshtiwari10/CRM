@@ -32,16 +32,18 @@ import { InvoiceGenerator } from "@/components/invoice/InvoiceGenerator";
 import { CustomerService } from "@/services/customerService";
 import { AuthContext } from "@/contexts/AuthContext";
 import { BillingRecord } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 export default function Billing() {
   const [billingRecords, setBillingRecords] = useState<BillingRecord[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("paid");
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { user, isAdmin } = useContext(AuthContext);
+  const { toast } = useToast();
 
   // Load billing records
   useEffect(() => {
@@ -66,6 +68,14 @@ export default function Billing() {
     if (!open) {
       const records = await CustomerService.getAllBillingRecords();
       setBillingRecords(records);
+
+      // Show toast notification at bottom for mobile
+      toast({
+        title: "Bill Generated",
+        description: "Invoice has been successfully generated.",
+        className:
+          "lg:bottom-4 lg:right-4 bottom-2 right-2 left-2 lg:left-auto lg:max-w-sm",
+      });
     }
   };
 
@@ -170,6 +180,37 @@ export default function Billing() {
     0,
   );
 
+  // Admin: Group today's and yesterday's billing by employee
+  const getEmployeeBilling = (date: string) => {
+    const employeeBilling: {
+      [key: string]: { name: string; total: number; count: number };
+    } = {};
+
+    billingRecords
+      .filter((record) => record.generatedDate === date)
+      .forEach((record) => {
+        if (!employeeBilling[record.employeeId]) {
+          employeeBilling[record.employeeId] = {
+            name: record.generatedBy,
+            total: 0,
+            count: 0,
+          };
+        }
+        employeeBilling[record.employeeId].total += record.amount;
+        employeeBilling[record.employeeId].count += 1;
+      });
+
+    return Object.entries(employeeBilling).map(([id, data]) => ({
+      employeeId: id,
+      employeeName: data.name,
+      total: data.total,
+      count: data.count,
+    }));
+  };
+
+  const todayEmployeeBilling = getEmployeeBilling(today);
+  const yesterdayEmployeeBilling = getEmployeeBilling(yesterday);
+
   // Render admin billing page
   if (isAdmin) {
     return (
@@ -188,7 +229,7 @@ export default function Billing() {
             <div className="flex space-x-2">
               <Button variant="outline">
                 <Download className="mr-2 h-4 w-4" />
-                Export Data
+                Export Statement
               </Button>
               <Button onClick={() => setShowInvoiceGenerator(true)}>
                 <FileText className="mr-2 h-4 w-4" />
@@ -208,7 +249,7 @@ export default function Billing() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ${billingTotalAmount.toFixed(2)}
+                  ₹{billingTotalAmount.toFixed(2)}
                 </div>
                 <p className="text-xs text-gray-600">All billing records</p>
               </CardContent>
@@ -223,7 +264,7 @@ export default function Billing() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  ${billingPaidAmount.toFixed(2)}
+                  ₹{billingPaidAmount.toFixed(2)}
                 </div>
                 <p className="text-xs text-gray-600">Successfully collected</p>
               </CardContent>
@@ -238,7 +279,7 @@ export default function Billing() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-yellow-600">
-                  ${billingPendingAmount.toFixed(2)}
+                  ₹{billingPendingAmount.toFixed(2)}
                 </div>
                 <p className="text-xs text-gray-600">Awaiting payment</p>
               </CardContent>
@@ -253,9 +294,98 @@ export default function Billing() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  ${billingOverdueAmount.toFixed(2)}
+                  ₹{billingOverdueAmount.toFixed(2)}
                 </div>
                 <p className="text-xs text-gray-600">Requires attention</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Admin: Today's and Yesterday's Billing Grouped by Employee */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  <span>Today's Billing by Employee</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {todayEmployeeBilling.length > 0 ? (
+                    todayEmployeeBilling.map((emp) => (
+                      <div
+                        key={emp.employeeId}
+                        className="flex items-center justify-between p-3 bg-green-50 rounded-lg"
+                      >
+                        <div>
+                          <div className="font-medium">{emp.employeeName}</div>
+                          <div className="text-sm text-gray-500">
+                            {emp.count} invoices
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-green-700">
+                            ₹{emp.total.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-gray-500 py-4">
+                      No billing today
+                    </p>
+                  )}
+                  <div className="pt-3 border-t border-green-200 bg-green-100 rounded-lg p-3">
+                    <div className="flex justify-between font-bold text-green-800">
+                      <span>Today's Total:</span>
+                      <span>₹{todayTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  <span>Yesterday's Billing by Employee</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {yesterdayEmployeeBilling.length > 0 ? (
+                    yesterdayEmployeeBilling.map((emp) => (
+                      <div
+                        key={emp.employeeId}
+                        className="flex items-center justify-between p-3 bg-blue-50 rounded-lg"
+                      >
+                        <div>
+                          <div className="font-medium">{emp.employeeName}</div>
+                          <div className="text-sm text-gray-500">
+                            {emp.count} invoices
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-blue-700">
+                            ₹{emp.total.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-gray-500 py-4">
+                      No billing yesterday
+                    </p>
+                  )}
+                  <div className="pt-3 border-t border-blue-200 bg-blue-100 rounded-lg p-3">
+                    <div className="flex justify-between font-bold text-blue-800">
+                      <span>Yesterday's Total:</span>
+                      <span>₹{yesterdayTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -276,10 +406,9 @@ export default function Billing() {
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="Paid">Paid</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="Overdue">Overdue</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select
@@ -349,7 +478,12 @@ export default function Billing() {
                         </TableCell>
                         <TableCell>{record.packageName}</TableCell>
                         <TableCell className="font-medium">
-                          ${record.amount.toFixed(2)}
+                          ₹{record.amount.toFixed(2)}
+                          {record.customAmount && (
+                            <span className="text-xs text-orange-600 ml-1">
+                              (Custom)
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm">
                           {record.billingMonth} {record.billingYear}
@@ -405,42 +539,45 @@ export default function Billing() {
   // Render employee billing page (restricted to today and yesterday)
   return (
     <DashboardLayout title="Employee Billing">
-      <div className="p-6 space-y-6">
+      <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-xl lg:text-2xl font-bold text-gray-900">
               Billing & Invoices
             </h2>
-            <p className="text-gray-600">
+            <p className="text-sm lg:text-base text-gray-600">
               View billing records for today and yesterday
             </p>
           </div>
-          <Button onClick={() => setShowInvoiceGenerator(true)}>
-            <FileText className="mr-2 h-4 w-4" />
-            Generate Invoice
+          <Button
+            onClick={() => setShowInvoiceGenerator(true)}
+            className="h-8 lg:h-10"
+          >
+            <FileText className="mr-2 h-3 w-3 lg:h-4 lg:w-4" />
+            <span className="text-sm lg:text-base">Generate Invoice</span>
           </Button>
         </div>
 
-        {/* Employee: Today and Yesterday Billing Containers */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-lg font-medium text-gray-900">
-                Today's Billing
+        {/* Employee: Compact Today and Yesterday Billing Containers */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-6">
+          <Card className="compact-mobile">
+            <CardHeader className="pb-2 lg:pb-3">
+              <CardTitle className="text-base lg:text-lg font-medium text-gray-900 flex items-center space-x-2">
+                <DollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-green-600" />
+                <span>Today's Billing</span>
               </CardTitle>
-              <DollarSign className="h-5 w-5 text-green-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">
-                ${todayTotal.toFixed(2)}
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-3xl font-bold text-green-600">
+                ₹{todayTotal.toFixed(2)}
               </div>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-xs lg:text-sm text-gray-600 mt-1">
                 {todayRecords.length} invoices generated today
               </p>
-              <div className="mt-4 space-y-2">
+              <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
                 <div className="text-xs text-gray-500">Status breakdown:</div>
-                <div className="flex space-x-4 text-xs">
+                <div className="flex space-x-2 lg:space-x-4 text-xs">
                   <span className="text-green-600">
                     Paid:{" "}
                     {todayRecords.filter((r) => r.status === "Paid").length}
@@ -458,23 +595,23 @@ export default function Billing() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-lg font-medium text-gray-900">
-                Yesterday's Billing
+          <Card className="compact-mobile">
+            <CardHeader className="pb-2 lg:pb-3">
+              <CardTitle className="text-base lg:text-lg font-medium text-gray-900 flex items-center space-x-2">
+                <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600" />
+                <span>Yesterday's Billing</span>
               </CardTitle>
-              <Calendar className="h-5 w-5 text-blue-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-600">
-                ${yesterdayTotal.toFixed(2)}
+            <CardContent className="pt-0">
+              <div className="text-xl lg:text-3xl font-bold text-blue-600">
+                ₹{yesterdayTotal.toFixed(2)}
               </div>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-xs lg:text-sm text-gray-600 mt-1">
                 {yesterdayRecords.length} invoices generated yesterday
               </p>
-              <div className="mt-4 space-y-2">
+              <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
                 <div className="text-xs text-gray-500">Status breakdown:</div>
-                <div className="flex space-x-4 text-xs">
+                <div className="flex space-x-2 lg:space-x-4 text-xs">
                   <span className="text-green-600">
                     Paid:{" "}
                     {yesterdayRecords.filter((r) => r.status === "Paid").length}
@@ -501,13 +638,14 @@ export default function Billing() {
 
         {/* Employee Billing Filters */}
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 lg:pt-6">
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
               <div className="flex-1">
                 <Input
                   placeholder="Search by customer name, invoice number, or VC number..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  className="text-sm lg:text-base"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -515,10 +653,9 @@ export default function Billing() {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="Paid">Paid</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Overdue">Overdue</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -571,7 +708,12 @@ export default function Billing() {
                       </TableCell>
                       <TableCell>{record.packageName}</TableCell>
                       <TableCell className="font-medium">
-                        ${record.amount.toFixed(2)}
+                        ₹{record.amount.toFixed(2)}
+                        {record.customAmount && (
+                          <span className="text-xs text-orange-600 ml-1">
+                            (Custom)
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm">
                         {record.billingMonth} {record.billingYear}
@@ -619,6 +761,18 @@ export default function Billing() {
           onOpenChange={handleInvoiceGeneratorClose}
         />
       </div>
+
+      {/* Add CSS for mobile optimization */}
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .compact-mobile .card-header {
+            padding: 12px 16px 8px 16px;
+          }
+          .compact-mobile .card-content {
+            padding: 0 16px 12px 16px;
+          }
+        }
+      `}</style>
     </DashboardLayout>
   );
 }

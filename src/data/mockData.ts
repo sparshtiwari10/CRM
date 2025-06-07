@@ -203,7 +203,7 @@ export const mockPackages: Package[] = [
   {
     id: "1",
     name: "Basic",
-    price: 29.99,
+    price: 299,
     description: "Essential channels package",
     channels: 50,
     features: ["Local channels", "Basic cable networks", "Standard definition"],
@@ -212,7 +212,7 @@ export const mockPackages: Package[] = [
   {
     id: "2",
     name: "Premium HD",
-    price: 59.99,
+    price: 599,
     description: "High definition premium package",
     channels: 120,
     features: [
@@ -226,7 +226,7 @@ export const mockPackages: Package[] = [
   {
     id: "3",
     name: "Sports Package",
-    price: 79.99,
+    price: 799,
     description: "Complete sports entertainment",
     channels: 90,
     features: [
@@ -240,7 +240,7 @@ export const mockPackages: Package[] = [
   {
     id: "4",
     name: "Family Bundle",
-    price: 49.99,
+    price: 499,
     description: "Perfect for families",
     channels: 85,
     features: [

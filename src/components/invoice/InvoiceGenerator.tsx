@@ -235,7 +235,7 @@ export function InvoiceGenerator({
 
       toast({
         title: "Invoice Generated",
-        description: `Invoice ${invoiceData.invoiceNumber} has been created for $${invoiceData.amount.toFixed(2)}.`,
+        description: `Invoice ${invoiceData.invoiceNumber} has been created for ₹${invoiceData.amount.toFixed(2)}.`,
       });
 
       onOpenChange(false);
@@ -378,7 +378,7 @@ export function InvoiceGenerator({
                         {selectedCustomer.address}
                       </div>
                       <div className="text-sm font-medium text-green-600 mt-1">
-                        Default Rate: ${defaultAmount.toFixed(2)}/month
+                        Default Rate: ₹{defaultAmount.toFixed(2)}/month
                         {selectedCustomer.numberOfConnections > 1 && (
                           <span className="text-blue-600">
                             {" "}
@@ -501,13 +501,13 @@ export function InvoiceGenerator({
                         />
                       </div>
                       <div className="text-xs text-blue-600">
-                        Default amount: ${defaultAmount.toFixed(2)}
+                        Default amount: ₹{defaultAmount.toFixed(2)}
                       </div>
                     </div>
                   ) : (
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-800">
-                        ${defaultAmount.toFixed(2)}
+                        ₹{defaultAmount.toFixed(2)}
                       </div>
                       <div className="text-sm text-blue-600">
                         Using default package rate
@@ -557,7 +557,7 @@ export function InvoiceGenerator({
                   <div className="flex justify-between font-medium text-lg">
                     <span>Amount:</span>
                     <span className="text-green-700">
-                      ${getInvoiceAmount().toFixed(2)}
+                      ₹{getInvoiceAmount().toFixed(2)}
                       {isCustomAmount && (
                         <span className="text-xs text-orange-600 ml-1">
                           (Custom)
@@ -605,7 +605,7 @@ export function InvoiceGenerator({
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Create Invoice - ${getInvoiceAmount().toFixed(2)}
+                  Create Invoice - ₹{getInvoiceAmount().toFixed(2)}
                 </>
               )}
             </Button>
