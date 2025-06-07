@@ -20,9 +20,8 @@ import {
 const baseNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Customers", href: "/customers", icon: Users },
-  { name: "Billing", href: "/billing", icon: CreditCard },
+  { name: "Billing & Payments", href: "/billing", icon: CreditCard },
   { name: "Packages", href: "/packages", icon: Package },
-  { name: "Payments", href: "/payments", icon: DollarSign },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
