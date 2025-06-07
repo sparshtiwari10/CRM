@@ -77,8 +77,8 @@ export function CustomerModal({
   onOpenChange,
   customer,
   onSave,
+  isLoading = false,
 }: CustomerModalProps) {
-  const [isLoading, setIsLoading] = useState(false);
   const { isAdmin } = useAuth();
   const isEditing = !!customer;
 
@@ -129,11 +129,6 @@ export function CustomerModal({
   }, [customer, form]);
 
   const onSubmit = async (values: CustomerFormValues) => {
-    setIsLoading(true);
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
     const customerData = {
       ...values,
       id: customer?.id,
@@ -150,7 +145,6 @@ export function CustomerModal({
     };
 
     onSave(customerData);
-    setIsLoading(false);
   };
 
   const handleClose = () => {
@@ -167,7 +161,7 @@ export function CustomerModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -195,7 +189,11 @@ export function CustomerModal({
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input
+                        placeholder="John Doe"
+                        {...field}
+                        disabled={isLoading}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -210,7 +208,11 @@ export function CustomerModal({
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
                       <FormControl>
-                        <Input placeholder="+1 (555) 123-4567" {...field} />
+                        <Input
+                          placeholder="+1 (555) 123-4567"
+                          {...field}
+                          disabled={isLoading}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -224,7 +226,11 @@ export function CustomerModal({
                     <FormItem>
                       <FormLabel>Email (Optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="john@example.com" {...field} />
+                        <Input
+                          placeholder="john@example.com"
+                          {...field}
+                          disabled={isLoading}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -242,6 +248,7 @@ export function CustomerModal({
                       <Input
                         placeholder="123 Main St, City, State, ZIP"
                         {...field}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage />
@@ -271,6 +278,7 @@ export function CustomerModal({
                             placeholder="VC123456"
                             {...field}
                             className="font-mono"
+                            disabled={isLoading}
                           />
                         </FormControl>
                         {!isEditing && (
@@ -278,6 +286,7 @@ export function CustomerModal({
                             type="button"
                             variant="outline"
                             onClick={() => field.onChange(generateVCNumber())}
+                            disabled={isLoading}
                           >
                             Generate
                           </Button>
@@ -297,6 +306,7 @@ export function CustomerModal({
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
+                        disabled={isLoading}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -327,6 +337,7 @@ export function CustomerModal({
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
+                        disabled={isLoading}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -355,6 +366,7 @@ export function CustomerModal({
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
+                        disabled={isLoading}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -398,6 +410,7 @@ export function CustomerModal({
                       <Switch
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        disabled={isLoading}
                       />
                     </FormControl>
                   </FormItem>
@@ -424,6 +437,7 @@ export function CustomerModal({
                               field.onChange(parseFloat(e.target.value) || 0)
                             }
                             className="pl-8"
+                            disabled={isLoading}
                           />
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
                             $
