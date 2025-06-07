@@ -298,11 +298,11 @@ export function CustomerModal({
         ? 1
         : parseInt(formData.numberOfConnections) || 1;
 
+    // Build customer data with proper handling of optional fields
     const customerData: Customer = {
       id: customer?.id || Date.now().toString(),
       name: formData.name.trim(),
       phoneNumber: formData.phoneNumber.trim(),
-      email: formData.email.trim() === "" ? undefined : formData.email.trim(),
       address: formData.address.trim(),
       vcNumber: formData.vcNumber.trim(),
       currentPackage: showCustomPlan
@@ -321,14 +321,22 @@ export function CustomerModal({
       deactivationDate:
         !formData.isActive && customer?.isActive
           ? new Date().toISOString().split("T")[0]
-          : customer?.deactivationDate || null,
+          : customer?.deactivationDate || undefined,
       numberOfConnections: finalNumberOfConnections,
       connections: formData.connections.slice(0, finalNumberOfConnections),
-      customPlan: showCustomPlan ? formData.customPlan || undefined : undefined,
       packageAmount: formData.packageAmount,
       previousOutstanding: formData.previousOutstanding,
       currentOutstanding: formData.currentOutstanding,
     };
+
+    // Only add optional fields if they have valid values (avoid undefined)
+    if (formData.email && formData.email.trim() !== "") {
+      customerData.email = formData.email.trim();
+    }
+
+    if (showCustomPlan && formData.customPlan) {
+      customerData.customPlan = formData.customPlan;
+    }
 
     onSave(customerData);
 
