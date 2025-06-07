@@ -735,8 +735,8 @@ export function CustomerTable({
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="font-medium text-lg">{customer.name}</h3>
-                      <p className="text-sm text-gray-500 font-mono">
-                        {customer.vcNumber}
+                      <p className="text-sm text-gray-500">
+                        {customer.address}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -822,31 +822,38 @@ export function CustomerTable({
                           PACKAGE AMT
                         </div>
                         <div className="font-medium text-green-600 mt-1">
-                          {formatCurrency(customer.packageAmount || 0)}
+                          {formatCurrency(customer.packageAmount)}
                         </div>
                       </div>
                       <div className="text-center">
                         <div className="text-xs text-gray-500 font-medium">
                           PREV O/S
                         </div>
-                        <div className="font-medium text-orange-600 mt-1">
+                        <div
+                          className={`font-medium mt-1 ${customer.previousOutstanding < 0 ? "text-green-600" : "text-orange-600"}`}
+                        >
                           {formatCurrency(customer.previousOutstanding)}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500 font-medium">
-                          PLAN BILL
-                        </div>
-                        <div className="font-medium text-blue-600 mt-1">
-                          {formatCurrency(customer.planBill)}
                         </div>
                       </div>
                       <div className="text-center">
                         <div className="text-xs text-gray-500 font-medium">
                           CURRENT O/S
                         </div>
-                        <div className="font-medium text-red-600 mt-1">
+                        <div
+                          className={`font-medium mt-1 ${customer.currentOutstanding < 0 ? "text-green-600" : "text-red-600"}`}
+                        >
                           {formatCurrency(customer.currentOutstanding)}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs text-gray-500 font-medium">
+                          BILL DUE DATE
+                        </div>
+                        <div className="font-medium text-blue-600 mt-1">
+                          {customer.billDueDate}{" "}
+                          <span className="text-xs text-gray-500">
+                            of month
+                          </span>
                         </div>
                       </div>
                     </div>
