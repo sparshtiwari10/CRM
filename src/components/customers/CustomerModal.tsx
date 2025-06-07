@@ -913,14 +913,21 @@ export function CustomerModal({
                     <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
                       <h5 className="font-medium mb-1">Billing Logic:</h5>
                       <ul className="text-xs space-y-1">
-                        <li>• Current O/S = Previous O/S + Package Amount</li>
                         <li>
-                          • When invoice is generated: New Current O/S = Current
-                          O/S - Invoice Amount
+                          • Current O/S = Package Amount + Previous O/S - Paid
+                          Invoice Amounts
                         </li>
                         <li>
-                          • Monthly: Current O/S transfers to Previous O/S, New
-                          bill generated
+                          • When invoice is generated: Deduct invoice amount
+                          from Current O/S
+                        </li>
+                        <li>
+                          • On bill due date each month: Previous O/S = Current
+                          O/S, then Current O/S = Previous O/S + Package Amount
+                        </li>
+                        <li>
+                          • Both Previous O/S and Current O/S can be negative
+                          (credit balance)
                         </li>
                       </ul>
                     </div>
