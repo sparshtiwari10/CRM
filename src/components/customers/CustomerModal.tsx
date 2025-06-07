@@ -61,6 +61,15 @@ export function CustomerModal({
                 (user.role === "employee" || user.role === "admin"),
             )
             .map((user) => user.name);
+
+          // Always ensure at least System Administrator is available
+          if (
+            collectors.length === 0 ||
+            !collectors.includes("System Administrator")
+          ) {
+            collectors.unshift("System Administrator");
+          }
+
           setAvailableCollectors(collectors);
         } catch (error) {
           console.error("Failed to load collectors:", error);
