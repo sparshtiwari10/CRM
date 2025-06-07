@@ -1,4 +1,4 @@
-import { db } from "@/lib/firebase";
+import { db, isFirebaseAvailable } from "@/lib/firebase";
 import {
   collection,
   query,
@@ -11,6 +11,36 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import bcrypt from "bcryptjs";
+
+// Mock users for demo mode when Firebase is unavailable
+const mockUsers = [
+  {
+    id: "admin-demo",
+    username: "admin",
+    password_hash:
+      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy", // admin123
+    name: "System Administrator",
+    role: "admin" as const,
+    collector_name: null,
+    access_scope: [],
+    created_at: new Date("2024-01-01"),
+    last_login: new Date(),
+    is_active: true,
+  },
+  {
+    id: "employee-demo",
+    username: "employee",
+    password_hash:
+      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy", // employee123 (same hash for demo)
+    name: "Demo Employee",
+    role: "employee" as const,
+    collector_name: "John Collector",
+    access_scope: [],
+    created_at: new Date("2024-01-01"),
+    last_login: new Date(),
+    is_active: true,
+  },
+];
 
 export interface User {
   id: string;
@@ -51,65 +81,131 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<User> {
     try {
-      // Query users collection for matching username
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("username", "==", credentials.username));
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        throw new Error("Invalid username or password");
+      if (isFirebaseAvailable && db) {
+        // Use Firebase when available
+        return await this.loginWithFirebase(credentials);
+      } else {
+        // Use mock data when Firebase is unavailable
+        return await this.loginWithMockData(credentials);
       }
-
-      const userDoc = querySnapshot.docs[0];
-      const userData = userDoc.data();
-
-      // Verify password
-      const isPasswordValid = await bcrypt.compare(
-        credentials.password,
-        userData.password_hash,
-      );
-
-      if (!isPasswordValid) {
-        throw new Error("Invalid username or password");
-      }
-
-      // Check if user is active
-      if (!userData.is_active) {
-        throw new Error(
-          "Account is deactivated. Please contact administrator.",
-        );
-      }
-
-      // Update last login
-      await updateDoc(doc(db, "users", userDoc.id), {
-        last_login: Timestamp.now(),
-      });
-
-      // Create user object
-      const user: User = {
-        id: userDoc.id,
-        username: userData.username,
-        name: userData.name,
-        role: userData.role,
-        access_scope: userData.access_scope || [],
-        collector_name: userData.collector_name,
-        created_at: userData.created_at.toDate(),
-        last_login: new Date(),
-        is_active: userData.is_active,
-      };
-
-      // Store user in session
-      this.currentUser = user;
-      this.saveUserToStorage(user);
-
-      console.log(
-        `✅ User ${user.name} logged in successfully as ${user.role}`,
-      );
-      return user;
     } catch (error) {
       console.error("❌ Login failed:", error);
       throw error;
     }
+  }
+
+  /**
+   * Login with Firebase
+   */
+  private async loginWithFirebase(
+    credentials: LoginCredentials,
+  ): Promise<User> {
+    // Query users collection for matching username
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("username", "==", credentials.username));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      throw new Error("Invalid username or password");
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    const userData = userDoc.data();
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(
+      credentials.password,
+      userData.password_hash,
+    );
+
+    if (!isPasswordValid) {
+      throw new Error("Invalid username or password");
+    }
+
+    // Check if user is active
+    if (!userData.is_active) {
+      throw new Error("Account is deactivated. Please contact administrator.");
+    }
+
+    // Update last login
+    await updateDoc(doc(db, "users", userDoc.id), {
+      last_login: Timestamp.now(),
+    });
+
+    // Create user object
+    const user: User = {
+      id: userDoc.id,
+      username: userData.username,
+      name: userData.name,
+      role: userData.role,
+      access_scope: userData.access_scope || [],
+      collector_name: userData.collector_name,
+      created_at: userData.created_at.toDate(),
+      last_login: new Date(),
+      is_active: userData.is_active,
+    };
+
+    // Store user in session
+    this.currentUser = user;
+    this.saveUserToStorage(user);
+
+    console.log(
+      `✅ User ${user.name} logged in successfully as ${user.role} (Firebase)`,
+    );
+    return user;
+  }
+
+  /**
+   * Login with mock data (when Firebase is unavailable)
+   */
+  private async loginWithMockData(
+    credentials: LoginCredentials,
+  ): Promise<User> {
+    // Find user in mock data
+    const mockUser = mockUsers.find((u) => u.username === credentials.username);
+
+    if (!mockUser) {
+      throw new Error("Invalid username or password");
+    }
+
+    // Verify password (for demo, we'll accept both hashed and plain passwords)
+    const isPasswordValid =
+      (credentials.password === "admin123" &&
+        credentials.username === "admin") ||
+      (credentials.password === "employee123" &&
+        credentials.username === "employee") ||
+      (await bcrypt.compare(credentials.password, mockUser.password_hash));
+
+    if (!isPasswordValid) {
+      throw new Error("Invalid username or password");
+    }
+
+    // Check if user is active
+    if (!mockUser.is_active) {
+      throw new Error("Account is deactivated. Please contact administrator.");
+    }
+
+    // Create user object
+    const user: User = {
+      id: mockUser.id,
+      username: mockUser.username,
+      name: mockUser.name,
+      role: mockUser.role,
+      access_scope: mockUser.access_scope || [],
+      collector_name: mockUser.collector_name,
+      created_at: mockUser.created_at,
+      last_login: new Date(),
+      is_active: mockUser.is_active,
+    };
+
+    // Store user in session
+    this.currentUser = user;
+    this.saveUserToStorage(user);
+
+    console.log(
+      `✅ User ${user.name} logged in successfully as ${user.role} (Demo Mode)`,
+    );
+    return user;
   }
 
   /**
@@ -178,6 +274,10 @@ class AuthService {
       throw new Error("Only administrators can create users");
     }
 
+    if (!isFirebaseAvailable || !db) {
+      throw new Error("User creation is not available in demo mode");
+    }
+
     try {
       // Check if username already exists
       const usersRef = collection(db, "users");
@@ -231,6 +331,21 @@ class AuthService {
   async getAllUsers(): Promise<User[]> {
     if (!this.isAdmin()) {
       throw new Error("Only administrators can view all users");
+    }
+
+    if (!isFirebaseAvailable || !db) {
+      // Return mock users in demo mode
+      return mockUsers.map((mockUser) => ({
+        id: mockUser.id,
+        username: mockUser.username,
+        name: mockUser.name,
+        role: mockUser.role,
+        access_scope: mockUser.access_scope || [],
+        collector_name: mockUser.collector_name,
+        created_at: mockUser.created_at,
+        last_login: mockUser.last_login,
+        is_active: mockUser.is_active,
+      }));
     }
 
     try {
@@ -315,6 +430,11 @@ class AuthService {
    * Seed default admin user (for initial setup)
    */
   async seedDefaultAdmin(): Promise<void> {
+    if (!isFirebaseAvailable || !db) {
+      console.log("🔄 Firebase not available, using mock admin user");
+      return;
+    }
+
     try {
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("role", "==", "admin"));
@@ -345,6 +465,59 @@ class AuthService {
       console.error("❌ Failed to seed default admin:", error);
     }
   }
+
+  /**
+   * Static method to seed demo users (for DataSeeder)
+   */
+  static async seedDemoUsers(): Promise<void> {
+    if (!isFirebaseAvailable || !db) {
+      console.log("🔄 Firebase not available, using mock users for demo");
+      return;
+    }
+
+    const instance = new AuthService();
+    await instance.seedDefaultAdmin();
+
+    // Add demo employee user
+    try {
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("username", "==", "employee"));
+      const employeeUsers = await getDocs(q);
+
+      if (employeeUsers.empty) {
+        console.log("🌱 Creating demo employee user...");
+
+        const saltRounds = 12;
+        const password_hash = await bcrypt.hash("employee123", saltRounds);
+
+        await addDoc(usersRef, {
+          username: "employee",
+          password_hash,
+          name: "Demo Employee",
+          role: "employee",
+          collector_name: "John Collector",
+          access_scope: [],
+          created_at: Timestamp.now(),
+          is_active: true,
+        });
+
+        console.log(
+          "✅ Demo employee user created (username: employee, password: employee123)",
+        );
+      }
+    } catch (error) {
+      console.error("❌ Failed to seed demo employee:", error);
+    }
+  }
+
+  /**
+   * Static method to check Firebase status
+   */
+  static getFirebaseStatus(): boolean {
+    return isFirebaseAvailable && !!db;
+  }
 }
 
+// Export both the class and the singleton instance
+export { AuthService };
 export const authService = new AuthService();
