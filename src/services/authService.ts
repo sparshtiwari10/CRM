@@ -430,6 +430,11 @@ class AuthService {
    * Seed default admin user (for initial setup)
    */
   async seedDefaultAdmin(): Promise<void> {
+    if (!isFirebaseAvailable || !db) {
+      console.log("🔄 Firebase not available, using mock admin user");
+      return;
+    }
+
     try {
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("role", "==", "admin"));
