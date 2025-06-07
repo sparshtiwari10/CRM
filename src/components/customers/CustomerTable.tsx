@@ -457,7 +457,7 @@ export function CustomerTable({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setActionRequestCustomer(customer)}
+                      onClick={() => handleActivationRequest(customer)}
                       className="flex-1"
                       disabled={customer.isActive}
                     >
@@ -467,7 +467,7 @@ export function CustomerTable({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setActionRequestCustomer(customer)}
+                      onClick={() => handleDeactivationRequest(customer)}
                       className="flex-1"
                       disabled={!customer.isActive}
                     >
@@ -477,7 +477,7 @@ export function CustomerTable({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setActionRequestCustomer(customer)}
+                      onClick={() => handlePlanChangeRequest(customer)}
                       className="flex-1"
                     >
                       <RefreshCw className="mr-2 h-4 w-4" />
