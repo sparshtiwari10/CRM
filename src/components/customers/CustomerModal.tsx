@@ -262,20 +262,31 @@ export function CustomerModal({
     const connections: Connection[] = [];
     for (let i = 0; i < newCount; i++) {
       const existingConnection = formData.connections[i];
+      const isPrimary = i === 0; // First connection is always primary
+
+      // Generate VC number based on primary/secondary structure
+      let vcNumber;
+      if (isPrimary) {
+        vcNumber = existingConnection?.vcNumber || formData.vcNumber;
+      } else {
+        // Secondary connections get -SEC, -SEC1, -SEC2, etc.
+        const suffix = i === 1 ? "SEC" : `SEC${i - 1}`;
+        const baseVc =
+          formData.vcNumber || existingConnection?.vcNumber || "VC000000";
+        vcNumber = existingConnection?.vcNumber || `${baseVc}-${suffix}`;
+      }
+
       connections.push({
         id: existingConnection?.id || `conn-${i + 1}`,
-        vcNumber:
-          existingConnection?.vcNumber ||
-          (i === 0 ? formData.vcNumber : `${formData.vcNumber}-${i + 1}`),
+        vcNumber: vcNumber,
         planName: existingConnection?.planName || formData.currentPackage || "",
         planPrice:
           existingConnection?.planPrice ||
           mockPackages.find((p) => p.name === formData.currentPackage)?.price ||
           0,
         isCustomPlan: existingConnection?.isCustomPlan || false,
-        customPlanName: existingConnection?.customPlanName || "",
-        customPlanPrice: existingConnection?.customPlanPrice || 0,
-        customPlanDescription: existingConnection?.customPlanDescription || "",
+        isPrimary: isPrimary,
+        connectionIndex: i + 1,
       });
     }
 
