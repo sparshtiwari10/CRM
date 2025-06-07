@@ -206,7 +206,7 @@ export default function Payments() {
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full lg:w-[150px]">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Completed">Completed</SelectItem>
