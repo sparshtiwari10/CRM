@@ -445,10 +445,33 @@ export function CustomerTable({
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem className="flex flex-col items-start p-3">
                                 <div className="font-medium text-sm">
-                                  VC Number
+                                  VC Numbers
                                 </div>
-                                <div className="font-mono text-blue-600 text-sm">
-                                  {customer.vcNumber}
+                                <div className="space-y-1">
+                                  {customer.connections &&
+                                  customer.connections.length > 0 ? (
+                                    customer.connections.map((connection) => (
+                                      <div
+                                        key={connection.id}
+                                        className="font-mono text-xs"
+                                      >
+                                        <span className="text-blue-600">
+                                          {connection.vcNumber}
+                                        </span>
+                                        <span className="text-gray-500 ml-2">
+                                          (
+                                          {connection.isPrimary
+                                            ? "Primary"
+                                            : `Secondary ${connection.connectionIndex - 1}`}
+                                          )
+                                        </span>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="font-mono text-blue-600 text-sm">
+                                      {customer.vcNumber}
+                                    </div>
+                                  )}
                                 </div>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
