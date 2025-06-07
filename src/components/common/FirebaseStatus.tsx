@@ -87,9 +87,9 @@ export function FirebaseStatus() {
           variant="secondary"
           className="text-xs bg-orange-100 text-orange-800 border-orange-300 cursor-pointer hover:bg-orange-200"
         >
-          <CloudOff className="w-3 h-3 mr-1" />
-          Demo Mode
-          <AlertTriangle className="w-3 h-3 ml-1" />
+          <CloudOff className="w-3 h-3 lg:mr-1" />
+          <span className="hidden lg:inline">Demo Mode</span>
+          <AlertTriangle className="w-3 h-3 lg:ml-1 ml-0" />
         </Badge>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="center">
