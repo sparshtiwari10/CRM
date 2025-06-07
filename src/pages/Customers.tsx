@@ -274,20 +274,11 @@ export default function Customers() {
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
               <Button
                 variant="outline"
-                onClick={() => setShowImport(!showImport)}
-                disabled={isSaving}
-                className="text-sm"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Import Data
-              </Button>
-              <Button
-                variant="outline"
                 onClick={() => setShowImportExport(true)}
                 disabled={isSaving}
                 className="text-sm"
               >
-                <ChevronDown className="mr-2 h-4 w-4" />
+                <Upload className="mr-2 h-4 w-4" />
                 Import/Export CSV
               </Button>
               <Button
