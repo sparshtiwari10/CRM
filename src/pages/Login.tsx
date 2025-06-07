@@ -114,6 +114,10 @@ export default function Login() {
           <p className="text-sm text-gray-500">
             Secure access for employees and administrators
           </p>
+          {/* Firebase Connection Status */}
+          <div className="flex justify-center mt-2">
+            <FirebaseStatus />
+          </div>
         </div>
 
         {/* Login Form */}
