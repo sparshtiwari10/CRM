@@ -155,28 +155,58 @@ export default function EmployeeManagement() {
     }
   };
 
-  const handleAddEmployee = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddEmployee = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
 
-    const newEmployee: User = {
-      id: `emp-${Date.now()}`,
+    const employeeData = {
       name: formData.get("name") as string,
-      email: formData.get("email") as string,
+      username: formData.get("username") as string,
+      password: formData.get("password") as string,
       phone: formData.get("phone") as string,
       role: formData.get("role") as "admin" | "employee",
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      lastLogin: undefined,
     };
 
-    setEmployees((prev) => [...prev, newEmployee]);
-    setShowAddEmployeeModal(false);
+    try {
+      // Validate password strength
+      if (employeeData.password.length < 6) {
+        toast({
+          title: "Validation Error",
+          description: "Password must be at least 6 characters long.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    toast({
-      title: "Employee Added",
-      description: `${newEmployee.name} has been successfully added to the system.`,
-    });
+      // Simulate API call to create user in Firebase Auth
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      const newEmployee: User = {
+        id: `emp-${Date.now()}`,
+        name: employeeData.name,
+        email: `${employeeData.username}@agvcabletv.local`, // Generate email from username
+        phone: employeeData.phone,
+        role: employeeData.role,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        lastLogin: undefined,
+        assignedCustomers: [],
+      };
+
+      setEmployees((prev) => [...prev, newEmployee]);
+      setShowAddEmployeeModal(false);
+
+      toast({
+        title: "Employee Created",
+        description: `${newEmployee.name} has been successfully created with username: ${employeeData.username}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Creation Failed",
+        description: "Failed to create employee account. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
