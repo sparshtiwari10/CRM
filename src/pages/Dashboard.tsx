@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,35 +18,86 @@ import {
   ClipboardList,
   Calendar,
 } from "lucide-react";
-import {
-  mockDashboardStats,
-  mockCustomers,
-  mockPayments,
-} from "@/data/mockData";
+import { Customer } from "@/types";
+import { CustomerService } from "@/services/customerService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const stats = mockDashboardStats;
-  const recentCustomers = mockCustomers.slice(0, 5);
-  const recentPayments = mockPayments.slice(0, 5);
 
-  // Filter payments for today and yesterday (for employees)
+  // Load customers data
+  useEffect(() => {
+    const loadCustomers = async () => {
+      try {
+        setIsLoading(true);
+        const customersData = await CustomerService.getAllCustomers();
+        setCustomers(customersData);
+      } catch (error) {
+        console.error("Failed to load customers:", error);
+        setCustomers([]); // Set empty array on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCustomers();
+  }, []);
+
+  // Calculate real statistics from customers data
+  const totalCustomers = customers.length;
+  const activeCustomers = customers.filter((c) => c.isActive).length;
+  const inactiveCustomers = customers.filter((c) => !c.isActive).length;
+  const paidCustomers = customers.filter(
+    (c) => c.billingStatus === "Paid",
+  ).length;
+  const pendingCustomers = customers.filter(
+    (c) => c.billingStatus === "Pending",
+  ).length;
+  const overdueCustomers = customers.filter(
+    (c) => c.billingStatus === "Overdue",
+  ).length;
+
+  // Calculate total revenue from all customers
+  const totalRevenue = customers.reduce(
+    (sum, customer) => sum + (customer.portalBill || 0),
+    0,
+  );
+  const monthlyRevenue = totalRevenue; // For now, treat all as monthly
+
+  const recentCustomers = customers.slice(0, 5);
+
+  // Mock payment data for today/yesterday (for employee view)
   const today = new Date().toISOString().split("T")[0];
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
     .toISOString()
     .split("T")[0];
 
-  const todayPayments = mockPayments.filter(
-    (payment) => payment.date === today,
-  );
-  const yesterdayPayments = mockPayments.filter(
-    (payment) => payment.date === yesterday,
-  );
+  // For now, create mock payments from recent customers for demonstration
+  const todayPayments = customers.slice(0, 3).map((customer, index) => ({
+    id: `today-${index}`,
+    customerId: customer.id,
+    customerName: customer.name,
+    amount: customer.portalBill || 0,
+    date: today,
+    status: "Paid" as const,
+    method: "Cash" as const,
+  }));
+
+  const yesterdayPayments = customers.slice(3, 6).map((customer, index) => ({
+    id: `yesterday-${index}`,
+    customerId: customer.id,
+    customerName: customer.name,
+    amount: customer.portalBill || 0,
+    date: yesterday,
+    status: "Paid" as const,
+    method: "Online" as const,
+  }));
 
   const todayTotal = todayPayments.reduce(
     (sum, payment) => sum + payment.amount,
@@ -164,31 +215,55 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
               title="Total Customers"
-              value={stats.totalCustomers.toLocaleString()}
+              value={isLoading ? "..." : totalCustomers.toLocaleString()}
               icon={Users}
-              change="+5.2% from last month"
-              changeType="positive"
+              change={
+                totalCustomers > 0
+                  ? `${activeCustomers} active, ${inactiveCustomers} inactive`
+                  : "No customers yet"
+              }
+              changeType={totalCustomers > 0 ? "positive" : "neutral"}
             />
             <StatCard
               title="Active Customers"
-              value={stats.activeCustomers.toLocaleString()}
+              value={isLoading ? "..." : activeCustomers.toLocaleString()}
               icon={TrendingUp}
-              change="+2.1% from last month"
-              changeType="positive"
+              change={
+                activeCustomers > 0
+                  ? `${pendingCustomers} pending payments`
+                  : "No active customers"
+              }
+              changeType={activeCustomers > 0 ? "positive" : "neutral"}
             />
             <StatCard
               title="Monthly Revenue"
-              value={`₹${stats.monthlyRevenue.toLocaleString()}`}
+              value={isLoading ? "..." : `₹${totalRevenue.toLocaleString()}`}
               icon={DollarSign}
-              change="+8.3% from last month"
-              changeType="positive"
+              change={
+                totalRevenue > 0
+                  ? `From ${totalCustomers} customers`
+                  : "No revenue yet"
+              }
+              changeType={totalRevenue > 0 ? "positive" : "neutral"}
             />
             <StatCard
               title="Pending Payments"
-              value={stats.pendingPayments}
+              value={isLoading ? "..." : pendingCustomers}
               icon={Clock}
-              change="3 less than yesterday"
-              changeType="positive"
+              change={
+                overdueCustomers > 0
+                  ? `${overdueCustomers} overdue`
+                  : pendingCustomers > 0
+                    ? "All pending on time"
+                    : "No pending payments"
+              }
+              changeType={
+                overdueCustomers > 0
+                  ? "negative"
+                  : pendingCustomers > 0
+                    ? "neutral"
+                    : "positive"
+              }
             />
           </div>
 

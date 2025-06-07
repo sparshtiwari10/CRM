@@ -1,5 +1,12 @@
 import { useState, useEffect, useContext } from "react";
-import { Plus, Edit, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Upload,
+} from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { CustomerModal } from "@/components/customers/CustomerModal";
+import { CustomerDataImport } from "@/components/admin/CustomerDataImport";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
 import { Customer } from "@/types";

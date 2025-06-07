@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Eye, EyeOff, Shield, Users, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { FirebaseStatus } from "@/components/common/FirebaseStatus";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -113,6 +114,10 @@ export default function Login() {
           <p className="text-sm text-gray-500">
             Secure access for employees and administrators
           </p>
+          {/* Firebase Connection Status */}
+          <div className="flex justify-center mt-2">
+            <FirebaseStatus />
+          </div>
         </div>
 
         {/* Login Form */}

@@ -82,8 +82,16 @@ class AuthService {
   async login(credentials: LoginCredentials): Promise<User> {
     try {
       if (isFirebaseAvailable && db) {
-        // Use Firebase when available
-        return await this.loginWithFirebase(credentials);
+        // Try Firebase with a quick timeout, fallback to mock on any issue
+        try {
+          return await this.loginWithFirebaseTimeout(credentials);
+        } catch (firebaseError: any) {
+          console.warn(
+            "Firebase login failed, falling back to mock authentication:",
+            firebaseError.message,
+          );
+          return await this.loginWithMockData(credentials);
+        }
       } else {
         // Use mock data when Firebase is unavailable
         return await this.loginWithMockData(credentials);
@@ -95,64 +103,133 @@ class AuthService {
   }
 
   /**
+   * Test Firebase connectivity quickly
+   */
+  private async testFirebaseConnectivity(): Promise<boolean> {
+    try {
+      // Try a simple query to test if Firebase is accessible
+      const usersRef = collection(db, "users");
+      const testQuery = query(usersRef);
+      await getDocs(testQuery);
+      return true;
+    } catch (error: any) {
+      console.warn("Firebase connectivity test failed:", error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Login with Firebase with timeout
+   */
+  private async loginWithFirebaseTimeout(
+    credentials: LoginCredentials,
+  ): Promise<User> {
+    // First do a quick connectivity test
+    const isConnected = await Promise.race([
+      this.testFirebaseConnectivity(),
+      new Promise<boolean>((resolve) => {
+        setTimeout(() => resolve(false), 1000); // 1 second timeout for connectivity test
+      }),
+    ]);
+
+    if (!isConnected) {
+      throw new Error("Firebase connection test failed - using demo mode");
+    }
+
+    return new Promise((resolve, reject) => {
+      // Set a 5-second timeout for actual login
+      const timeoutId = setTimeout(() => {
+        reject(new Error("Firebase authentication timeout - using demo mode"));
+      }, 5000);
+
+      this.loginWithFirebase(credentials)
+        .then((user) => {
+          clearTimeout(timeoutId);
+          resolve(user);
+        })
+        .catch((error) => {
+          clearTimeout(timeoutId);
+          reject(error);
+        });
+    });
+  }
+
+  /**
    * Login with Firebase
    */
   private async loginWithFirebase(
     credentials: LoginCredentials,
   ): Promise<User> {
-    // Query users collection for matching username
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("username", "==", credentials.username));
-    const querySnapshot = await getDocs(q);
+    try {
+      // Query users collection for matching username
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("username", "==", credentials.username));
+      const querySnapshot = await getDocs(q);
 
-    if (querySnapshot.empty) {
-      throw new Error("Invalid username or password");
+      if (querySnapshot.empty) {
+        throw new Error("Invalid username or password");
+      }
+
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+
+      // Verify password
+      const isPasswordValid = await bcrypt.compare(
+        credentials.password,
+        userData.password_hash,
+      );
+
+      if (!isPasswordValid) {
+        throw new Error("Invalid username or password");
+      }
+
+      // Check if user is active
+      if (!userData.is_active) {
+        throw new Error(
+          "Account is deactivated. Please contact administrator.",
+        );
+      }
+
+      // Update last login
+      await updateDoc(doc(db, "users", userDoc.id), {
+        last_login: Timestamp.now(),
+      });
+
+      // Create user object
+      const user: User = {
+        id: userDoc.id,
+        username: userData.username,
+        name: userData.name,
+        role: userData.role,
+        access_scope: userData.access_scope || [],
+        collector_name: userData.collector_name,
+        created_at: userData.created_at.toDate(),
+        last_login: new Date(),
+        is_active: userData.is_active,
+      };
+
+      // Store user in session
+      this.currentUser = user;
+      this.saveUserToStorage(user);
+
+      console.log(
+        `✅ User ${user.name} logged in successfully as ${user.role} (Firebase)`,
+      );
+      return user;
+    } catch (error: any) {
+      // Handle specific Firebase errors
+      if (
+        error.code === "permission-denied" ||
+        error.message.includes("PERMISSION_DENIED")
+      ) {
+        console.error(
+          "Firebase permission denied - falling back to mock authentication",
+        );
+        // Fall back to mock authentication if Firebase permissions aren't set up
+        return await this.loginWithMockData(credentials);
+      }
+      throw error;
     }
-
-    const userDoc = querySnapshot.docs[0];
-    const userData = userDoc.data();
-
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(
-      credentials.password,
-      userData.password_hash,
-    );
-
-    if (!isPasswordValid) {
-      throw new Error("Invalid username or password");
-    }
-
-    // Check if user is active
-    if (!userData.is_active) {
-      throw new Error("Account is deactivated. Please contact administrator.");
-    }
-
-    // Update last login
-    await updateDoc(doc(db, "users", userDoc.id), {
-      last_login: Timestamp.now(),
-    });
-
-    // Create user object
-    const user: User = {
-      id: userDoc.id,
-      username: userData.username,
-      name: userData.name,
-      role: userData.role,
-      access_scope: userData.access_scope || [],
-      collector_name: userData.collector_name,
-      created_at: userData.created_at.toDate(),
-      last_login: new Date(),
-      is_active: userData.is_active,
-    };
-
-    // Store user in session
-    this.currentUser = user;
-    this.saveUserToStorage(user);
-
-    console.log(
-      `✅ User ${user.name} logged in successfully as ${user.role} (Firebase)`,
-    );
-    return user;
   }
 
   /**
