@@ -1128,6 +1128,16 @@ export function CustomerTable({
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => handleDeactivationRequest(customer)}
+                            disabled={!customer.isActive}
+                            className="text-xs"
+                          >
+                            <PowerOff className="mr-1 h-3 w-3" />
+                            Deactivate
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handlePlanChangeRequest(customer)}
                             className="text-xs"
                           >
@@ -1150,11 +1160,10 @@ export function CustomerTable({
         open={!!actionRequestCustomer}
         onOpenChange={(open) => {
           if (!open) {
-        />
-      )}
-    </>
-  );
-}
+            setActionRequestCustomer(null);
+            setActionType("activation");
+          }
+        }}
         customer={actionRequestCustomer}
         onSubmit={handleActionRequest}
         defaultActionType={actionType}
@@ -1184,6 +1193,6 @@ export function CustomerTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </React.Fragment>
+    </>
   );
 }
