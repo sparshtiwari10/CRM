@@ -58,6 +58,7 @@ import { CustomerService } from "@/services/customerService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { BillingCycleService } from "@/services/billingCycleService";
 
 interface CustomerTableProps {
   customers: Customer[];
