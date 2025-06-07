@@ -9,6 +9,7 @@ import {
   DollarSign,
   TrendingUp,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,11 +26,15 @@ import { mockPackages, mockCustomers } from "@/data/mockData";
 import { Package, Customer } from "@/types";
 
 export default function Packages() {
-  const [packages] = useState<Package[]>(mockPackages);
+  const [packages, setPackages] = useState<Package[]>(mockPackages);
   const [customers] = useState<Customer[]>(mockCustomers);
   const [viewingPackage, setViewingPackage] = useState<Package | null>(null);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<Package | null>(
+    null,
+  );
+  const { toast } = useToast();
 
   const getCustomerCount = (packageName: string) => {
     return customers.filter(
@@ -52,11 +57,74 @@ export default function Packages() {
   const averageRevenuePerCustomer =
     totalCustomers > 0 ? totalRevenue / totalCustomers : 0;
 
-  const handleSavePackage = () => {
-    // In a real app, this would save to backend
-    console.log("Saving package...");
+  const handleSavePackage = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+
+    const packageData = {
+      name: formData.get("name") as string,
+      price: parseFloat(formData.get("price") as string),
+      description: formData.get("description") as string,
+      channels: parseInt(formData.get("channels") as string),
+      isActive: formData.get("status") === "active",
+      features: (formData.get("features") as string)
+        .split("\n")
+        .filter((f) => f.trim()),
+    };
+
+    if (editingPackage) {
+      // Update existing package
+      setPackages((prev) =>
+        prev.map((pkg) =>
+          pkg.id === editingPackage.id ? { ...pkg, ...packageData } : pkg,
+        ),
+      );
+      toast({
+        title: "Package Updated",
+        description: `${packageData.name} has been successfully updated.`,
+      });
+    } else {
+      // Create new package
+      const newPackage: Package = {
+        id: Date.now().toString(),
+        ...packageData,
+      };
+      setPackages((prev) => [...prev, newPackage]);
+      toast({
+        title: "Package Created",
+        description: `${packageData.name} has been successfully created.`,
+      });
+    }
+
     setShowCreateModal(false);
     setEditingPackage(null);
+  };
+
+  const handleDeletePackage = (pkg: Package) => {
+    const customerCount = getCustomerCount(pkg.name);
+    if (customerCount > 0) {
+      toast({
+        title: "Cannot Delete Package",
+        description: `${pkg.name} has ${customerCount} customers. Please reassign customers before deleting.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowDeleteConfirm(pkg);
+  };
+
+  const confirmDeletePackage = () => {
+    if (showDeleteConfirm) {
+      setPackages((prev) =>
+        prev.filter((pkg) => pkg.id !== showDeleteConfirm.id),
+      );
+      toast({
+        title: "Package Deleted",
+        description: `${showDeleteConfirm.name} has been successfully deleted.`,
+        variant: "destructive",
+      });
+      setShowDeleteConfirm(null);
+    }
   };
 
   const closeModals = () => {
@@ -222,6 +290,7 @@ export default function Packages() {
                     variant="outline"
                     size="sm"
                     className="text-red-600 hover:text-red-700"
+                    onClick={() => handleDeletePackage(pkg)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -349,6 +418,33 @@ export default function Packages() {
           </DialogContent>
         </Dialog>
 
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={!!showDeleteConfirm}
+          onOpenChange={() => setShowDeleteConfirm(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Package</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete "{showDeleteConfirm?.name}"?
+                This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(null)}
+              >
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={confirmDeletePackage}>
+                Delete Package
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Create/Edit Package Modal */}
         <Dialog
           open={showCreateModal || !!editingPackage}
@@ -366,89 +462,102 @@ export default function Packages() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSavePackage}>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Package Name</label>
+                    <input
+                      name="name"
+                      type="text"
+                      required
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter package name"
+                      defaultValue={editingPackage?.name || ""}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">
+                      Monthly Price ($)
+                    </label>
+                    <input
+                      name="price"
+                      type="number"
+                      step="0.01"
+                      required
+                      min="0"
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0.00"
+                      defaultValue={editingPackage?.price || ""}
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="text-sm font-medium">Package Name</label>
-                  <input
-                    type="text"
+                  <label className="text-sm font-medium">Description</label>
+                  <textarea
+                    name="description"
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter package name"
-                    defaultValue={editingPackage?.name || ""}
+                    rows={3}
+                    placeholder="Package description"
+                    defaultValue={editingPackage?.description || ""}
                   />
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">
+                      Number of Channels
+                    </label>
+                    <input
+                      name="channels"
+                      type="number"
+                      required
+                      min="1"
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0"
+                      defaultValue={editingPackage?.channels || ""}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Status</label>
+                    <select
+                      name="status"
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      defaultValue={
+                        editingPackage?.isActive ? "active" : "inactive"
+                      }
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="text-sm font-medium">
-                    Monthly Price ($)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
+                  <label className="text-sm font-medium">Features</label>
+                  <textarea
+                    name="features"
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.00"
-                    defaultValue={editingPackage?.price || ""}
+                    rows={4}
+                    placeholder="Enter features, one per line"
+                    defaultValue={editingPackage?.features.join("\n") || ""}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter each feature on a new line
+                  </p>
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm font-medium">Description</label>
-                <textarea
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Package description"
-                  defaultValue={editingPackage?.description || ""}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">
-                    Number of Channels
-                  </label>
-                  <input
-                    type="number"
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0"
-                    defaultValue={editingPackage?.channels || ""}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Status</label>
-                  <select
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    defaultValue={
-                      editingPackage?.isActive ? "active" : "inactive"
-                    }
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Features</label>
-                <textarea
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={4}
-                  placeholder="Enter features, one per line"
-                  defaultValue={editingPackage?.features.join("\n") || ""}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter each feature on a new line
-                </p>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={closeModals}>
-                Cancel
-              </Button>
-              <Button onClick={handleSavePackage}>
-                {editingPackage ? "Update Package" : "Create Package"}
-              </Button>
-            </DialogFooter>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={closeModals}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {editingPackage ? "Update Package" : "Create Package"}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
