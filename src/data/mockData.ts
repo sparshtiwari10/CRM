@@ -221,7 +221,6 @@ export const mockCustomers: Customer[] = [
     phoneNumber: "+1 (555) 678-9012",
     address: "987 Cedar Ln, Greenfield, OR 97001",
     currentPackage: "Business Plan",
-    billingStatus: "Pending",
     lastPaymentDate: "2023-12-28",
     email: "lisa.anderson@email.com",
     joinDate: "2023-07-14",
@@ -238,6 +237,8 @@ export const mockCustomers: Customer[] = [
         planName: "Business Plan",
         planPrice: 1299,
         isCustomPlan: true,
+        isPrimary: true,
+        connectionIndex: 1,
       },
     ],
     customPlan: {
