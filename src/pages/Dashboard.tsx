@@ -200,7 +200,7 @@ export default function Dashboard() {
   const handleViewAlerts = () => {
     toast({
       title: "System Alerts",
-      description: `You have ${stats.overdueAccounts} overdue accounts and ${stats.pendingPayments} pending payments.`,
+      description: `You have ${overdueCustomers} overdue accounts and ${pendingCustomers} pending payments.`,
     });
   };
 
