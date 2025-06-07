@@ -121,13 +121,15 @@ class AuthService {
   /**
    * Login with Firebase with timeout
    */
-  private async loginWithFirebaseTimeout(credentials: LoginCredentials): Promise<User> {
+  private async loginWithFirebaseTimeout(
+    credentials: LoginCredentials,
+  ): Promise<User> {
     // First do a quick connectivity test
     const isConnected = await Promise.race([
       this.testFirebaseConnectivity(),
       new Promise<boolean>((resolve) => {
         setTimeout(() => resolve(false), 1000); // 1 second timeout for connectivity test
-      })
+      }),
     ]);
 
     if (!isConnected) {
@@ -150,7 +152,6 @@ class AuthService {
           reject(error);
         });
     });
-  }
   }
 
   /**
