@@ -51,10 +51,12 @@ export default function Customers() {
     }
   };
 
-  // Load once on mount
+  // Load once on mount and when user changes
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user) {
+      loadData();
+    }
+  }, [user]);
 
   // Enhanced search and filter
   const filteredCustomers = customers.filter((customer) => {
