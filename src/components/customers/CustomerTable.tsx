@@ -751,15 +751,13 @@ export function CustomerTable({
                             Full Billing History
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          {/* Edit Customer - Admin Only */}
-                          {isAdmin && (
+                          {isAdmin ? (
                             <DropdownMenuItem onClick={() => onEdit(customer)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Customer
                             </DropdownMenuItem>
-                          )}
-                          {/* Request Action - Employees Only */}
-                          {!isAdmin && canAccessCustomer(customer.id) && (
+                          ) : null}
+                          {!isAdmin && canAccessCustomer(customer.id) ? (
                             <DropdownMenuItem
                               onClick={() =>
                                 handleGenericActionRequest(customer)
@@ -768,9 +766,8 @@ export function CustomerTable({
                               <RefreshCw className="mr-2 h-4 w-4" />
                               Request Action
                             </DropdownMenuItem>
-                          )}
-                          {/* Delete Customer - Admin Only */}
-                          {isAdmin && (
+                          ) : null}
+                          {isAdmin ? (
                             <DropdownMenuItem
                               onClick={() => setDeleteCustomer(customer)}
                               className="text-red-600"
@@ -778,7 +775,7 @@ export function CustomerTable({
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete Customer
                             </DropdownMenuItem>
-                          )}
+                          ) : null}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
