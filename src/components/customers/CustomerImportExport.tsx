@@ -311,7 +311,6 @@ export function CustomerImportExport({
       "Current Outstanding",
       "Bill Due Date",
       "Collector Name",
-      "Billing Status",
       "Is Active",
       "Last Payment Date",
       "Join Date",
