@@ -36,8 +36,8 @@ import { cn } from "@/lib/utils";
 
 export default function Billing() {
   const [billingRecords, setBillingRecords] = useState<BillingRecord[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [employeeFilter, setEmployeeFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [employeeFilter, setEmployeeFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -75,16 +75,18 @@ export default function Billing() {
       record.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.vcNumber.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = !statusFilter || record.status === statusFilter;
+    const matchesStatus =
+      !statusFilter || statusFilter === "all" || record.status === statusFilter;
     const matchesEmployee =
-      !employeeFilter || record.employeeId === employeeFilter;
+      !employeeFilter ||
+      employeeFilter === "all" ||
+      record.employeeId === employeeFilter;
 
     // For employees, only show their own records
     const hasAccess = isAdmin || record.employeeId === user?.id;
 
     return matchesSearch && matchesStatus && matchesEmployee && hasAccess;
   });
-
   // Get unique employees from billing records for filter dropdown
   const uniqueEmployees = Array.from(
     new Set(
@@ -234,7 +236,7 @@ export default function Billing() {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="Paid">Paid</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="Overdue">Overdue</SelectItem>
@@ -249,7 +251,7 @@ export default function Billing() {
                     <SelectValue placeholder="Filter by employee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Employees</SelectItem>
+                    <SelectItem value="all">All Employees</SelectItem>
                     {uniqueEmployees.map((employee) => (
                       <SelectItem key={employee.id} value={employee.id}>
                         {employee.name}
