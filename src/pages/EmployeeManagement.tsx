@@ -220,6 +220,18 @@ export default function EmployeeManagement() {
     0,
   );
 
+  if (isLoading) {
+    return (
+      <DashboardLayout title="Employee Management">
+        <div className="p-6">
+          <div className="text-center py-8">
+            <div className="text-lg">Loading employees...</div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout title="Employee Management">
       <div className="p-6 space-y-6">
