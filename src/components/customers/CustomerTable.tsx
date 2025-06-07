@@ -744,7 +744,10 @@ export function CustomerTable({
           {/* Mobile-Friendly Customer Cards */}
           <div className="lg:hidden space-y-3 p-3">
             {accessibleCustomers.map((customer) => (
-              <Card key={customer.id} className="overflow-hidden">
+              <Card
+                key={customer.id}
+                className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
+              >
                 <Collapsible>
                   {/* Card Header - Always Visible */}
                   <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -854,19 +857,24 @@ export function CustomerTable({
                     <CollapsibleTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="w-full mt-3 text-sm"
+                        className="w-full mt-3 text-sm hover:bg-white/50 transition-colors duration-200"
                         onClick={() =>
                           toggleRowExpansion(customer.id, customer.vcNumber)
+                        }
+                        aria-label={
+                          expandedRows.has(customer.id)
+                            ? "Show less details"
+                            : "Show more details"
                         }
                       >
                         {expandedRows.has(customer.id) ? (
                           <>
-                            <ChevronDown className="mr-2 h-4 w-4" />
+                            <ChevronDown className="mr-2 h-4 w-4 transition-transform duration-200" />
                             Show Less
                           </>
                         ) : (
                           <>
-                            <ChevronRight className="mr-2 h-4 w-4" />
+                            <ChevronRight className="mr-2 h-4 w-4 transition-transform duration-200" />
                             Show More Details
                           </>
                         )}
