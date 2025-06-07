@@ -55,7 +55,7 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
           <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
             <Package className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-gray-900">CableTV</span>
+          <span className="text-xl font-bold text-gray-900">AGV</span>
         </div>
       </div>
 
