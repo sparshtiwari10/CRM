@@ -33,6 +33,7 @@ export function FirebaseStatus() {
     useState<ConnectivityCheck | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<any>(null);
+  const [isRunningDiagnostics, setIsRunningDiagnostics] = useState(false);
 
   const checkStatus = async () => {
     const status = AuthService.getFirebaseStatus();
@@ -95,6 +96,29 @@ export function FirebaseStatus() {
       setConnectivityCheck(check);
     } finally {
       setIsChecking(false);
+    }
+  };
+
+  const handleRunDiagnostics = async () => {
+    setIsRunningDiagnostics(true);
+
+    try {
+      const diagnostics = await runFirebaseDiagnostics();
+
+      // Display results in console for now
+      console.log("📊 Firebase Diagnostics Results:");
+      console.log("Internet:", diagnostics.connectivity.internet);
+      console.log("Firebase:", diagnostics.connectivity.firebase);
+      console.log("Firestore:", diagnostics.connectivity.firestore);
+      console.log("Config Valid:", diagnostics.configuration.validConfig);
+      console.log("Recommendations:", diagnostics.recommendations);
+
+      // Download the report
+      downloadDiagnosticsReport(diagnostics);
+    } catch (error) {
+      console.error("Diagnostics failed:", error);
+    } finally {
+      setIsRunningDiagnostics(false);
     }
   };
 
@@ -251,25 +275,47 @@ export function FirebaseStatus() {
               </div>
             )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRetryConnection}
-              disabled={isChecking}
-              className="w-full text-xs"
-            >
-              {isChecking ? (
-                <>
-                  <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                  Retrying...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-3 h-3 mr-1" />
-                  Retry Connection
-                </>
-              )}
-            </Button>
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRetryConnection}
+                disabled={isChecking || isRunningDiagnostics}
+                className="w-full text-xs"
+              >
+                {isChecking ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                    Retrying...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Retry Connection
+                  </>
+                )}
+              </Button>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleRunDiagnostics}
+                disabled={isChecking || isRunningDiagnostics}
+                className="w-full text-xs"
+              >
+                {isRunningDiagnostics ? (
+                  <>
+                    <Bug className="w-3 h-3 mr-1 animate-spin" />
+                    Running Diagnostics...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3 h-3 mr-1" />
+                    Download Diagnostics
+                  </>
+                )}
+              </Button>
+            </div>
 
             <div className="text-xs text-gray-500 text-center">
               Demo mode includes all features except data persistence
