@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
+  const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const { toast } = useToast();
