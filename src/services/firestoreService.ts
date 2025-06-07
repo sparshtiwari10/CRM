@@ -47,6 +47,7 @@ export interface FirestoreCustomer {
     price: number;
     description: string;
   };
+  bill_due_date: number; // Day of month (1-31)
   created_at: Timestamp;
   updated_at: Timestamp;
 }
