@@ -42,8 +42,8 @@ export default function Customers() {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [filters, setFilters] = useState({
-    package: "",
-    billingStatus: "",
+    package: "all",
+    billingStatus: "all",
   });
 
   const { user, isAdmin } = useContext(AuthContext);
@@ -98,14 +98,13 @@ export default function Customers() {
       );
     }
 
-    if (filters.package) {
-      filtered = filtered.filter(
-        (customer) => customer.currentPackage === filters.package,
-      );
+    if (filters.package && filters.package !== "all") {
+      filtered = filtered.filter(customer => customer.currentPackage === filters.package);
     }
 
-    if (filters.billingStatus) {
-      filtered = filtered.filter(
+    if (filters.billingStatus && filters.billingStatus !== "all") {
+      filtered = filtered.filter(customer => customer.billingStatus === filters.billingStatus);
+    }
         (customer) => customer.billingStatus === filters.billingStatus,
       );
     }
@@ -234,7 +233,7 @@ export default function Customers() {
   };
 
   const handleClearFilters = () => {
-    setFilters({ package: "", billingStatus: "" });
+    setFilters({ package: "all", billingStatus: "all" });
     setSearchTerm("");
   };
 
@@ -371,7 +370,7 @@ export default function Customers() {
                   <SelectValue placeholder="Filter by package" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Packages</SelectItem>
+                  <SelectItem value="all">All Packages</SelectItem>
                   <SelectItem value="Basic">Basic</SelectItem>
                   <SelectItem value="Premium HD">Premium HD</SelectItem>
                   <SelectItem value="Sports Package">Sports Package</SelectItem>
@@ -388,13 +387,13 @@ export default function Customers() {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="Paid">Paid</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="Overdue">Overdue</SelectItem>
                 </SelectContent>
               </Select>
-              {(searchTerm || filters.package || filters.billingStatus) && (
+              {(searchTerm || (filters.package !== "all") || (filters.billingStatus !== "all")) && (
                 <Button variant="outline" onClick={handleClearFilters}>
                   <X className="mr-2 h-4 w-4" />
                   Clear
