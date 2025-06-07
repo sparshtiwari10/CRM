@@ -635,8 +635,15 @@ export function CustomerTable({
                                   </div>
 
                                   <div className="text-xs text-gray-500 text-center p-2 bg-gray-50 rounded">
-                                    Current Outstanding = Previous Outstanding +
-                                    Plan Bill - Paid Invoice Amounts
+                                    Current Outstanding = Package Amount +
+                                    Previous Outstanding - Paid Invoice Amounts
+                                    <br />
+                                    <span className="text-blue-600">
+                                      Monthly Cycle:
+                                    </span>{" "}
+                                    On bill due date, Previous O/S becomes
+                                    Current O/S, then Current O/S = Previous O/S
+                                    + Package Amount
                                   </div>
                                 </CardContent>
                               </Card>
