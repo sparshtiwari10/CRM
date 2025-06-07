@@ -17,18 +17,24 @@ const firebaseConfig = {
 // Initialize Firebase
 let app: any;
 let db: any;
+let isFirebaseAvailable = false;
 
 try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
+  isFirebaseAvailable = true;
 
   // Connect to Firestore emulator in development if available
-  if (import.meta.env.DEV && !db._delegate._databaseId.includes("(default)")) {
+  if (import.meta.env.DEV) {
     try {
+      // Only try to connect emulator if we're in development and haven't connected yet
       connectFirestoreEmulator(db, "localhost", 8080);
+      console.log("🔗 Connected to Firestore emulator");
     } catch (error) {
-      // Emulator already connected or not available
-      console.log("Firestore emulator connection attempted");
+      // Emulator already connected or not available - this is fine
+      console.log(
+        "📡 Using production Firestore or emulator already connected",
+      );
     }
   }
 
@@ -36,20 +42,11 @@ try {
   console.log(`📊 Project ID: ${firebaseConfig.projectId}`);
 } catch (error) {
   console.error("❌ Firebase initialization failed:", error);
+  console.log("🔄 Falling back to demo mode with mock data");
 
-  // Create minimal mock objects to prevent errors
-  db = {
-    collection: () => ({
-      get: () => Promise.reject(new Error("Firebase not available")),
-      add: () => Promise.reject(new Error("Firebase not available")),
-      doc: () => ({
-        get: () => Promise.reject(new Error("Firebase not available")),
-        set: () => Promise.reject(new Error("Firebase not available")),
-        update: () => Promise.reject(new Error("Firebase not available")),
-        delete: () => Promise.reject(new Error("Firebase not available")),
-      }),
-    }),
-  };
+  isFirebaseAvailable = false;
+  // Set db to null - we'll handle this in the services
+  db = null;
 }
 
 export { db };
