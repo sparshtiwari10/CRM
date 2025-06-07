@@ -13,7 +13,16 @@ import {
   performConnectivityCheck,
   getNetworkTroubleshooting,
 } from "@/utils/networkUtils";
-import { Cloud, CloudOff, AlertTriangle, RefreshCw, Wifi } from "lucide-react";
+import { getConnectionStatus, retryFirebaseConnection } from "@/lib/firebase";
+import {
+  Cloud,
+  CloudOff,
+  AlertTriangle,
+  RefreshCw,
+  Wifi,
+  Clock,
+  XCircle,
+} from "lucide-react";
 import type { ConnectivityCheck } from "@/utils/networkUtils";
 
 export function FirebaseStatus() {
@@ -23,10 +32,14 @@ export function FirebaseStatus() {
   const [connectivityCheck, setConnectivityCheck] =
     useState<ConnectivityCheck | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<any>(null);
 
   const checkStatus = async () => {
     const status = AuthService.getFirebaseStatus();
+    const connStatus = getConnectionStatus();
+
     setIsFirebaseAvailable(status);
+    setConnectionStatus(connStatus);
 
     // If Firebase is not available, run connectivity diagnostics
     if (!status) {
@@ -39,30 +52,72 @@ export function FirebaseStatus() {
       } finally {
         setIsChecking(false);
       }
+    } else {
+      // Clear connectivity check if now available
+      setConnectivityCheck(null);
     }
   };
 
   useEffect(() => {
     checkStatus();
-    // Check again after a short delay to catch initialization changes
-    const timer = setTimeout(checkStatus, 2000);
-    return () => clearTimeout(timer);
+
+    // Check status periodically while connection is unstable
+    const timer = setInterval(() => {
+      const connStatus = getConnectionStatus();
+      if (
+        connStatus.status === "connecting" ||
+        connStatus.status === "failed"
+      ) {
+        checkStatus();
+      }
+    }, 2000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const handleRetryConnection = async () => {
     setIsChecking(true);
+    setConnectivityCheck(null);
 
-    // Wait a moment then refresh
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
+    try {
+      const success = await retryFirebaseConnection();
+      if (success) {
+        // Connection successful, update status
+        await checkStatus();
+      } else {
+        // Still failed, run diagnostics
+        const check = await performConnectivityCheck();
+        setConnectivityCheck(check);
+      }
+    } catch (error) {
+      console.error("Retry failed:", error);
+      const check = await performConnectivityCheck();
+      setConnectivityCheck(check);
+    } finally {
+      setIsChecking(false);
+    }
   };
 
-  if (isFirebaseAvailable === null) {
+  if (
+    isFirebaseAvailable === null ||
+    connectionStatus?.status === "initializing"
+  ) {
     return (
       <Badge variant="secondary" className="text-xs">
         <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-        Checking...
+        <span className="hidden lg:inline">Initializing...</span>
+      </Badge>
+    );
+  }
+
+  if (connectionStatus?.status === "connecting") {
+    return (
+      <Badge
+        variant="secondary"
+        className="text-xs bg-blue-100 text-blue-800 border-blue-300"
+      >
+        <RefreshCw className="w-3 h-3 lg:mr-1 animate-spin" />
+        <span className="hidden lg:inline">Connecting...</span>
       </Badge>
     );
   }
@@ -96,7 +151,11 @@ export function FirebaseStatus() {
         <Card className="border-0">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center space-x-2">
-              <CloudOff className="w-4 h-4 text-orange-600" />
+              {connectionStatus?.status === "failed" ? (
+                <XCircle className="w-4 h-4 text-red-600" />
+              ) : (
+                <CloudOff className="w-4 h-4 text-orange-600" />
+              )}
               <span>Firebase Connection Issue</span>
             </CardTitle>
           </CardHeader>
@@ -108,6 +167,44 @@ export function FirebaseStatus() {
                 Your changes won't be saved permanently.
               </AlertDescription>
             </Alert>
+
+            {connectionStatus && (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-gray-700">
+                  Connection Status:
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center space-x-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        connectionStatus.status === "connected"
+                          ? "bg-green-500"
+                          : connectionStatus.status === "connecting"
+                            ? "bg-blue-500"
+                            : "bg-red-500"
+                      }`}
+                    />
+                    <span>Status: {connectionStatus.status}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-3 h-3" />
+                    <span>
+                      Attempts: {connectionStatus.retryCount}/
+                      {connectionStatus.maxRetries}
+                    </span>
+                  </div>
+                  {connectionStatus.lastAttempt && (
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-3 h-3" />
+                      <span>
+                        Last attempt:{" "}
+                        {connectionStatus.lastAttempt.toLocaleTimeString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {connectivityCheck && (
               <div className="space-y-2">

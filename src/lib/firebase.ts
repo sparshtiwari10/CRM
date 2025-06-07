@@ -22,70 +22,197 @@ const firebaseConfig = {
 let app: any;
 let db: any;
 let isFirebaseAvailable = false;
+let connectionStatus = "initializing";
+let lastConnectionAttempt: Date | null = null;
+let connectionRetryCount = 0;
+const MAX_RETRY_ATTEMPTS = 3;
 
-try {
-  console.log("🔄 Initializing Firebase...");
-  console.log(`📊 Project ID: ${firebaseConfig.projectId}`);
-
-  app = initializeApp(firebaseConfig);
-
-  // Initialize Firestore with settings for better connectivity
-  // This helps with network issues, corporate firewalls, and connection problems
+// Connection retry with exponential backoff
+async function initializeFirebaseWithRetry(attempt = 1): Promise<void> {
   try {
-    db = initializeFirestore(app, {
-      experimentalForceLongPolling: true, // Better for restrictive networks
-      useFetchStreams: false, // Helps with firewall/proxy issues
-    });
     console.log(
-      "🔧 Firestore initialized with long polling for better connectivity",
+      `🔄 Initializing Firebase (attempt ${attempt}/${MAX_RETRY_ATTEMPTS})...`,
     );
-  } catch (initError) {
-    // Fallback to regular initialization if the experimental settings fail
-    console.warn(
-      "⚠️ Long polling initialization failed, trying standard initialization",
-    );
-    db = getFirestore(app);
-  }
+    console.log(`📊 Project ID: ${firebaseConfig.projectId}`);
 
-  isFirebaseAvailable = true;
+    lastConnectionAttempt = new Date();
+    connectionStatus = "connecting";
 
-  // Connect to Firestore emulator in development if available
-  if (import.meta.env.DEV) {
+    app = initializeApp(firebaseConfig);
+
+    // Initialize Firestore with enhanced settings for better connectivity
     try {
-      // Only try to connect emulator if we're in development and haven't connected yet
-      connectFirestoreEmulator(db, "localhost", 8080);
-      console.log("🔗 Connected to Firestore emulator");
-    } catch (error) {
-      // Emulator already connected or not available - this is fine
-      console.log("📡 Using production Firestore with enhanced connectivity");
-    }
-  }
+      db = initializeFirestore(app, {
+        experimentalForceLongPolling: true, // Better for restrictive networks
+        useFetchStreams: false, // Helps with firewall/proxy issues
+        experimentalAutoDetectLongPolling: true, // Auto-detect best connection method
+        localCache: undefined, // Disable offline cache that can cause issues
+      });
+      console.log(
+        "���� Firestore initialized with enhanced connectivity settings",
+      );
+    } catch (initError: any) {
+      console.warn(
+        "⚠️ Enhanced initialization failed, trying standard initialization",
+      );
+      console.warn("Error:", initError.message);
 
-  console.log("✅ Firebase initialized successfully");
-  console.log("🔗 Firestore connection established with network optimizations");
-} catch (error: any) {
-  console.error("❌ Firebase initialization failed:", error);
+      // Fallback to regular initialization
+      db = getFirestore(app);
+    }
+
+    // Test connection immediately after initialization
+    await testFirebaseConnection();
+
+    isFirebaseAvailable = true;
+    connectionStatus = "connected";
+    connectionRetryCount = 0;
+
+    // Handle emulator connection in development
+    if (import.meta.env.DEV) {
+      try {
+        connectFirestoreEmulator(db, "localhost", 8080);
+        console.log("🔗 Connected to Firestore emulator");
+      } catch (error) {
+        console.log("📡 Using production Firestore with enhanced connectivity");
+      }
+    }
+
+    console.log("✅ Firebase initialized successfully");
+    console.log("🔗 Firestore connection established and tested");
+  } catch (error: any) {
+    console.error(
+      `❌ Firebase initialization attempt ${attempt} failed:`,
+      error,
+    );
+
+    connectionStatus = "failed";
+    connectionRetryCount = attempt;
+
+    // Provide specific troubleshooting based on error type
+    if (
+      error.code === "unavailable" ||
+      error.message.includes("Connection failed")
+    ) {
+      console.log("🌐 Network connectivity issue detected");
+
+      if (attempt < MAX_RETRY_ATTEMPTS) {
+        const retryDelay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+        console.log(`🔄 Retrying in ${retryDelay / 1000} seconds...`);
+
+        setTimeout(async () => {
+          try {
+            await initializeFirebaseWithRetry(attempt + 1);
+          } catch (retryError) {
+            handleFinalFailure(retryError);
+          }
+        }, retryDelay);
+
+        return; // Don't set to fallback mode yet
+      }
+    }
+
+    handleFinalFailure(error);
+  }
+}
+
+// Test Firebase connection with a simple operation
+async function testFirebaseConnection(): Promise<void> {
+  try {
+    const { collection, getDocs, limit, query } = await import(
+      "firebase/firestore"
+    );
+
+    // Try a simple query to test connectivity
+    const testRef = collection(db, "users");
+    const testQuery = query(testRef, limit(1));
+
+    // Use a timeout for the test
+    await Promise.race([
+      getDocs(testQuery),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Connection test timeout")), 5000),
+      ),
+    ]);
+
+    console.log("✅ Firebase connection test successful");
+  } catch (error: any) {
+    console.warn("⚠️ Firebase connection test failed:", error.message);
+    throw new Error(`Connection test failed: ${error.message}`);
+  }
+}
+
+// Handle final failure after all retries
+function handleFinalFailure(error: any): void {
+  console.error("❌ All Firebase connection attempts failed");
   console.log("🔄 Falling back to demo mode with mock data");
 
-  // Provide specific troubleshooting based on error type
+  // Provide comprehensive troubleshooting
   if (
     error.code === "unavailable" ||
     error.message.includes("Connection failed")
   ) {
-    console.log("🌐 Network connectivity issue detected");
-    console.log("💡 Possible solutions:");
+    console.log("🌐 Network connectivity issue - possible solutions:");
     console.log("   • Check your internet connection");
     console.log("   • Disable VPN/proxy temporarily");
-    console.log("   • Check if firewall is blocking Firebase domains");
-    console.log("   • Verify Firebase project is active and billing is set up");
+    console.log("   • Check if firewall is blocking Firebase domains:");
+    console.log("     - firestore.googleapis.com");
+    console.log("     - firebase.googleapis.com");
+    console.log("     - googleapis.com");
+    console.log("   • Try a different network (mobile hotspot)");
+    console.log("   • Contact IT if on corporate network");
+    console.log("   • Verify Firebase project is active and billing set up");
+  } else if (error.code === "permission-denied") {
+    console.log("🔐 Permission denied - possible solutions:");
+    console.log("   • Check Firestore security rules");
+    console.log("   • Verify API keys are correct");
+    console.log("   • Ensure Firestore is enabled in Firebase Console");
   } else {
-    console.log("💡 Check your .env file and Firebase project settings");
+    console.log("💡 General troubleshooting:");
+    console.log("   • Check .env file and Firebase project settings");
+    console.log("   • Verify project ID and API keys");
+    console.log("   • Check Firebase Console for service status");
   }
 
   isFirebaseAvailable = false;
-  // Set db to null - we'll handle this in the services
+  connectionStatus = "failed";
   db = null;
 }
+
+// Export connection status helpers
+export function getConnectionStatus() {
+  return {
+    status: connectionStatus,
+    isAvailable: isFirebaseAvailable,
+    lastAttempt: lastConnectionAttempt,
+    retryCount: connectionRetryCount,
+    maxRetries: MAX_RETRY_ATTEMPTS,
+  };
+}
+
+// Manual retry function
+export async function retryFirebaseConnection(): Promise<boolean> {
+  if (connectionStatus === "connecting") {
+    console.log("🔄 Connection attempt already in progress...");
+    return false;
+  }
+
+  console.log("🔄 Manual retry requested...");
+  connectionRetryCount = 0;
+
+  try {
+    await initializeFirebaseWithRetry(1);
+    return isFirebaseAvailable;
+  } catch (error) {
+    console.error("❌ Manual retry failed:", error);
+    return false;
+  }
+}
+
+// Start initialization
+initializeFirebaseWithRetry().catch((error) => {
+  console.error("❌ Firebase initialization failed completely:", error);
+});
 
 export { db, isFirebaseAvailable };
 export default app;
