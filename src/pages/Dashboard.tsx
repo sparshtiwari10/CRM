@@ -372,29 +372,45 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentPayments.map((payment) => (
-                    <div
-                      key={payment.id}
-                      className="flex items-center justify-between py-2"
-                    >
-                      <div>
-                        <p className="font-medium">{payment.customerName}</p>
-                        <p className="text-sm text-gray-500">
-                          {payment.method} •{" "}
-                          {new Date(payment.date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">₹{payment.amount}</p>
-                        <Badge
-                          variant="outline"
-                          className="bg-green-100 text-green-800"
-                        >
-                          {payment.status}
-                        </Badge>
-                      </div>
+                  {isLoading ? (
+                    <div className="text-center py-4 text-gray-500">
+                      Loading payments...
                     </div>
-                  ))}
+                  ) : recentPayments.length > 0 ? (
+                    recentPayments.map((payment) => (
+                      <div
+                        key={payment.id}
+                        className="flex items-center justify-between py-2"
+                      >
+                        <div>
+                          <p className="font-medium">{payment.customerName}</p>
+                          <p className="text-sm text-gray-500">
+                            {payment.method} •{" "}
+                            {new Date(payment.date).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">
+                            ₹{payment.amount.toLocaleString()}
+                          </p>
+                          <Badge
+                            variant="outline"
+                            className="bg-green-100 text-green-800"
+                          >
+                            {payment.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p>No payments yet</p>
+                      <p className="text-sm">
+                        Payments will appear here once customers are added
+                      </p>
+                    </div>
+                  )}
 
                   <div className="pt-4 border-t">
                     <Button
