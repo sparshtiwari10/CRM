@@ -464,40 +464,81 @@ export default function Billing() {
           {/* Billing Filters */}
           <Card>
             <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Search by customer name, invoice number, or VC number..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+              <div className="space-y-4">
+                {/* Search and Status Filters */}
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search by customer name, invoice number, or VC number..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="overdue">Overdue</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={employeeFilter}
+                    onValueChange={setEmployeeFilter}
+                  >
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                      <SelectValue placeholder="Filter by employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Employees</SelectItem>
+                      {uniqueEmployees.map((employee) => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employee.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="overdue">Overdue</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={employeeFilter}
-                  onValueChange={setEmployeeFilter}
-                >
-                  <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="Filter by employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Employees</SelectItem>
-                    {uniqueEmployees.map((employee) => (
-                      <SelectItem key={employee.id} value={employee.id}>
-                        {employee.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+                {/* Date Range Filters */}
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-sm font-medium text-gray-700">
+                      From Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={fromDate}
+                      onChange={(e) => setFromDate(e.target.value)}
+                      className="w-full sm:w-[180px]"
+                    />
+                  </div>
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-sm font-medium text-gray-700">
+                      To Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={toDate}
+                      onChange={(e) => setToDate(e.target.value)}
+                      className="w-full sm:w-[180px]"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setFromDate("");
+                        setToDate("");
+                      }}
+                      className="text-sm"
+                    >
+                      Clear Dates
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
