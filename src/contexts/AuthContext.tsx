@@ -1,84 +1,88 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { User, LoginCredentials, AuthContextType } from "@/types/auth";
-import { AuthService } from "@/services/authService";
-import { CustomerService } from "@/services/customerService";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { authService, User, LoginCredentials } from "@/services/authService";
+
+interface AuthContextType {
+  user: User | null;
+  isLoading: boolean;
+  isAdmin: boolean;
+  login: (credentials: LoginCredentials) => Promise<User>;
+  logout: () => void;
+  canAccessCustomer: (
+    customerId: string,
+    customerCollectorName?: string,
+  ) => boolean;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export { AuthContext };
+interface AuthProviderProps {
+  children: ReactNode;
+}
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize services and listen to authentication state changes
   useEffect(() => {
-    const initialize = async () => {
+    // Initialize auth service and check for existing session
+    const initializeAuth = async () => {
       try {
-        // Initialize services
-        await AuthService.initialize();
-        CustomerService.initialize();
+        // Check if user is already logged in
+        const currentUser = authService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+        }
 
-        // Set up auth state listener
-        const unsubscribe = AuthService.onAuthStateChanged((user) => {
-          setUser(user);
-          setIsLoading(false);
-        });
-
-        return unsubscribe;
+        // Seed default admin user if no admin exists
+        await authService.seedDefaultAdmin();
       } catch (error) {
-        console.error("Error initializing services:", error);
+        console.error("Failed to initialize auth:", error);
+      } finally {
         setIsLoading(false);
-        return () => {};
       }
     };
 
-    const unsubscribePromise = initialize();
-
-    return () => {
-      unsubscribePromise.then((unsubscribe) => {
-        if (unsubscribe) unsubscribe();
-      });
-    };
+    initializeAuth();
   }, []);
 
-  const login = async (credentials: LoginCredentials): Promise<boolean> => {
-    setIsLoading(true);
-
+  const login = async (credentials: LoginCredentials): Promise<User> => {
     try {
-      const user = await AuthService.signIn(credentials);
+      setIsLoading(true);
+      const user = await authService.login(credentials);
       setUser(user);
-      return true;
+      return user;
     } catch (error) {
-      console.error("Login error:", error);
-      return false;
+      console.error("Login failed:", error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = async () => {
-    try {
-      await AuthService.signOut();
-      setUser(null);
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
+  const logout = () => {
+    authService.logout();
+    setUser(null);
   };
 
-  const canAccessCustomer = (customerId: string): boolean => {
-    if (!user) return false;
-    if (user.role === "admin") return true;
-    return user.assignedCustomers?.includes(customerId) || false;
+  const canAccessCustomer = (
+    customerId: string,
+    customerCollectorName?: string,
+  ): boolean => {
+    return authService.canAccessCustomer(customerId, customerCollectorName);
   };
 
   const value: AuthContextType = {
     user,
+    isLoading,
+    isAdmin: user?.role === "admin",
     login,
     logout,
-    isLoading,
-    isAuthenticated: !!user,
-    isAdmin: user?.role === "admin",
     canAccessCustomer,
   };
 
