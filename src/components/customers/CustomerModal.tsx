@@ -56,23 +56,24 @@ export function CustomerModal({
       const loadCollectors = async () => {
         try {
           const users = await authService.getAllUsers();
-          const collectors = users
-            .filter(
-              (user) =>
-                user.isActive &&
-                (user.role === "employee" || user.role === "admin"),
-            )
+          const employees = users
+            .filter((user) => user.role === "employee" && user.isActive)
             .map((user) => user.name);
 
-          // Always ensure at least System Administrator is available
-          if (
-            collectors.length === 0 ||
-            !collectors.includes("System Administrator")
-          ) {
-            collectors.unshift("System Administrator");
+          // Add System Administrator if no employees exist
+          if (employees.length === 0) {
+            setAvailableCollectors(["System Administrator"]);
+          } else {
+            // Add System Administrator as an option along with employees
+            setAvailableCollectors(["System Administrator", ...employees]);
           }
 
-          setAvailableCollectors(collectors);
+          console.log(
+            "Loaded collectors:",
+            employees.length > 0
+              ? ["System Administrator", ...employees]
+              : ["System Administrator"],
+          );
         } catch (error) {
           console.error("Failed to load collectors:", error);
           // Fallback to default admin
