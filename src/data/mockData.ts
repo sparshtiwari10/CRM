@@ -251,6 +251,7 @@ export const mockPackages: Package[] = [
     channels: 50,
     features: ["Local channels", "Basic cable networks", "Standard definition"],
     isActive: true,
+    portalAmount: 299,
   },
   {
     id: "2",
@@ -265,6 +266,7 @@ export const mockPackages: Package[] = [
       "Sports channels",
     ],
     isActive: true,
+    portalAmount: 599,
   },
   {
     id: "3",
@@ -279,6 +281,7 @@ export const mockPackages: Package[] = [
       "Sports replay",
     ],
     isActive: true,
+    portalAmount: 799,
   },
   {
     id: "4",
@@ -293,6 +296,7 @@ export const mockPackages: Package[] = [
       "Parental controls",
     ],
     isActive: true,
+    portalAmount: 499,
   },
 ];
 
