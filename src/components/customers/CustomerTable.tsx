@@ -193,6 +193,7 @@ export function CustomerTable({
                   <TableHead>Customer</TableHead>
                   <TableHead>VC Number</TableHead>
                   <TableHead>Package</TableHead>
+                  <TableHead>Package Amount</TableHead>
                   <TableHead>Previous O/S</TableHead>
                   <TableHead>Plan Bill</TableHead>
                   <TableHead>Current O/S</TableHead>
