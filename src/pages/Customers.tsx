@@ -16,7 +16,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Customer } from "@/types";
-import { mockCustomers } from "@/data/mockData";
+import { ActionRequest } from "@/types/auth";
+import {
+  mockCustomers,
+  mockActionRequests,
+  mockChangeHistory,
+} from "@/data/mockData";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Customers() {
