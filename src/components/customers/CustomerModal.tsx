@@ -137,6 +137,9 @@ export function CustomerModal({
       numberOfConnections: "",
       connections: [],
       customPlan: null,
+      packageAmount: 0,
+      previousOutstanding: 0,
+      currentOutstanding: 0,
       isInitialized: true,
     });
     setShowCustomPlan(false);
