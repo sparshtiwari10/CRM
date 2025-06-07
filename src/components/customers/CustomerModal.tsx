@@ -46,7 +46,9 @@ export function CustomerModal({
   const { isAdmin } = useAuth();
   const { toast } = useToast();
   const isEditing = !!customer;
-  const [availableCollectors, setAvailableCollectors] = useState<string[]>([]);
+  const [availableCollectors, setAvailableCollectors] = useState<string[]>([
+    "System Administrator",
+  ]);
 
   // Load available collectors when modal opens
   useEffect(() => {
