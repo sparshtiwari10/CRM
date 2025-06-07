@@ -235,7 +235,7 @@ export function InvoiceGenerator({
 
       toast({
         title: "Invoice Generated",
-        description: `Invoice ${invoiceData.invoiceNumber} has been created for $${invoiceData.amount.toFixed(2)}.`,
+        description: `Invoice ${invoiceData.invoiceNumber} has been created for ₹${invoiceData.amount.toFixed(2)}.`,
       });
 
       onOpenChange(false);
