@@ -249,6 +249,15 @@ export function CustomerModal({
     }
   }, [open, customer]);
 
+  // Clean up form state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setFormData(initialData);
+      setShowCustomPlan(false);
+      setErrors({});
+    }
+  }, [open]);
+
   function handleInputChange(field: string, value: any) {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
