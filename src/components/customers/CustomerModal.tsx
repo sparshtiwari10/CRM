@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -63,30 +63,32 @@ export function CustomerModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Generate VC Number
-  const generateVCNumber = () => {
+  // Generate VC Number - simple function
+  function generateVCNumber() {
     return `VC${Math.random().toString().substr(2, 6)}`;
-  };
+  }
 
   // Reset form when modal opens/closes or customer changes
   useEffect(() => {
     if (open) {
       if (customer) {
         // Editing existing customer
+        console.log("Loading customer for edit:", customer.id);
         setFormData({
-          name: customer.name,
-          phoneNumber: customer.phoneNumber,
+          name: customer.name || "",
+          phoneNumber: customer.phoneNumber || "",
           email: customer.email || "",
-          address: customer.address,
-          vcNumber: customer.vcNumber,
-          currentPackage: customer.currentPackage,
-          collectorName: customer.collectorName,
-          billingStatus: customer.billingStatus,
-          isActive: customer.isActive,
+          address: customer.address || "",
+          vcNumber: customer.vcNumber || "",
+          currentPackage: customer.currentPackage || "",
+          collectorName: customer.collectorName || "",
+          billingStatus: customer.billingStatus || "Pending",
+          isActive: customer.isActive || true,
           portalBill: customer.portalBill || 0,
         });
       } else {
         // Creating new customer
+        console.log("Setting up form for new customer");
         setFormData({
           name: "",
           phoneNumber: "",
@@ -102,17 +104,17 @@ export function CustomerModal({
       }
       setErrors({});
     }
-  }, [open, customer]);
+  }, [open, customer?.id]); // Only depend on open and customer ID
 
-  const handleInputChange = (field: string, value: any) => {
+  function handleInputChange(field: string, value: any) {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
-  };
+  }
 
-  const validateForm = () => {
+  function validateForm() {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) newErrors.name = "Name is required";
@@ -131,9 +133,9 @@ export function CustomerModal({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     if (!validateForm()) return;
@@ -162,8 +164,9 @@ export function CustomerModal({
           : customer?.deactivationDate,
     };
 
+    console.log("Submitting customer data:", customerData);
     onSave(customerData);
-  };
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
