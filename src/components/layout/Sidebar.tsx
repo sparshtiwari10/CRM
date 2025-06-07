@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   Users,
@@ -10,17 +11,22 @@ import {
   Package,
   DollarSign,
   Settings,
+  UserCog,
   Menu,
   X,
 } from "lucide-react";
 
-const navigation = [
+const baseNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Billing", href: "/billing", icon: CreditCard },
   { name: "Packages", href: "/packages", icon: Package },
   { name: "Payments", href: "/payments", icon: DollarSign },
   { name: "Settings", href: "/settings", icon: Settings },
+];
+
+const adminOnlyNavigation = [
+  { name: "Employees", href: "/employees", icon: UserCog },
 ];
 
 interface SidebarContentProps {
