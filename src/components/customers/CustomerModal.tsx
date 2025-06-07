@@ -205,6 +205,7 @@ export function CustomerModal({
       packageAmount: 0,
       previousOutstanding: 0,
       currentOutstanding: 0,
+      billDueDate: 1,
       isInitialized: true,
     });
     setShowCustomPlan(false);
