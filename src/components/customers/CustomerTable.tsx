@@ -494,7 +494,12 @@ export function CustomerTable({
       {/* Action Request Modal */}
       <ActionRequestModal
         open={!!actionRequestCustomer}
-        onOpenChange={() => setActionRequestCustomer(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActionRequestCustomer(null);
+            setActionType("activation"); // Reset action type
+          }
+        }}
         customer={actionRequestCustomer}
         onSubmit={handleActionRequest}
         defaultActionType={actionType}
