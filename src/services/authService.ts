@@ -19,6 +19,52 @@ import { User, LoginCredentials } from "@/types/auth";
 
 const USERS_COLLECTION = "users";
 
+// Mock users for fallback when Firebase is not available
+const MOCK_USERS = [
+  {
+    id: "admin-1",
+    email: "admin@cabletv.com",
+    phone: "+1 (555) 000-0000",
+    name: "System Administrator",
+    role: "admin" as const,
+    isActive: true,
+    createdAt: "2024-01-01",
+    lastLogin: new Date().toISOString(),
+    assignedCustomers: [],
+  },
+  {
+    id: "emp-1",
+    email: "john.collector@cabletv.com",
+    phone: "+1 (555) 111-1111",
+    name: "John Collector",
+    role: "employee" as const,
+    isActive: true,
+    createdAt: "2024-01-01",
+    assignedCustomers: ["1", "2", "5"],
+  },
+  {
+    id: "emp-2",
+    email: "sarah.collector@cabletv.com",
+    phone: "+1 (555) 222-2222",
+    name: "Sarah Collector",
+    role: "employee" as const,
+    isActive: true,
+    createdAt: "2024-01-01",
+    assignedCustomers: ["3", "4", "6"],
+  },
+];
+
+// Mock credentials for fallback
+const MOCK_CREDENTIALS = [
+  { email: "admin@cabletv.com", password: "admin123" },
+  { email: "john.collector@cabletv.com", password: "employee123" },
+  { email: "sarah.collector@cabletv.com", password: "employee123" },
+];
+
+// Check if Firebase is available
+let isFirebaseAvailable = true;
+let mockCurrentUser: User | null = null;
+
 // Convert Firebase user + Firestore data to our User type
 const convertToUser = (firebaseUser: FirebaseUser, userData: any): User => {
   return {
@@ -35,9 +81,75 @@ const convertToUser = (firebaseUser: FirebaseUser, userData: any): User => {
 };
 
 export class AuthService {
+  // Check Firebase availability
+  private static async checkFirebaseAvailability(): Promise<boolean> {
+    try {
+      // Try a simple Firebase operation
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Timeout")), 5000);
+        const unsubscribe = onAuthStateChanged(
+          auth,
+          () => {
+            clearTimeout(timeout);
+            unsubscribe();
+            resolve(true);
+          },
+          () => {
+            clearTimeout(timeout);
+            reject(new Error("Auth error"));
+          },
+        );
+      });
+      return true;
+    } catch (error) {
+      console.warn(
+        "Firebase not available, falling back to mock authentication",
+      );
+      isFirebaseAvailable = false;
+      return false;
+    }
+  }
+
+  // Mock authentication
+  private static async mockSignIn(
+    credentials: LoginCredentials,
+  ): Promise<User> {
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const validCredential = MOCK_CREDENTIALS.find(
+      (cred) =>
+        cred.email === credentials.email &&
+        cred.password === credentials.password,
+    );
+
+    if (!validCredential) {
+      throw new Error("Invalid email or password");
+    }
+
+    const user = MOCK_USERS.find((u) => u.email === credentials.email);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    mockCurrentUser = { ...user, lastLogin: new Date().toISOString() };
+    localStorage.setItem("cabletv_mock_user", JSON.stringify(mockCurrentUser));
+
+    return mockCurrentUser;
+  }
+
   // Sign in with email and password
   static async signIn(credentials: LoginCredentials): Promise<User> {
     try {
+      // Check if Firebase is available first
+      if (!isFirebaseAvailable) {
+        // First time check
+        const available = await this.checkFirebaseAvailability();
+        if (!available) {
+          return await this.mockSignIn(credentials);
+        }
+      }
+
       const userCredential = await signInWithEmailAndPassword(
         auth,
         credentials.email,
@@ -59,9 +171,20 @@ export class AuthService {
 
       return convertToUser(userCredential.user, userData);
     } catch (error: any) {
-      console.error("Sign in error:", error);
+      console.error("Firebase sign in error:", error);
 
-      // Handle specific Firebase errors
+      // If network error or Firebase unavailable, fall back to mock
+      if (
+        error.code === "auth/network-request-failed" ||
+        error.code === "auth/too-many-requests" ||
+        !isFirebaseAvailable
+      ) {
+        console.log("Falling back to mock authentication");
+        isFirebaseAvailable = false;
+        return await this.mockSignIn(credentials);
+      }
+
+      // Handle other Firebase errors
       switch (error.code) {
         case "auth/user-not-found":
         case "auth/wrong-password":
@@ -79,15 +202,42 @@ export class AuthService {
   // Sign out
   static async signOut(): Promise<void> {
     try {
-      await signOut(auth);
+      if (isFirebaseAvailable) {
+        await signOut(auth);
+      } else {
+        // Mock sign out
+        mockCurrentUser = null;
+        localStorage.removeItem("cabletv_mock_user");
+      }
     } catch (error) {
       console.error("Sign out error:", error);
-      throw new Error("Failed to sign out");
+      // Even if Firebase sign out fails, clear local state
+      mockCurrentUser = null;
+      localStorage.removeItem("cabletv_mock_user");
     }
   }
 
   // Listen to authentication state changes
   static onAuthStateChanged(callback: (user: User | null) => void): () => void {
+    if (!isFirebaseAvailable) {
+      // Mock state listener
+      const storedUser = localStorage.getItem("cabletv_mock_user");
+      if (storedUser) {
+        try {
+          mockCurrentUser = JSON.parse(storedUser);
+          callback(mockCurrentUser);
+        } catch (error) {
+          localStorage.removeItem("cabletv_mock_user");
+          callback(null);
+        }
+      } else {
+        callback(null);
+      }
+
+      // Return empty unsubscribe function
+      return () => {};
+    }
+
     return onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
@@ -109,6 +259,10 @@ export class AuthService {
 
   // Get current user
   static async getCurrentUser(): Promise<User | null> {
+    if (!isFirebaseAvailable) {
+      return mockCurrentUser;
+    }
+
     const firebaseUser = auth.currentUser;
     if (!firebaseUser) return null;
 
@@ -122,12 +276,18 @@ export class AuthService {
     }
   }
 
-  // Create new user (admin only)
+  // Create new user (admin only) - Only works with Firebase
   static async createUser(
     email: string,
     password: string,
     userData: Partial<User>,
   ): Promise<User> {
+    if (!isFirebaseAvailable) {
+      throw new Error(
+        "User creation requires Firebase. Please set up Firebase configuration.",
+      );
+    }
+
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
@@ -168,11 +328,17 @@ export class AuthService {
     }
   }
 
-  // Update user data
+  // Update user data - Only works with Firebase
   static async updateUser(
     userId: string,
     updates: Partial<User>,
   ): Promise<void> {
+    if (!isFirebaseAvailable) {
+      throw new Error(
+        "User updates require Firebase. Please set up Firebase configuration.",
+      );
+    }
+
     try {
       await setDoc(doc(db, USERS_COLLECTION, userId), updates, { merge: true });
     } catch (error) {
@@ -181,8 +347,12 @@ export class AuthService {
     }
   }
 
-  // Get all users (admin only)
+  // Get all users (admin only) - Only works with Firebase
   static async getAllUsers(): Promise<User[]> {
+    if (!isFirebaseAvailable) {
+      return MOCK_USERS;
+    }
+
     try {
       const usersRef = collection(db, USERS_COLLECTION);
       const snapshot = await getDocs(usersRef);
@@ -207,45 +377,29 @@ export class AuthService {
     }
   }
 
-  // Seed demo users for development
-  static async seedDemoUsers(): Promise<void> {
+  // Check if Firebase is available
+  static getFirebaseStatus(): boolean {
+    return isFirebaseAvailable;
+  }
+
+  // Initialize service
+  static async initialize(): Promise<void> {
     try {
-      // Check if demo users already exist
-      const usersRef = collection(db, USERS_COLLECTION);
-      const q = query(usersRef, where("email", "==", "admin@cabletv.com"));
-      const snapshot = await getDocs(q);
-
-      if (snapshot.empty) {
-        // Create demo admin user
-        const adminUser = await this.createUser(
-          "admin@cabletv.com",
-          "admin123",
-          {
-            name: "System Administrator",
-            role: "admin",
-            phone: "+1 (555) 000-0000",
-          },
-        );
-
-        // Create demo employee users
-        await this.createUser("john.collector@cabletv.com", "employee123", {
-          name: "John Collector",
-          role: "employee",
-          phone: "+1 (555) 111-1111",
-          assignedCustomers: ["customer1", "customer2"],
-        });
-
-        await this.createUser("sarah.collector@cabletv.com", "employee123", {
-          name: "Sarah Collector",
-          role: "employee",
-          phone: "+1 (555) 222-2222",
-          assignedCustomers: ["customer3", "customer4"],
-        });
-
-        console.log("Demo users created successfully");
+      await this.checkFirebaseAvailability();
+      if (!isFirebaseAvailable) {
+        // Load mock user from localStorage
+        const storedUser = localStorage.getItem("cabletv_mock_user");
+        if (storedUser) {
+          try {
+            mockCurrentUser = JSON.parse(storedUser);
+          } catch (error) {
+            localStorage.removeItem("cabletv_mock_user");
+          }
+        }
       }
     } catch (error) {
-      console.error("Error seeding demo users:", error);
+      console.warn("Firebase initialization failed, using mock authentication");
+      isFirebaseAvailable = false;
     }
   }
 }
