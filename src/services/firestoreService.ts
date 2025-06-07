@@ -536,8 +536,8 @@ class FirestoreService {
       // Add billing fields with defaults
       packageAmount: data.bill_amount || 0,
       previousOutstanding: data.prev_os || 0,
-      planBill: data.bill_amount || 0,
       currentOutstanding: data.current_os || 0,
+      billDueDate: data.bill_due_date || 1,
     };
   }
 
