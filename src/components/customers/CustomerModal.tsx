@@ -52,11 +52,12 @@ export function CustomerModal({
   const isEditing = !!customer;
 
   // Initialize with either customer data or empty form
-  const initialData = customer
-    ? {
+  const getInitialData = () => {
+    if (customer) {
+      return {
         name: customer.name || "",
         phoneNumber: customer.phoneNumber || "",
-        email: customer.email || "",
+        email: customer.email || "", // Always ensure string, not undefined
         address: customer.address || "",
         vcNumber: customer.vcNumber || "",
         currentPackage: customer.currentPackage || "",
@@ -64,26 +65,27 @@ export function CustomerModal({
         billingStatus: customer.billingStatus || "Pending",
         isActive: customer.isActive !== undefined ? customer.isActive : true,
         portalBill: customer.portalBill || 0,
-        numberOfConnections: customer.numberOfConnections || "",
+        numberOfConnections: customer.numberOfConnections || 1,
         connections: customer.connections || [],
         customPlan: customer.customPlan || null,
         packageAmount: customer.packageAmount || 0,
         previousOutstanding: customer.previousOutstanding || 0,
         currentOutstanding: customer.currentOutstanding || 0,
-        isInitialized: false,
-      }
-    : {
+        isInitialized: true,
+      };
+    } else {
+      return {
         name: "",
         phoneNumber: "",
-        email: "",
+        email: "", // Empty string, not undefined
         address: "",
-        vcNumber: `VC${Math.random().toString().substr(2, 6)}`,
+        vcNumber: "", // Start blank as requested
         currentPackage: "",
         collectorName: "",
         billingStatus: "Pending" as const,
         isActive: true,
         portalBill: 0,
-        numberOfConnections: "",
+        numberOfConnections: 1,
         connections: [] as Connection[],
         customPlan: null,
         packageAmount: 0,
@@ -91,6 +93,10 @@ export function CustomerModal({
         currentOutstanding: 0,
         isInitialized: false,
       };
+    }
+  };
+
+  const initialData = getInitialData();
 
   const [formData, setFormData] = useState(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
