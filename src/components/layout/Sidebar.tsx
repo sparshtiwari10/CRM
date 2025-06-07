@@ -17,17 +17,23 @@ import {
   X,
 } from "lucide-react";
 
-const baseNavigation = [
+// Navigation for administrators (full access)
+const adminNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Billing & Payments", href: "/billing", icon: CreditCard },
   { name: "Packages", href: "/packages", icon: Package },
   { name: "Requests", href: "/requests", icon: ClipboardList },
+  { name: "Employees", href: "/employees", icon: UserCog },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
-const adminOnlyNavigation = [
-  { name: "Employees", href: "/employees", icon: UserCog },
+// Navigation for employees (restricted access)
+const employeeNavigation = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Customers", href: "/customers", icon: Users },
+  { name: "Billing & Payments", href: "/billing", icon: CreditCard },
+  { name: "Requests", href: "/requests", icon: ClipboardList },
 ];
 
 interface SidebarContentProps {
@@ -38,11 +44,8 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
   const location = useLocation();
   const { isAdmin } = useAuth();
 
-  // Combine navigation items based on user role
-  const navigation = [...baseNavigation];
-  if (isAdmin) {
-    navigation.splice(-1, 0, ...adminOnlyNavigation); // Insert admin items before Settings
-  }
+  // Choose navigation based on user role
+  const navigation = isAdmin ? adminNavigation : employeeNavigation;
 
   return (
     <div className="flex h-full flex-col bg-gray-50 border-r border-gray-200">
@@ -53,6 +56,13 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
             <Package className="h-5 w-5 text-white" />
           </div>
           <span className="text-xl font-bold text-gray-900">CableTV</span>
+        </div>
+      </div>
+
+      {/* Role indicator */}
+      <div className="px-4 py-2 border-b border-gray-200 bg-gray-100">
+        <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+          {isAdmin ? "Administrator" : "Employee Portal"}
         </div>
       </div>
 
