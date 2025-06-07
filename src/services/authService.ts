@@ -446,6 +446,11 @@ class AuthService {
    * Static method to seed demo users (for DataSeeder)
    */
   static async seedDemoUsers(): Promise<void> {
+    if (!isFirebaseAvailable || !db) {
+      console.log("🔄 Firebase not available, using mock users for demo");
+      return;
+    }
+
     const instance = new AuthService();
     await instance.seedDefaultAdmin();
 
@@ -485,12 +490,7 @@ class AuthService {
    * Static method to check Firebase status
    */
   static getFirebaseStatus(): boolean {
-    try {
-      // Check if firebase is initialized and working
-      return !!db;
-    } catch (error) {
-      return false;
-    }
+    return isFirebaseAvailable && !!db;
   }
 }
 
