@@ -111,6 +111,9 @@ export default function Dashboard() {
   // Combine recent payments for the Recent Payments section
   const recentPayments = [...todayPayments, ...yesterdayPayments].slice(0, 5);
 
+  // Create empty state message when no customers exist
+  const hasCustomers = customers.length > 0;
+
   const StatCard = ({
     title,
     value,
