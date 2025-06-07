@@ -571,6 +571,7 @@ class FirestoreService {
       discount: 0,
       current_os: customer.currentOutstanding || 0,
       remark: "",
+      bill_due_date: customer.billDueDate || 1,
       created_at: Timestamp.now(),
       updated_at: Timestamp.now(),
     };
