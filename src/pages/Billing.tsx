@@ -163,7 +163,9 @@ export default function Billing() {
       record.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.vcNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
-      !statusFilter || statusFilter === "all" || record.status === statusFilter;
+      !statusFilter ||
+      statusFilter === "all" ||
+      record.status.toLowerCase() === statusFilter.toLowerCase();
     const matchesEmployee =
       !employeeFilter ||
       employeeFilter === "all" ||
