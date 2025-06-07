@@ -90,9 +90,9 @@ export const mockCustomers: Customer[] = [
       },
     ],
     previousOutstanding: 0,
-    planBill: 798, // 299 + 499
     currentOutstanding: 798,
     packageAmount: 798,
+    billDueDate: 10,
   },
   {
     id: "3",
@@ -126,9 +126,9 @@ export const mockCustomers: Customer[] = [
       description: "Custom enterprise solution with dedicated support",
     },
     previousOutstanding: 899,
-    planBill: 899,
     currentOutstanding: 1798, // Previous + current bill (unpaid)
     packageAmount: 899,
+    billDueDate: 15,
   },
   {
     id: "4",
