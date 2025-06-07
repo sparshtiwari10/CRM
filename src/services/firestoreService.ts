@@ -651,7 +651,9 @@ class FirestoreService {
   private sanitizeFirestoreData(data: any): void {
     for (const [key, value] of Object.entries(data)) {
       if (value === undefined) {
-        console.warn(`⚠️ Removing undefined field '${key}' from Firestore data`);
+        console.warn(
+          `⚠️ Removing undefined field '${key}' from Firestore data`,
+        );
         delete data[key];
       } else if (typeof value === "string" && value.trim() === "") {
         // Convert empty strings to null for optional fields
@@ -660,7 +662,6 @@ class FirestoreService {
         }
       }
     }
-  }
   }
 
   private convertFirestoreBillingToBillingRecord(
