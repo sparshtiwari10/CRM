@@ -1,202 +1,368 @@
-# Firebase Setup Guide for CableTV Dashboard
+# 🔥 Firebase Firestore Setup Guide for AGV Cable TV Management
 
-## 🔥 Firebase Project Setup
+## 🚀 Quick Start
+
+This application uses **Firestore Database** with **custom authentication** (no Firebase Auth required).
+
+### Default Login Credentials
+
+- **Admin**: username: `admin`, password: `admin123`
+- **Employee**: username: `employee`, password: `employee123`
+
+## 📋 Prerequisites
+
+1. A Firebase account
+2. Node.js installed
+3. Your existing customer data in CSV/JSON format
+
+## 🔧 Firebase Project Setup
 
 ### 1. Create Firebase Project
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Click "Create a project"
-3. Enter project name: `cabletv-dashboard`
-4. Enable Google Analytics (optional)
+3. Enter project name: `agv-cabletv` (or your preferred name)
+4. **Disable Google Analytics** (not needed for this app)
 5. Create project
 
-### 2. Enable Authentication
+### 2. Create Firestore Database
 
-1. In Firebase Console, go to **Authentication** → **Sign-in method**
-2. Enable **Email/Password** provider
-3. Optionally enable **Google** provider for easier access
+1. In Firebase Console, go to **Firestore Database**
+2. Click **Create database**
+3. Choose **Start in production mode**
+4. Select your preferred location (closest to your users)
 
-### 3. Create Firestore Database
-
-1. Go to **Firestore Database** → **Create database**
-2. Choose **Start in test mode** (for development)
-3. Select your preferred location
-
-### 4. Get Firebase Configuration
+### 3. Get Firebase Configuration
 
 1. Go to **Project Settings** → **General** → **Your apps**
 2. Click **Web app** (</>) icon
-3. Register app with name: `cabletv-dashboard`
-4. Copy the Firebase configuration object
+3. Register app with name: `agv-cabletv-app`
+4. **Do NOT select "Firebase Hosting"**
+5. Copy the Firebase configuration object
 
-### 5. Update Firebase Config
+### 4. Configure the Application
 
-Replace the demo config in `src/lib/firebase.ts`:
+1. Create a `.env` file in your project root:
 
-```typescript
-const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "your-app-id",
-};
+```bash
+cp .env.example .env
 ```
 
-## 🔐 Security Rules
+2. Update `.env` with your Firebase configuration:
 
-### Firestore Security Rules
+```env
+VITE_FIREBASE_API_KEY=your-api-key-here
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+VITE_FIREBASE_APP_ID=1:123456789:web:abcdef123456
+```
 
-Replace default rules in Firebase Console → Firestore → Rules:
+## 🔐 Firestore Security Rules
+
+Replace the default rules in **Firestore → Rules**:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users collection - only authenticated users can read their own data
+
+    // Users collection - stores employee/admin credentials
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null &&
-                     exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read, write: if true; // Allow for initial setup
+      // TODO: Restrict after initial admin user is created
     }
 
     // Customers collection
     match /customers/{customerId} {
-      allow read, write: if request.auth != null &&
-                           exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read, write: if true; // Allow for initial setup
+      // TODO: Add user-based restrictions after authentication is set up
+    }
 
-      allow read: if request.auth != null &&
-                     exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'employee' &&
-                     resource.data.collectorName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.name;
+    // Billing collection
+    match /billing/{billingId} {
+      allow read, write: if true; // Allow for initial setup
+    }
+
+    // Requests collection
+    match /requests/{requestId} {
+      allow read, write: if true; // Allow for initial setup
+    }
+
+    // Allow read/write access on all documents to any user, as defined above
+    // TODO: Implement proper security rules based on user roles
+  }
+}
+```
+
+**⚠️ Important**: These are permissive rules for initial setup. Update them for production!
+
+## 📊 Data Import Process
+
+### 1. Prepare Your Data
+
+Ensure your customer data includes these fields:
+
+- `name` (required)
+- `phone` (required)
+- `address` (required)
+- `vc_no` (required)
+- `package` (optional, defaults to "Basic")
+- `collector_name` (optional, defaults to "Default Collector")
+- `email` (optional)
+- `billing_status` (optional: "Paid"/"Pending"/"Overdue")
+- `status` (optional: "active"/"inactive", defaults to "active")
+
+### 2. Import Customer Data
+
+1. Start the application: `npm run dev`
+2. Login as admin (username: `admin`, password: `admin123`)
+3. Go to **Settings** or **Admin Panel**
+4. Use the **Import Data** feature
+5. Upload your CSV or JSON file
+
+### 3. Create Employee Users
+
+After importing customers, create employee accounts:
+
+1. Login as admin
+2. Go to **Employee Management**
+3. Create users with:
+   - Username and password
+   - Role: "employee" or "admin"
+   - Collector name (for employees)
+   - Access scope (which customers they can see)
+
+## 🏗️ Collections Structure
+
+The application creates these Firestore collections:
+
+### `users` Collection
+
+```javascript
+{
+  username: "john.collector",
+  password_hash: "bcrypt_hashed_password",
+  name: "John Collector",
+  role: "employee", // or "admin"
+  collector_name: "John Collector", // for employees
+  access_scope: [], // array of customer IDs (optional)
+  created_at: timestamp,
+  last_login: timestamp,
+  is_active: true
+}
+```
+
+### `customers` Collection
+
+```javascript
+{
+  name: "Customer Name",
+  phone: "+91 98765 43210",
+  address: "Full Address",
+  package: "Premium HD",
+  vc_no: "VC001234",
+  collector_name: "John Collector",
+  email: "customer@email.com",
+  billing_status: "Paid", // "Paid" | "Pending" | "Overdue"
+  last_payment_date: timestamp,
+  join_date: timestamp,
+  status: "active", // "active" | "inactive"
+  // Additional fields from original Excel data
+  prev_os: 0,
+  bill_amount: 599,
+  collected_cash: 599,
+  collected_online: 0,
+  discount: 0,
+  current_os: 0,
+  remark: "Customer notes",
+  created_at: timestamp,
+  updated_at: timestamp
+}
+```
+
+### `billing` Collection
+
+```javascript
+{
+  customer_id: "customer_doc_id",
+  customer_name: "Customer Name",
+  package_name: "Premium HD",
+  amount: 599,
+  due_date: timestamp,
+  status: "Paid", // "Paid" | "Pending" | "Overdue"
+  invoice_number: "INV-2024-001",
+  generated_date: timestamp,
+  generated_by: "John Collector",
+  employee_id: "employee_doc_id",
+  billing_month: "January",
+  billing_year: "2024",
+  vc_number: "VC001234",
+  custom_amount: 599, // if custom amount was used
+  created_at: timestamp
+}
+```
+
+### `requests` Collection
+
+```javascript
+{
+  customer_id: "customer_doc_id",
+  customer_name: "Customer Name",
+  employee_id: "employee_doc_id",
+  employee_name: "John Collector",
+  action_type: "activation", // "activation" | "deactivation" | "plan_change"
+  current_plan: "Basic",
+  requested_plan: "Premium HD",
+  reason: "Customer requested upgrade",
+  status: "pending", // "pending" | "approved" | "rejected"
+  request_date: timestamp,
+  review_date: timestamp,
+  reviewed_by: "Admin Name",
+  admin_notes: "Approved",
+  created_at: timestamp,
+  updated_at: timestamp
+}
+```
+
+## 🚀 Deployment
+
+### Option 1: Firebase Hosting
+
+1. Install Firebase CLI: `npm install -g firebase-tools`
+2. Login: `firebase login`
+3. Initialize: `firebase init hosting`
+4. Build: `npm run build`
+5. Deploy: `firebase deploy`
+
+### Option 2: Other Hosting Platforms
+
+The app can be deployed to:
+
+- Vercel
+- Netlify
+- DigitalOcean App Platform
+- Any static hosting service
+
+Just build the app with `npm run build` and upload the `dist` folder.
+
+## 🔐 Production Security
+
+### 1. Update Firestore Rules
+
+Replace the permissive rules with proper security:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is authenticated admin
+    function isAdmin() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Helper function to check if user is authenticated employee
+    function isEmployee() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isEmployee();
+      allow write: if isAdmin();
+    }
+
+    // Customers collection
+    match /customers/{customerId} {
+      allow read, write: if isAdmin();
+      allow read: if isEmployee() &&
+                     resource.data.collector_name ==
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.collector_name;
+    }
+
+    // Billing collection
+    match /billing/{billingId} {
+      allow read, write: if isAdmin();
+      allow read, create: if isEmployee() &&
+                          resource.data.employee_id == request.auth.uid;
+    }
+
+    // Requests collection
+    match /requests/{requestId} {
+      allow read: if isAdmin();
+      allow read, create: if isEmployee() &&
+                          resource.data.employee_id == request.auth.uid;
+      allow update: if isAdmin();
     }
   }
 }
 ```
 
-## 🏗️ Development Setup
+### 2. Environment Variables
 
-### Option 1: Use Demo Mode (Recommended for Testing)
+For production, use environment variables or Firebase Remote Config for sensitive settings.
 
-The app is configured to work with demo data out of the box. Just run:
+### 3. Enable App Check
 
-```bash
-npm run dev
-```
-
-Demo credentials:
-
-- **Admin**: admin@cabletv.com / admin123
-- **Employee**: john.collector@cabletv.com / employee123
-
-### Option 2: Connect to Real Firebase
-
-1. Update `src/lib/firebase.ts` with your Firebase config
-2. Deploy security rules to your Firebase project
-3. Run the app - demo data will be automatically seeded
-
-### Option 3: Use Firebase Emulators (Advanced)
-
-1. Install Firebase CLI: `npm install -g firebase-tools`
-2. Login: `firebase login`
-3. Initialize: `firebase init`
-4. Start emulators: `firebase emulators:start`
-5. Update `src/lib/firebase.ts` to use emulator settings
-
-## 📱 Production Deployment
-
-### 1. Build the App
-
-```bash
-npm run build
-```
-
-### 2. Deploy to Firebase Hosting
-
-```bash
-firebase init hosting
-firebase deploy
-```
-
-### 3. Update Security Rules
-
-Deploy the production security rules:
-
-```bash
-firebase deploy --only firestore:rules
-```
-
-## 🔄 Data Migration
-
-### Seed Demo Data
-
-The app automatically seeds demo data in development mode. To manually seed:
-
-```typescript
-import { DataSeeder } from "@/utils/seedData";
-await DataSeeder.seedAll();
-```
-
-### Clear All Data
-
-To reset the database:
-
-```typescript
-import { DataSeeder } from "@/utils/seedData";
-await DataSeeder.clearAllData();
-```
+1. Go to **Project Settings** → **App Check**
+2. Enable App Check for your web app
+3. Configure reCAPTCHA v3
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-1. **Authentication errors**: Check Firebase Auth configuration
-2. **Firestore permission denied**: Verify security rules
-3. **Network errors**: Check Firebase project settings
+1. **"Permission denied" errors**: Check Firestore security rules
+2. **"Firebase not available"**: Verify environment variables in `.env`
+3. **Login fails**: Check if default admin user was created
+4. **Import fails**: Verify data format and required fields
 
 ### Debug Mode
 
-Enable debug logging in development:
+Enable detailed logging:
 
-```typescript
-// In src/lib/firebase.ts
-import { connectFirestoreEmulator, enableNetwork } from "firebase/firestore";
-
-if (import.meta.env.DEV) {
-  // Enable debugging
-  console.log("Firebase debug mode enabled");
-}
+```javascript
+// In browser console
+localStorage.setItem("debug", "agv:*");
 ```
 
-## 📊 Monitoring
+### Firestore Emulator (Development)
 
-### Firebase Console
+For local development with emulator:
 
-Monitor your app in Firebase Console:
+1. Install: `npm install -g firebase-tools`
+2. Setup: `firebase init emulators`
+3. Start: `firebase emulators:start`
+4. Update `.env`:
 
-- **Authentication**: User login activity
-- **Firestore**: Database usage and performance
-- **Hosting**: Website traffic and performance
+```env
+VITE_USE_FIREBASE_EMULATOR=true
+VITE_FIRESTORE_EMULATOR_HOST=localhost
+VITE_FIRESTORE_EMULATOR_PORT=8080
+```
 
-### Error Tracking
+## 📞 Support
 
-Consider adding Firebase Crashlytics for production error tracking.
+For setup assistance:
 
-## 🔒 Security Best Practices
+1. Check console errors in browser developer tools
+2. Verify Firestore rules and data structure
+3. Ensure environment variables are correctly set
+4. Check that collections exist and have proper permissions
 
-1. **Never commit Firebase config with real keys to public repos**
-2. **Use environment variables for sensitive data**
-3. **Regularly review and update security rules**
-4. **Enable App Check for production**
-5. **Monitor authentication anomalies**
-6. **Implement proper user roles and permissions**
+## 🔄 Data Backup
 
-## 📈 Scaling Considerations
+Regular backup your Firestore data:
 
-1. **Database indexing**: Add composite indexes for complex queries
-2. **Pagination**: Implement pagination for large customer lists
-3. **Caching**: Use Firebase caching for better performance
-4. **CDN**: Use Firebase Hosting CDN for static assets
+1. Use Firebase CLI: `firebase firestore:export`
+2. Or use Cloud Console backup feature
+3. Schedule automated backups for production
+
+---
+
+**🎉 You're all set!** Your AGV Cable TV Management System is now connected to Firebase Firestore with custom authentication and ready for production use.
