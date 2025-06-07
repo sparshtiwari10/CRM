@@ -436,7 +436,7 @@ export default function Packages() {
 
             <form onSubmit={handleSavePackage}>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="text-sm font-medium">Package Name</label>
                     <input
@@ -462,6 +462,23 @@ export default function Packages() {
                       placeholder="0.00"
                       defaultValue={editingPackage?.price || ""}
                     />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">
+                      Portal Amount (₹)
+                    </label>
+                    <input
+                      name="portalAmount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0.00"
+                      defaultValue={editingPackage?.portalAmount || ""}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Auto-filled when customer selects package
+                    </p>
                   </div>
                 </div>
 
