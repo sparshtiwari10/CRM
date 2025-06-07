@@ -14,7 +14,6 @@ export interface Customer {
   phoneNumber: string;
   address: string;
   currentPackage: string;
-  billingStatus: "Paid" | "Pending" | "Overdue";
   lastPaymentDate: string;
   email?: string;
   joinDate: string;
