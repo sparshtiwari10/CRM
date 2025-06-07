@@ -45,6 +45,75 @@ export default function Billing() {
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
 
+  // Export billing data to CSV
+  const handleExportStatement = () => {
+    try {
+      const filteredData = billingRecords;
+
+      if (filteredData.length === 0) {
+        toast({
+          title: "No Data",
+          description: "No billing records to export",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const csvContent = [
+        // CSV Headers
+        [
+          "Date",
+          "Customer Name",
+          "VC Number",
+          "Amount (₹)",
+          "Payment Method",
+          "Status",
+          "Invoice Number",
+          "Collector",
+        ].join(","),
+        // CSV Data
+        ...filteredData.map((record) =>
+          [
+            record.date,
+            `"${record.customerName}"`,
+            record.vcNumber || "",
+            record.amount,
+            record.paymentMethod || "",
+            record.status,
+            record.invoiceNumber || "",
+            `"${record.collectorName || ""}"`,
+          ].join(","),
+        ),
+      ].join("\n");
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `billing-statement-${new Date().toISOString().split("T")[0]}.csv`,
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Export Successful",
+        description: `Exported ${filteredData.length} billing records`,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export billing statement",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Load billing records
   useEffect(() => {
     const loadBillingRecords = async () => {
