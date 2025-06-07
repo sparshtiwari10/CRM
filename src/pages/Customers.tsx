@@ -399,6 +399,7 @@ export default function Customers() {
         {/* Customer Modal */}
         {isAdmin && (
           <CustomerModal
+            key={editingCustomer?.id || "new"}
             open={isModalOpen}
             onOpenChange={setIsModalOpen}
             customer={editingCustomer}
