@@ -10,6 +10,7 @@ import { authService, User, LoginCredentials } from "@/services/authService";
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   isAdmin: boolean;
   login: (credentials: LoginCredentials) => Promise<User>;
   logout: () => void;
