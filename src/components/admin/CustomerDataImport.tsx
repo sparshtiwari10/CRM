@@ -143,23 +143,25 @@ export function CustomerDataImport({
     return { isValid: errors.length === 0, errors };
   };
 
-  const convertToCustomer = (data: any): Omit<Customer, "id"> => {
+  const convertToCustomer = (data: any): Omit<Customer, 'id'> => {
+    const isActive = data.isActive?.toLowerCase() === 'true';
     return {
-      name: data.name?.trim() || "",
-      phoneNumber: data.phoneNumber?.trim() || "",
-      address: data.address?.trim() || "",
-      vcNumber: data.vcNumber?.trim() || "",
-      currentPackage: data.currentPackage?.trim() || "Basic",
-      collectorName: data.collectorName?.trim() || "",
-      billingStatus: (data.billingStatus?.trim() as any) || "Pending",
+      name: data.name?.trim() || '',
+      phoneNumber: data.phoneNumber?.trim() || '',
+      address: data.address?.trim() || '',
+      vcNumber: data.vcNumber?.trim() || '',
+      currentPackage: data.currentPackage?.trim() || 'Basic',
+      collectorName: data.collectorName?.trim() || '',
+      billingStatus: (data.billingStatus?.trim() as any) || 'Pending',
       portalBill: Number(data.portalBill) || 0,
-      isActive: data.isActive?.toLowerCase() === "true",
-      email: data.email?.trim() || "",
-      joinDate: new Date().toISOString().split("T")[0],
-      lastPaymentDate:
-        data.lastPaymentDate || new Date().toISOString().split("T")[0],
-      activationDate: new Date().toISOString().split("T")[0],
+      isActive: isActive,
+      email: data.email?.trim() || '',
+      joinDate: new Date().toISOString().split('T')[0],
+      lastPaymentDate: data.lastPaymentDate || new Date().toISOString().split('T')[0],
+      activationDate: new Date().toISOString().split('T')[0],
+      deactivationDate: !isActive ? new Date().toISOString().split('T')[0] : null,
     };
+  };
   };
 
   const handleFileImport = async (
