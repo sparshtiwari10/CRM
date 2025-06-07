@@ -124,6 +124,30 @@ export function CustomerModal({
     setErrors({});
   }
 
+  // Load available collectors when modal opens
+  useState(() => {
+    if (open) {
+      const loadCollectors = async () => {
+        try {
+          const users = await authService.getAllUsers();
+          const collectors = users
+            .filter(
+              (user) =>
+                user.isActive &&
+                (user.role === "employee" || user.role === "admin"),
+            )
+            .map((user) => user.name);
+          setAvailableCollectors(collectors);
+        } catch (error) {
+          console.error("Failed to load collectors:", error);
+          // Fallback to default admin
+          setAvailableCollectors(["System Administrator"]);
+        }
+      };
+      loadCollectors();
+    }
+  }, [open]);
+
   // Reset form when switching from edit to add mode
   if (open && !customer && !formData.isInitialized) {
     setFormData({
@@ -675,7 +699,7 @@ export function CustomerModal({
                 {isAdmin && (
                   <div>
                     <Label htmlFor="portalBill">
-                      Portal Bill (₹)
+                      Portal Bill (���)
                       {!showCustomPlan && formData.currentPackage && (
                         <span className="text-green-600 text-xs ml-1">
                           (Auto-filled)
