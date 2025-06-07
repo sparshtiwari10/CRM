@@ -24,7 +24,10 @@ import { mockPackages, mockCustomers } from "@/data/mockData";
 
 export default function Packages() {
   const [packages] = useState<Package[]>(mockPackages);
+  const [customers] = useState<Customer[]>(mockCustomers);
   const [viewingPackage, setViewingPackage] = useState<Package | null>(null);
+  const [editingPackage, setEditingPackage] = useState<Package | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Calculate customers per package
   const getCustomerCount = (packageName: string) => {
@@ -62,10 +65,10 @@ export default function Packages() {
               Manage cable TV packages and pricing
             </p>
           </div>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Package
-          </Button>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Package
+            </Button>
         </div>
 
         {/* Stats Cards */}
@@ -195,7 +198,12 @@ export default function Packages() {
                     <Eye className="mr-2 h-4 w-4" />
                     View
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setEditingPackage(pkg)}
+                  >
                     <Edit className="mr-2 h-4 w-4" />
                     Edit
                   </Button>
@@ -330,8 +338,121 @@ export default function Packages() {
                   </Button>
                   <Button>Edit Package</Button>
                 </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Create/Edit Package Modal */}
+        <Dialog
+          open={showCreateModal || !!editingPackage}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowCreateModal(false);
+              setEditingPackage(null);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingPackage ? "Edit Package" : "Create New Package"}
+              </DialogTitle>
+              <DialogDescription>
+                {editingPackage
+                  ? "Update package details and features"
+                  : "Add a new package to your service offerings"
+                }
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Package Name</label>
+                  <input
+                    type="text"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter package name"
+                    defaultValue={editingPackage?.name || ""}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Monthly Price ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                    defaultValue={editingPackage?.price || ""}
+                  />
+                </div>
               </div>
-            )}
+
+              <div>
+                <label className="text-sm font-medium">Description</label>
+                <textarea
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Package description"
+                  defaultValue={editingPackage?.description || ""}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Number of Channels</label>
+                  <input
+                    type="number"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0"
+                    defaultValue={editingPackage?.channels || ""}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Status</label>
+                  <select
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    defaultValue={editingPackage?.isActive ? "active" : "inactive"}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Features</label>
+                <textarea
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={4}
+                  placeholder="Enter features, one per line"
+                  defaultValue={editingPackage?.features.join('\n') || ""}
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter each feature on a new line</p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setEditingPackage(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  // Here you would handle the save logic
+                  console.log("Saving package...");
+                  setShowCreateModal(false);
+                  setEditingPackage(null);
+                }}
+              >
+                {editingPackage ? "Update Package" : "Create Package"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
