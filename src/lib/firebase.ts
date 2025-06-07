@@ -20,6 +20,9 @@ let db: any;
 let isFirebaseAvailable = false;
 
 try {
+  console.log("🔄 Initializing Firebase...");
+  console.log(`📊 Project ID: ${firebaseConfig.projectId}`);
+
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   isFirebaseAvailable = true;
@@ -32,17 +35,16 @@ try {
       console.log("🔗 Connected to Firestore emulator");
     } catch (error) {
       // Emulator already connected or not available - this is fine
-      console.log(
-        "📡 Using production Firestore or emulator already connected",
-      );
+      console.log("📡 Using production Firestore");
     }
   }
 
   console.log("✅ Firebase initialized successfully");
-  console.log(`📊 Project ID: ${firebaseConfig.projectId}`);
+  console.log("🔗 Firestore connection established");
 } catch (error) {
   console.error("❌ Firebase initialization failed:", error);
   console.log("🔄 Falling back to demo mode with mock data");
+  console.log("💡 Check your .env file and Firebase project settings");
 
   isFirebaseAvailable = false;
   // Set db to null - we'll handle this in the services
