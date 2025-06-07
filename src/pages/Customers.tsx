@@ -54,33 +54,35 @@ export default function Customers() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
 
+  // Load customers function
+  const loadCustomers = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      const data = isAdmin
+        ? await CustomerService.getAllCustomers()
+        : await CustomerService.getCustomersByCollector(user.name);
+      setCustomers(data);
+    } catch (error) {
+      console.error("Load error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load customers",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load data once on mount
   useEffect(() => {
-    async function loadCustomers() {
-      if (!user) return;
-
-      setIsLoading(true);
-      try {
-        const data = isAdmin
-          ? await CustomerService.getAllCustomers()
-          : await CustomerService.getCustomersByCollector(user.name);
-        setCustomers(data);
-      } catch (error) {
-        console.error("Load error:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load customers",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     loadCustomers();
   }, []);
 
@@ -279,17 +281,29 @@ export default function Customers() {
                 : "View customers assigned to you"}
             </p>
           </div>
-          {/* Only show Add Customer button for admins */}
+          {/* Only show Add Customer and Import buttons for admins */}
           {isAdmin && (
-            <Button
-              onClick={handleAdd}
-              disabled={isSaving}
-              className="lg:h-10 h-8 text-sm lg:text-base"
-            >
-              <Plus className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" />
-              <span className="hidden sm:inline">Add Customer</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
+            <div className="flex space-x-2">
+              <Button
+                onClick={handleAdd}
+                disabled={isSaving}
+                className="lg:h-10 h-8 text-sm lg:text-base"
+              >
+                <Plus className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Add Customer</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowImport(!showImport)}
+                disabled={isSaving}
+                className="lg:h-10 h-8 text-sm lg:text-base"
+              >
+                <Upload className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Import Data</span>
+                <span className="sm:hidden">Import</span>
+              </Button>
+            </div>
           )}
         </div>
 
@@ -322,6 +336,16 @@ export default function Customers() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Import Data Section - Only for admins */}
+        {isAdmin && showImport && (
+          <CustomerDataImport
+            onImportComplete={() => {
+              loadCustomers(); // Refresh the customer list
+              setShowImport(false); // Hide the import section
+            }}
+          />
+        )}
 
         {/* Results Summary - Smaller and cleaner */}
         <div className="bg-gray-50 rounded-lg p-2 lg:p-3 border">

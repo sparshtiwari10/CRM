@@ -70,6 +70,18 @@ export default function Dashboard() {
   );
   const monthlyRevenue = totalRevenue; // For now, treat all as monthly
 
+  // Calculate new customers this month
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const newCustomersThisMonth = customers.filter((customer) => {
+    if (!customer.joinDate) return false;
+    const joinDate = new Date(customer.joinDate);
+    return (
+      joinDate.getMonth() === currentMonth &&
+      joinDate.getFullYear() === currentYear
+    );
+  }).length;
+
   const recentCustomers = customers.slice(0, 5);
 
   // Mock payment data for today/yesterday (for employee view)
@@ -107,6 +119,12 @@ export default function Dashboard() {
     (sum, payment) => sum + payment.amount,
     0,
   );
+
+  // Combine recent payments for the Recent Payments section
+  const recentPayments = [...todayPayments, ...yesterdayPayments].slice(0, 5);
+
+  // Create empty state message when no customers exist
+  const hasCustomers = customers.length > 0;
 
   const StatCard = ({
     title,
@@ -194,7 +212,7 @@ export default function Dashboard() {
   const handleViewAlerts = () => {
     toast({
       title: "System Alerts",
-      description: `You have ${stats.overdueAccounts} overdue accounts and ${stats.pendingPayments} pending payments.`,
+      description: `You have ${overdueCustomers} overdue accounts and ${pendingCustomers} pending payments.`,
     });
   };
 
@@ -320,31 +338,45 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentCustomers.map((customer) => (
-                    <div
-                      key={customer.id}
-                      className="flex items-center justify-between py-2"
-                    >
-                      <div>
-                        <p className="font-medium">{customer.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {customer.currentPackage}
-                        </p>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={
-                          customer.billingStatus === "Paid"
-                            ? "bg-green-100 text-green-800"
-                            : customer.billingStatus === "Pending"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                        }
-                      >
-                        {customer.billingStatus}
-                      </Badge>
+                  {isLoading ? (
+                    <div className="text-center py-4 text-gray-500">
+                      Loading customers...
                     </div>
-                  ))}
+                  ) : recentCustomers.length > 0 ? (
+                    recentCustomers.map((customer) => (
+                      <div
+                        key={customer.id}
+                        className="flex items-center justify-between py-2"
+                      >
+                        <div>
+                          <p className="font-medium">{customer.name}</p>
+                          <p className="text-sm text-gray-500">
+                            {customer.currentPackage}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={
+                            customer.billingStatus === "Paid"
+                              ? "bg-green-100 text-green-800"
+                              : customer.billingStatus === "Pending"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                          }
+                        >
+                          {customer.billingStatus}
+                        </Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Users className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p>No customers yet</p>
+                      <p className="text-sm">
+                        Start by adding your first customer
+                      </p>
+                    </div>
+                  )}
 
                   <div className="pt-4 border-t">
                     <Button
@@ -366,29 +398,45 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentPayments.map((payment) => (
-                    <div
-                      key={payment.id}
-                      className="flex items-center justify-between py-2"
-                    >
-                      <div>
-                        <p className="font-medium">{payment.customerName}</p>
-                        <p className="text-sm text-gray-500">
-                          {payment.method} •{" "}
-                          {new Date(payment.date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">₹{payment.amount}</p>
-                        <Badge
-                          variant="outline"
-                          className="bg-green-100 text-green-800"
-                        >
-                          {payment.status}
-                        </Badge>
-                      </div>
+                  {isLoading ? (
+                    <div className="text-center py-4 text-gray-500">
+                      Loading payments...
                     </div>
-                  ))}
+                  ) : recentPayments.length > 0 ? (
+                    recentPayments.map((payment) => (
+                      <div
+                        key={payment.id}
+                        className="flex items-center justify-between py-2"
+                      >
+                        <div>
+                          <p className="font-medium">{payment.customerName}</p>
+                          <p className="text-sm text-gray-500">
+                            {payment.method} •{" "}
+                            {new Date(payment.date).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">
+                            ₹{payment.amount.toLocaleString()}
+                          </p>
+                          <Badge
+                            variant="outline"
+                            className="bg-green-100 text-green-800"
+                          >
+                            {payment.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p>No payments yet</p>
+                      <p className="text-sm">
+                        Payments will appear here once customers are added
+                      </p>
+                    </div>
+                  )}
 
                   <div className="pt-4 border-t">
                     <Button
@@ -418,11 +466,12 @@ export default function Dashboard() {
                   <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-medium text-red-800">
-                      {stats.overdueAccounts} Overdue Accounts
+                      {overdueCustomers} Overdue Accounts
                     </p>
                     <p className="text-sm text-red-600">
-                      Multiple customers have overdue payments requiring
-                      immediate attention.
+                      {overdueCustomers > 0
+                        ? `${overdueCustomers > 1 ? "Multiple customers have" : "One customer has"} overdue payments requiring immediate attention.`
+                        : "No overdue accounts - great job!"}
                     </p>
                   </div>
                   <Button
@@ -439,10 +488,12 @@ export default function Dashboard() {
                   <Clock className="h-5 w-5 text-yellow-500 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-medium text-yellow-800">
-                      {stats.pendingPayments} Pending Payments
+                      {pendingCustomers} Pending Payments
                     </p>
                     <p className="text-sm text-yellow-600">
-                      Payments due within the next 7 days.
+                      {pendingCustomers > 0
+                        ? `${pendingCustomers} payments need attention.`
+                        : "All payments are up to date!"}
                     </p>
                   </div>
                   <Button
@@ -459,10 +510,12 @@ export default function Dashboard() {
                   <TrendingUp className="h-5 w-5 text-green-500 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-medium text-green-800">
-                      {stats.newCustomersThisMonth} New Customers This Month
+                      {newCustomersThisMonth} New Customers This Month
                     </p>
                     <p className="text-sm text-green-600">
-                      Customer acquisition is up 12% compared to last month.
+                      {newCustomersThisMonth > 0
+                        ? `Good growth in customer acquisition this month.`
+                        : "Ready to add new customers for this month."}
                     </p>
                   </div>
                   <Button
