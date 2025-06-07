@@ -35,6 +35,13 @@ interface SidebarContentProps {
 
 function SidebarContent({ onLinkClick }: SidebarContentProps) {
   const location = useLocation();
+  const { isAdmin } = useAuth();
+
+  // Combine navigation items based on user role
+  const navigation = [...baseNavigation];
+  if (isAdmin) {
+    navigation.splice(-1, 0, ...adminOnlyNavigation); // Insert admin items before Settings
+  }
 
   return (
     <div className="flex h-full flex-col bg-gray-50 border-r border-gray-200">
