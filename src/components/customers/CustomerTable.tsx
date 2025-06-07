@@ -454,6 +454,15 @@ export function CustomerTable({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem className="flex flex-col items-start p-3">
+                                <div className="font-medium text-sm">
+                                  VC Number
+                                </div>
+                                <div className="font-mono text-blue-600 text-sm">
+                                  {customer.vcNumber}
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => onView(customer)}
                               >
