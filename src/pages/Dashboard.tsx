@@ -491,7 +491,9 @@ export default function Dashboard() {
                       {pendingCustomers} Pending Payments
                     </p>
                     <p className="text-sm text-yellow-600">
-                      Payments due within the next 7 days.
+                      {pendingCustomers > 0
+                        ? `${pendingCustomers} payments need attention.`
+                        : "All payments are up to date!"}
                     </p>
                   </div>
                   <Button
