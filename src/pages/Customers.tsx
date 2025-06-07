@@ -193,6 +193,8 @@ export default function Customers() {
           onEdit={handleEditCustomer}
           onDelete={handleDeleteCustomer}
           onView={handleViewCustomer}
+          onActionRequest={handleActionRequest}
+          onViewHistory={handleViewHistory}
         />
 
         {/* Customer Modal */}
