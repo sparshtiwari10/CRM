@@ -81,65 +81,131 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<User> {
     try {
-      // Query users collection for matching username
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("username", "==", credentials.username));
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        throw new Error("Invalid username or password");
+      if (isFirebaseAvailable && db) {
+        // Use Firebase when available
+        return await this.loginWithFirebase(credentials);
+      } else {
+        // Use mock data when Firebase is unavailable
+        return await this.loginWithMockData(credentials);
       }
-
-      const userDoc = querySnapshot.docs[0];
-      const userData = userDoc.data();
-
-      // Verify password
-      const isPasswordValid = await bcrypt.compare(
-        credentials.password,
-        userData.password_hash,
-      );
-
-      if (!isPasswordValid) {
-        throw new Error("Invalid username or password");
-      }
-
-      // Check if user is active
-      if (!userData.is_active) {
-        throw new Error(
-          "Account is deactivated. Please contact administrator.",
-        );
-      }
-
-      // Update last login
-      await updateDoc(doc(db, "users", userDoc.id), {
-        last_login: Timestamp.now(),
-      });
-
-      // Create user object
-      const user: User = {
-        id: userDoc.id,
-        username: userData.username,
-        name: userData.name,
-        role: userData.role,
-        access_scope: userData.access_scope || [],
-        collector_name: userData.collector_name,
-        created_at: userData.created_at.toDate(),
-        last_login: new Date(),
-        is_active: userData.is_active,
-      };
-
-      // Store user in session
-      this.currentUser = user;
-      this.saveUserToStorage(user);
-
-      console.log(
-        `✅ User ${user.name} logged in successfully as ${user.role}`,
-      );
-      return user;
     } catch (error) {
       console.error("❌ Login failed:", error);
       throw error;
     }
+  }
+
+  /**
+   * Login with Firebase
+   */
+  private async loginWithFirebase(
+    credentials: LoginCredentials,
+  ): Promise<User> {
+    // Query users collection for matching username
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("username", "==", credentials.username));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      throw new Error("Invalid username or password");
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    const userData = userDoc.data();
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(
+      credentials.password,
+      userData.password_hash,
+    );
+
+    if (!isPasswordValid) {
+      throw new Error("Invalid username or password");
+    }
+
+    // Check if user is active
+    if (!userData.is_active) {
+      throw new Error("Account is deactivated. Please contact administrator.");
+    }
+
+    // Update last login
+    await updateDoc(doc(db, "users", userDoc.id), {
+      last_login: Timestamp.now(),
+    });
+
+    // Create user object
+    const user: User = {
+      id: userDoc.id,
+      username: userData.username,
+      name: userData.name,
+      role: userData.role,
+      access_scope: userData.access_scope || [],
+      collector_name: userData.collector_name,
+      created_at: userData.created_at.toDate(),
+      last_login: new Date(),
+      is_active: userData.is_active,
+    };
+
+    // Store user in session
+    this.currentUser = user;
+    this.saveUserToStorage(user);
+
+    console.log(
+      `✅ User ${user.name} logged in successfully as ${user.role} (Firebase)`,
+    );
+    return user;
+  }
+
+  /**
+   * Login with mock data (when Firebase is unavailable)
+   */
+  private async loginWithMockData(
+    credentials: LoginCredentials,
+  ): Promise<User> {
+    // Find user in mock data
+    const mockUser = mockUsers.find((u) => u.username === credentials.username);
+
+    if (!mockUser) {
+      throw new Error("Invalid username or password");
+    }
+
+    // Verify password (for demo, we'll accept both hashed and plain passwords)
+    const isPasswordValid =
+      (credentials.password === "admin123" &&
+        credentials.username === "admin") ||
+      (credentials.password === "employee123" &&
+        credentials.username === "employee") ||
+      (await bcrypt.compare(credentials.password, mockUser.password_hash));
+
+    if (!isPasswordValid) {
+      throw new Error("Invalid username or password");
+    }
+
+    // Check if user is active
+    if (!mockUser.is_active) {
+      throw new Error("Account is deactivated. Please contact administrator.");
+    }
+
+    // Create user object
+    const user: User = {
+      id: mockUser.id,
+      username: mockUser.username,
+      name: mockUser.name,
+      role: mockUser.role,
+      access_scope: mockUser.access_scope || [],
+      collector_name: mockUser.collector_name,
+      created_at: mockUser.created_at,
+      last_login: new Date(),
+      is_active: mockUser.is_active,
+    };
+
+    // Store user in session
+    this.currentUser = user;
+    this.saveUserToStorage(user);
+
+    console.log(
+      `✅ User ${user.name} logged in successfully as ${user.role} (Demo Mode)`,
+    );
+    return user;
   }
 
   /**
