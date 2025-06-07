@@ -114,8 +114,10 @@ export function CustomerModal({
   };
 
   const handleClose = () => {
-    onOpenChange(false);
+    // Reset form state first
     form.reset();
+    // Close the modal
+    onOpenChange(false);
   };
 
   return (
