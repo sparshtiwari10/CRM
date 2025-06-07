@@ -48,6 +48,30 @@ export function CustomerModal({
   const isEditing = !!customer;
   const [availableCollectors, setAvailableCollectors] = useState<string[]>([]);
 
+  // Load available collectors when modal opens
+  useEffect(() => {
+    if (open) {
+      const loadCollectors = async () => {
+        try {
+          const users = await authService.getAllUsers();
+          const collectors = users
+            .filter(
+              (user) =>
+                user.isActive &&
+                (user.role === "employee" || user.role === "admin"),
+            )
+            .map((user) => user.name);
+          setAvailableCollectors(collectors);
+        } catch (error) {
+          console.error("Failed to load collectors:", error);
+          // Fallback to default admin
+          setAvailableCollectors(["System Administrator"]);
+        }
+      };
+      loadCollectors();
+    }
+  }, [open]);
+
   // Initialize with either customer data or empty form
   const getInitialData = () => {
     if (customer) {
