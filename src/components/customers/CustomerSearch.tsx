@@ -113,12 +113,18 @@ export function CustomerSearch({
                     Billing Status
                   </label>
                   <Select
-                    value={filters.package}
-                    onValueChange={(value) => onFilterChange('package', value)}
+                    value={filters.billingStatus}
+                    onValueChange={(value) =>
+                      onFilterChange("billingStatus", value)
+                    }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Filter by package" />
+                      <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Paid">Paid</SelectItem>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Overdue">Overdue</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
