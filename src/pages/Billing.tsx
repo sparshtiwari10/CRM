@@ -169,17 +169,36 @@ export default function Billing() {
       employeeFilter === "all" ||
       record.employeeId === employeeFilter;
 
-    // For employees, only show their own records for today and yesterday
+    // Date range filtering
+    const matchesDateRange = (() => {
+      if (!fromDate && !toDate) return true;
+
+      const recordDate = record.generatedDate || record.date;
+      if (!recordDate) return true;
+
+      if (fromDate && recordDate < fromDate) return false;
+      if (toDate && recordDate > toDate) return false;
+
+      return true;
+    })();
+
+    // For employees, only show their own records for today and yesterday (unless date filter is applied)
     let hasAccess = isAdmin || record.employeeId === user?.id;
 
-    if (!isAdmin) {
-      // Employees only see records from today and yesterday
+    if (!isAdmin && !fromDate && !toDate) {
+      // Employees only see records from today and yesterday when no date filter is applied
       hasAccess =
         hasAccess &&
         (record.generatedDate === today || record.generatedDate === yesterday);
     }
 
-    return matchesSearch && matchesStatus && matchesEmployee && hasAccess;
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesEmployee &&
+      matchesDateRange &&
+      hasAccess
+    );
   });
 
   // Get unique employees from billing records for filter dropdown
