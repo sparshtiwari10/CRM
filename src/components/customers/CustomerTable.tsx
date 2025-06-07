@@ -240,6 +240,11 @@ export function CustomerTable({
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        <span className="font-medium text-green-600">
+                          {formatCurrency(customer.packageAmount || 0)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
                         <span className="font-medium text-orange-600">
                           {formatCurrency(customer.previousOutstanding)}
                         </span>
