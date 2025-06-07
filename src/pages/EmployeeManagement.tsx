@@ -38,6 +38,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { User } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -82,6 +91,7 @@ export default function EmployeeManagement() {
   const [employees, setEmployees] = useState<User[]>(initialEmployees);
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteEmployee, setDeleteEmployee] = useState<User | null>(null);
+  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const { toast } = useToast();
 
   const filteredEmployees = employees.filter(
@@ -118,6 +128,30 @@ export default function EmployeeManagement() {
     }
   };
 
+  const handleAddEmployee = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+
+    const newEmployee: User = {
+      id: `emp-${Date.now()}`,
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      phone: formData.get("phone") as string,
+      role: formData.get("role") as "admin" | "employee",
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      lastLogin: undefined,
+    };
+
+    setEmployees((prev) => [...prev, newEmployee]);
+    setShowAddEmployeeModal(false);
+
+    toast({
+      title: "Employee Added",
+      description: `${newEmployee.name} has been successfully added to the system.`,
+    });
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
@@ -147,7 +181,7 @@ export default function EmployeeManagement() {
               Manage employee accounts and permissions
             </p>
           </div>
-          <Button>
+          <Button onClick={() => setShowAddEmployeeModal(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Add New Employee
           </Button>
@@ -399,7 +433,7 @@ export default function EmployeeManagement() {
           </CardContent>
         </Card>
 
-        {/* Delete Confirmation Dialog */}
+        {/* Delete Confirmation */}
         <AlertDialog
           open={!!deleteEmployee}
           onOpenChange={() => setDeleteEmployee(null)}
@@ -409,8 +443,7 @@ export default function EmployeeManagement() {
               <AlertDialogTitle>Delete Employee</AlertDialogTitle>
               <AlertDialogDescription>
                 Are you sure you want to delete {deleteEmployee?.name}? This
-                action cannot be undone. All assigned customers will need to be
-                reassigned to other employees.
+                action cannot be undone and will remove all associated data.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -424,6 +457,93 @@ export default function EmployeeManagement() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Add Employee Modal */}
+        <Dialog
+          open={showAddEmployeeModal}
+          onOpenChange={setShowAddEmployeeModal}
+        >
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Add New Employee</DialogTitle>
+              <DialogDescription>
+                Create a new employee account with access credentials
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleAddEmployee}>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    required
+                    placeholder="Enter employee's full name"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="employee@cabletv.com"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="+1 (555) 123-4567"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="role">Role</Label>
+                  <select
+                    id="role"
+                    name="role"
+                    required
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select role</option>
+                    <option value="employee">Employee</option>
+                    <option value="admin">Administrator</option>
+                  </select>
+                </div>
+
+                <div className="text-sm text-gray-500 bg-blue-50 p-3 rounded-md">
+                  <p>
+                    <strong>Note:</strong> The employee will receive login
+                    credentials via email. Default password will be
+                    "employee123" which should be changed on first login.
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter className="mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowAddEmployeeModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit">Create Employee</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
