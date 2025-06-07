@@ -3,9 +3,9 @@ import { Plus } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CustomerModal } from "@/components/customers/CustomerModal";
 import { CustomerTable } from "@/components/customers/CustomerTable";
-import { CustomerSearch } from "@/components/customers/CustomerSearch";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
 import { Customer } from "@/types";
@@ -19,88 +19,77 @@ export default function Customers() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [packageFilter, setPackageFilter] = useState("all");
 
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
 
-  // Simple data loading
-  const loadData = async () => {
-    if (!user) return;
-
-    console.log("Loading customers...");
-    setIsLoading(true);
-
-    try {
-      const data = isAdmin
-        ? await CustomerService.getAllCustomers()
-        : await CustomerService.getCustomersByCollector(user.name);
-
-      console.log("Loaded customers:", data.length);
-      setCustomers(data);
-    } catch (error) {
-      console.error("Load error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load customers",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Load data on mount
+  // Load data once
   useEffect(() => {
-    loadData();
-  }, []); // Intentionally no dependencies to avoid loops
+    async function loadCustomers() {
+      if (!user) return;
 
-  // Enhanced search and filter
-  const filteredCustomers = customers.filter((customer) => {
-    const matchesSearch =
+      setIsLoading(true);
+      try {
+        const data = isAdmin
+          ? await CustomerService.getAllCustomers()
+          : await CustomerService.getCustomersByCollector(user.name);
+        setCustomers(data);
+      } catch (error) {
+        console.error("Load error:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load customers",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadCustomers();
+  }, []);
+
+  // Simple search filter
+  const filteredCustomers = customers.filter(
+    (customer) =>
       !searchTerm ||
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.phoneNumber.includes(searchTerm) ||
-      customer.vcNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.collectorName.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && customer.isActive) ||
-      (statusFilter === "inactive" && !customer.isActive);
-
-    const matchesPackage =
-      packageFilter === "all" || customer.currentPackage === packageFilter;
-
-    return matchesSearch && matchesStatus && matchesPackage;
-  });
-
-  const uniquePackages = Array.from(
-    new Set(customers.map((c) => c.currentPackage)),
+      customer.vcNumber.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  // Event handlers - simplified without useCallback
   function handleAdd() {
-    console.log("Add customer clicked");
     setEditingCustomer(null);
     setIsModalOpen(true);
   }
 
   function handleEdit(customer: Customer) {
-    console.log("Edit customer clicked:", customer.id);
-    setEditingCustomer({ ...customer }); // Create a copy to avoid reference issues
+    // Create a simple copy
+    setEditingCustomer({
+      id: customer.id,
+      name: customer.name,
+      phoneNumber: customer.phoneNumber,
+      email: customer.email,
+      address: customer.address,
+      vcNumber: customer.vcNumber,
+      currentPackage: customer.currentPackage,
+      collectorName: customer.collectorName,
+      billingStatus: customer.billingStatus,
+      isActive: customer.isActive,
+      portalBill: customer.portalBill,
+      lastPaymentDate: customer.lastPaymentDate,
+      joinDate: customer.joinDate,
+      activationDate: customer.activationDate,
+      deactivationDate: customer.deactivationDate,
+    });
     setIsModalOpen(true);
   }
 
   function handleView(customer: Customer) {
-    console.log("View customer clicked:", customer.id);
-    setEditingCustomer({ ...customer }); // Create a copy
-    setIsModalOpen(true);
+    handleEdit(customer); // For now, same as edit
   }
 
   function handleViewHistory(customer: Customer) {
-    console.log("View history clicked:", customer.id);
     toast({
       title: "History",
       description: `Viewing history for ${customer.name}`,
@@ -108,45 +97,32 @@ export default function Customers() {
   }
 
   function handleActionRequest(request: Omit<ActionRequest, "id">) {
-    console.log("Action request:", request);
     toast({
       title: "Request Submitted",
-      description: "Your action request has been submitted for admin approval.",
+      description: "Your action request has been submitted.",
     });
   }
 
   async function handleSave(customer: Customer) {
-    console.log("Save started:", customer.id, customer.name);
     setIsSaving(true);
-
     try {
       if (editingCustomer) {
-        console.log("Updating customer...");
         await CustomerService.updateCustomer(customer.id, customer);
-
-        // Update state directly
-        setCustomers((prevCustomers) =>
-          prevCustomers.map((c) => (c.id === customer.id ? customer : c)),
+        setCustomers((prev) =>
+          prev.map((c) => (c.id === customer.id ? customer : c)),
         );
-
         toast({
           title: "Success",
           description: "Customer updated successfully.",
         });
       } else {
-        console.log("Adding customer...");
         const newId = await CustomerService.addCustomer(customer);
-        const newCustomer = { ...customer, id: newId };
-
-        setCustomers((prevCustomers) => [...prevCustomers, newCustomer]);
-
+        setCustomers((prev) => [...prev, { ...customer, id: newId }]);
         toast({
           title: "Success",
           description: "Customer added successfully.",
         });
       }
-
-      console.log("Closing modal...");
       setIsModalOpen(false);
       setEditingCustomer(null);
     } catch (error) {
@@ -157,25 +133,17 @@ export default function Customers() {
         variant: "destructive",
       });
     } finally {
-      console.log("Save completed");
       setIsSaving(false);
     }
   }
 
   async function handleDelete(customerId: string) {
-    const customer = customers.find((c) => c.id === customerId);
-    console.log("Delete customer:", customerId);
-
     try {
       await CustomerService.deleteCustomer(customerId);
-      setCustomers((prevCustomers) =>
-        prevCustomers.filter((c) => c.id !== customerId),
-      );
-
+      setCustomers((prev) => prev.filter((c) => c.id !== customerId));
       toast({
         title: "Success",
-        description: `${customer?.name} deleted successfully.`,
-        variant: "destructive",
+        description: "Customer deleted successfully.",
       });
     } catch (error) {
       console.error("Delete error:", error);
@@ -187,25 +155,6 @@ export default function Customers() {
     }
   }
 
-  function handleModalClose(open: boolean) {
-    console.log("Modal open change:", open);
-    if (!isSaving) {
-      setIsModalOpen(open);
-      if (!open) {
-        setEditingCustomer(null);
-      }
-    }
-  }
-
-  console.log(
-    "Render - customers:",
-    customers.length,
-    "loading:",
-    isLoading,
-    "saving:",
-    isSaving,
-  );
-
   return (
     <DashboardLayout title="Customer Management">
       <div className="p-6 space-y-6">
@@ -214,8 +163,7 @@ export default function Customers() {
           <div>
             <h2 className="text-2xl font-bold">Customer Management</h2>
             <p className="text-gray-600">
-              Manage your customers with enhanced Status, Collector Name, and
-              Last Payment details
+              Manage customers with Status, Collector Name, and Last Payment
             </p>
           </div>
           <Button onClick={handleAdd} disabled={isSaving}>
@@ -224,45 +172,28 @@ export default function Customers() {
           </Button>
         </div>
 
-        {/* Search and Filters */}
-        <CustomerSearch
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          packageFilter={packageFilter}
-          onPackageFilterChange={setPackageFilter}
-          packages={uniquePackages}
-        />
-
-        {/* Results Summary */}
+        {/* Simple Search */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <div>
-                Showing {filteredCustomers.length} of {customers.length}{" "}
-                customers
-              </div>
-              <div className="flex space-x-4">
-                <span>
-                  Active: {customers.filter((c) => c.isActive).length}
-                </span>
-                <span>
-                  Inactive: {customers.filter((c) => !c.isActive).length}
-                </span>
-                <span>
-                  Overdue:{" "}
-                  {
-                    customers.filter((c) => c.billingStatus === "Overdue")
-                      .length
-                  }
-                </span>
-              </div>
+            <Input
+              placeholder="Search customers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              disabled={isSaving}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Results */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-sm text-gray-600 mb-4">
+              Showing {filteredCustomers.length} of {customers.length} customers
             </div>
           </CardContent>
         </Card>
 
-        {/* Enhanced Customer Table */}
+        {/* Customer Table */}
         {isLoading ? (
           <Card>
             <CardContent className="p-8 text-center">
@@ -280,10 +211,10 @@ export default function Customers() {
           />
         )}
 
-        {/* Customer Modal */}
+        {/* Modal */}
         <CustomerModal
           open={isModalOpen}
-          onOpenChange={handleModalClose}
+          onOpenChange={setIsModalOpen}
           customer={editingCustomer}
           onSave={handleSave}
           isSaving={isSaving}
