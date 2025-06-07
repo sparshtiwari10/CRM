@@ -454,7 +454,7 @@ export default function Dashboard() {
                   <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-medium text-red-800">
-                      {stats.overdueAccounts} Overdue Accounts
+                      {overdueCustomers} Overdue Accounts
                     </p>
                     <p className="text-sm text-red-600">
                       Multiple customers have overdue payments requiring
