@@ -292,18 +292,6 @@ export default function Customers() {
           )}
         </div>
 
-        {/* Import Data Panel */}
-        {isAdmin && showImport && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Import Customer Data</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CustomerDataImport onSuccess={handleImportSuccess} />
-            </CardContent>
-          </Card>
-        )}
-
         {/* Search and Filters */}
         <Card>
           <CardContent className="pt-6">
