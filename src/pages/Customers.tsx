@@ -1,5 +1,12 @@
 import { useState, useEffect, useContext } from "react";
-import { Plus, Edit, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Upload,
+} from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
