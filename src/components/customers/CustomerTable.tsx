@@ -264,12 +264,12 @@ export function CustomerTable({
                 <TableRow>
                   <TableHead className="w-8"></TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>VC Number</TableHead>
+                  <TableHead>Address</TableHead>
                   <TableHead>Package</TableHead>
                   <TableHead>Package Amount</TableHead>
                   <TableHead>Previous O/S</TableHead>
-                  <TableHead>Plan Bill</TableHead>
                   <TableHead>Current O/S</TableHead>
+                  <TableHead>Bill Due Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Collector</TableHead>
                   <TableHead>Last Payment</TableHead>
