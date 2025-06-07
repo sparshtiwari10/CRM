@@ -24,6 +24,7 @@ import {
 import { CustomerModal } from "@/components/customers/CustomerModal";
 import { CustomerTable } from "@/components/customers/CustomerTable";
 import { CustomerDataImport } from "@/components/admin/CustomerDataImport";
+import { CustomerImportExport } from "@/components/customers/CustomerImportExport";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
 import { Customer } from "@/types";
@@ -41,6 +42,7 @@ export default function Customers() {
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showImportExport, setShowImportExport] = useState(false);
 
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
