@@ -30,17 +30,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActionRequestModal } from "@/components/customers/ActionRequestModal";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
-import { ActionRequest, Customer } from "@/types/auth";
+import { ActionRequest } from "@/types/auth";
+import { Customer } from "@/types";
 import { mockActionRequests } from "@/data/mockData";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 export default function RequestManagement() {
-  const [requests, setRequests] = useState<ActionRequest[]>(mockActionRequests);
+  const [requests, setRequests] = useState<ActionRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ActionRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,9 +51,29 @@ export default function RequestManagement() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showNewRequestModal, setShowNewRequestModal] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [activeTab, setActiveTab] = useState("view");
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { user, isAdmin } = useContext(AuthContext);
+
+  // Debug logging
+  useEffect(() => {
+    console.log("RequestManagement - User:", user);
+    console.log("RequestManagement - IsAdmin:", isAdmin);
+    console.log("RequestManagement - Mock requests:", mockActionRequests);
+  }, [user, isAdmin]);
+
+  // Initialize requests from mock data
+  useEffect(() => {
+    try {
+      console.log("Loading mock action requests...");
+      setRequests(mockActionRequests || []);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error loading requests:", error);
+      setRequests([]);
+      setIsLoading(false);
+    }
+  }, []);
 
   // Load customers for employees to create requests
   useEffect(() => {
@@ -62,28 +82,36 @@ export default function RequestManagement() {
         let customerData;
         if (isAdmin) {
           customerData = await CustomerService.getAllCustomers();
-        } else {
+        } else if (user?.name) {
           // For employees, get only their assigned customers
           customerData = await CustomerService.getCustomersByCollector(
-            user?.name || "",
+            user.name,
           );
+        } else {
+          customerData = [];
         }
         setCustomers(customerData);
+        console.log("Loaded customers:", customerData.length);
       } catch (error) {
         console.error("Error loading customers:", error);
+        setCustomers([]);
       }
     };
 
-    loadCustomers();
+    if (user) {
+      loadCustomers();
+    }
   }, [isAdmin, user]);
 
   // Filter requests based on user role
   useEffect(() => {
     let filtered = requests;
+    console.log("Filtering requests. Total requests:", requests.length);
 
     // For employees, show only their own requests
     if (!isAdmin && user) {
       filtered = filtered.filter((request) => request.employeeId === user.id);
+      console.log("Employee filtered requests:", filtered.length);
     }
 
     // Apply search and status filters
@@ -101,6 +129,7 @@ export default function RequestManagement() {
       filtered = filtered.filter((request) => request.status === statusFilter);
     }
 
+    console.log("Final filtered requests:", filtered.length);
     setFilteredRequests(filtered);
   }, [requests, searchTerm, statusFilter, isAdmin, user]);
 
@@ -175,7 +204,6 @@ export default function RequestManagement() {
   const handleNewRequestClose = () => {
     setShowNewRequestModal(false);
     // Refresh requests - in a real app this would come from the backend
-    // For now, we'll just show a success message
     toast({
       title: "Request Submitted",
       description:
@@ -201,9 +229,47 @@ export default function RequestManagement() {
     (r) => r.status === "rejected",
   ).length;
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <DashboardLayout title="Request Management">
+        <div className="p-6">
+          <div className="text-center py-8">
+            <div className="text-lg">Loading requests...</div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Show error if user is not authenticated
+  if (!user) {
+    return (
+      <DashboardLayout title="Request Management">
+        <div className="p-6">
+          <div className="text-center py-8">
+            <div className="text-lg text-red-600">
+              Please log in to view requests
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout title="Request Management">
       <div className="p-6 space-y-6">
+        {/* Debug Info - Remove in production */}
+        <div className="bg-gray-100 p-4 rounded text-sm">
+          <div>
+            User: {user?.name} ({user?.role})
+          </div>
+          <div>Total Requests: {requests.length}</div>
+          <div>Filtered Requests: {filteredRequests.length}</div>
+          <div>Is Admin: {isAdmin ? "Yes" : "No"}</div>
+        </div>
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
@@ -325,7 +391,9 @@ export default function RequestManagement() {
                       colSpan={isAdmin ? 7 : 6}
                       className="text-center py-8"
                     >
-                      No requests found
+                      {requests.length === 0
+                        ? "No requests available"
+                        : "No requests match your filters"}
                     </TableCell>
                   </TableRow>
                 ) : (
