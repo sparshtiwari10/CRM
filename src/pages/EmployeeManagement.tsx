@@ -513,15 +513,33 @@ export default function EmployeeManagement() {
                 </div>
 
                 <div>
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="username">Username</Label>
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
+                    id="username"
+                    name="username"
+                    type="text"
                     required
-                    placeholder="employee@cabletv.com"
+                    placeholder="employee_username"
                     className="mt-1"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Used for login authentication
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
+                    placeholder="Enter secure password"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Minimum 8 characters recommended
+                  </p>
                 </div>
 
                 <div>
