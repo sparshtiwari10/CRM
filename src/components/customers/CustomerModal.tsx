@@ -302,7 +302,7 @@ export function CustomerModal({
       id: customer?.id || Date.now().toString(),
       name: formData.name.trim(),
       phoneNumber: formData.phoneNumber.trim(),
-      email: formData.email.trim() || undefined,
+      email: formData.email.trim() === "" ? undefined : formData.email.trim(),
       address: formData.address.trim(),
       vcNumber: formData.vcNumber.trim(),
       currentPackage: showCustomPlan
