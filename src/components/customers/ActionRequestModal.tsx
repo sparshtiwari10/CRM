@@ -61,13 +61,22 @@ export function ActionRequestModal({
   const form = useForm<ActionRequestFormValues>({
     resolver: zodResolver(actionRequestSchema),
     defaultValues: {
-      actionType: defaultActionType,
+      actionType: "activation",
       requestedPlan: "",
       reason: "",
     },
   });
 
   const actionType = form.watch("actionType");
+
+  // Set the action type when the modal opens
+  useEffect(() => {
+    if (open) {
+      form.setValue("actionType", defaultActionType);
+      form.setValue("requestedPlan", "");
+      form.setValue("reason", "");
+    }
+  }, [open, defaultActionType]);
 
   const handleSubmit = async (values: ActionRequestFormValues) => {
     if (!customer || !user) return;
@@ -97,24 +106,13 @@ export function ActionRequestModal({
   };
 
   const handleClose = () => {
+    onOpenChange(false);
     form.reset({
       actionType: "activation",
       requestedPlan: "",
       reason: "",
     });
-    onOpenChange(false);
   };
-
-  // Reset form when modal opens with new action type - using useEffect without form dependency
-  useEffect(() => {
-    if (open && defaultActionType) {
-      form.reset({
-        actionType: defaultActionType,
-        requestedPlan: "",
-        reason: "",
-      });
-    }
-  }, [open, defaultActionType]); // Removed 'form' from dependencies to prevent infinite loops
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
