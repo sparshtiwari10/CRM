@@ -45,6 +45,7 @@ interface ActionRequestModalProps {
   onOpenChange: (open: boolean) => void;
   customer: Customer | null;
   onSubmit: (request: Omit<ActionRequest, "id">) => void;
+  defaultActionType?: "activation" | "deactivation" | "plan_change";
 }
 
 export function ActionRequestModal({
