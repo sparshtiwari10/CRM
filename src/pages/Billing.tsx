@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils";
 
 export default function Billing() {
   const [billingRecords, setBillingRecords] = useState<BillingRecord[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string>("paid");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [employeeFilter, setEmployeeFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
