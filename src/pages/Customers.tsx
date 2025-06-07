@@ -198,6 +198,16 @@ export default function Customers() {
     setSearchTerm("");
   };
 
+  const handleViewHistory = (customerId: string) => {
+    // For now, just show a placeholder message
+    // In a real app, this would show change history, payment history, etc.
+    toast({
+      title: "View History",
+      description: "History feature will be available soon.",
+    });
+    console.log("Viewing history for customer:", customerId);
+  };
+
   const handleActionRequest = (request: Omit<ActionRequest, "id">) => {
     // For now, just show a toast - you can implement request storage later
     toast({
