@@ -540,7 +540,7 @@ export function CustomerModal({
                       <SelectValue placeholder="Select collector" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockCollectors.map((collector) => (
+                      {availableCollectors.map((collector) => (
                         <SelectItem key={collector} value={collector}>
                           {collector}
                         </SelectItem>
