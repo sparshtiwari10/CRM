@@ -577,43 +577,59 @@ export function CustomerTable({
                                   </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                     <div className="text-center p-3 bg-green-50 rounded-lg">
                                       <div className="text-xs text-green-600 font-medium">
                                         Package Amount
                                       </div>
                                       <div className="text-lg font-bold text-green-700">
-                                        {formatCurrency(
-                                          customer.packageAmount || 0,
-                                        )}
+                                        {formatCurrency(customer.packageAmount)}
                                       </div>
                                     </div>
                                     <div className="text-center p-3 bg-orange-50 rounded-lg">
                                       <div className="text-xs text-orange-600 font-medium">
                                         Previous O/S
                                       </div>
-                                      <div className="text-lg font-bold text-orange-700">
+                                      <div
+                                        className={`text-lg font-bold ${customer.previousOutstanding < 0 ? "text-green-700" : "text-orange-700"}`}
+                                      >
                                         {formatCurrency(
                                           customer.previousOutstanding,
                                         )}
-                                      </div>
-                                    </div>
-                                    <div className="text-center p-3 bg-blue-50 rounded-lg">
-                                      <div className="text-xs text-blue-600 font-medium">
-                                        Plan Bill
-                                      </div>
-                                      <div className="text-lg font-bold text-blue-700">
-                                        {formatCurrency(customer.planBill)}
                                       </div>
                                     </div>
                                     <div className="text-center p-3 bg-red-50 rounded-lg">
                                       <div className="text-xs text-red-600 font-medium">
                                         Current O/S
                                       </div>
-                                      <div className="text-lg font-bold text-red-700">
+                                      <div
+                                        className={`text-lg font-bold ${customer.currentOutstanding < 0 ? "text-green-700" : "text-red-700"}`}
+                                      >
                                         {formatCurrency(
                                           customer.currentOutstanding,
                                         )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                                      <div className="text-xs text-blue-600 font-medium">
+                                        Bill Due Date
+                                      </div>
+                                      <div className="text-lg font-bold text-blue-700">
+                                        {customer.billDueDate}{" "}
+                                        <span className="text-sm">
+                                          of every month
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="text-center p-3 bg-purple-50 rounded-lg">
+                                      <div className="text-xs text-purple-600 font-medium">
+                                        VC Number
+                                      </div>
+                                      <div className="text-lg font-bold text-purple-700 font-mono">
+                                        {customer.vcNumber}
                                       </div>
                                     </div>
                                   </div>
