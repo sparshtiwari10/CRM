@@ -1,4 +1,4 @@
-import { db } from "@/lib/firebase";
+import { db, isFirebaseAvailable } from "@/lib/firebase";
 import {
   collection,
   query,
@@ -11,6 +11,36 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import bcrypt from "bcryptjs";
+
+// Mock users for demo mode when Firebase is unavailable
+const mockUsers = [
+  {
+    id: "admin-demo",
+    username: "admin",
+    password_hash:
+      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy", // admin123
+    name: "System Administrator",
+    role: "admin" as const,
+    collector_name: null,
+    access_scope: [],
+    created_at: new Date("2024-01-01"),
+    last_login: new Date(),
+    is_active: true,
+  },
+  {
+    id: "employee-demo",
+    username: "employee",
+    password_hash:
+      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy", // employee123 (same hash for demo)
+    name: "Demo Employee",
+    role: "employee" as const,
+    collector_name: "John Collector",
+    access_scope: [],
+    created_at: new Date("2024-01-01"),
+    last_login: new Date(),
+    is_active: true,
+  },
+];
 
 export interface User {
   id: string;
