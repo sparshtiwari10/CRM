@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { Search, Save, Calendar, FileText, X } from "lucide-react";
+import { Search, Save, Calendar, FileText, X, DollarSign } from "lucide-react";
 import { AuthContext } from "@/contexts/AuthContext";
 import {
   Dialog,
@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -36,6 +38,7 @@ interface InvoiceData {
   amount: number;
   dueDate: string;
   invoiceNumber: string;
+  isCustomAmount: boolean;
 }
 
 export function InvoiceGenerator({
@@ -50,6 +53,8 @@ export function InvoiceGenerator({
   );
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
+  const [isCustomAmount, setIsCustomAmount] = useState(false);
+  const [customAmount, setCustomAmount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
@@ -98,26 +103,45 @@ export function InvoiceGenerator({
     setFilteredCustomers(filtered.slice(0, 10)); // Limit to 10 results
   }, [searchTerm, customers]);
 
-  const getPackagePrice = (packageName: string): number => {
+  const getPackagePrice = (customer: Customer): number => {
+    // Check if customer has custom plan
+    if (customer.customPlan) {
+      return customer.customPlan.price;
+    }
+
+    // Check if customer has multiple connections
+    if (customer.numberOfConnections > 1 && customer.connections.length > 0) {
+      return customer.connections.reduce(
+        (total, connection) => total + connection.planPrice,
+        0,
+      );
+    }
+
+    // Default package prices
     const packagePrices: { [key: string]: number } = {
       Basic: 29.99,
       "Premium HD": 59.99,
       "Sports Package": 79.99,
       "Family Bundle": 49.99,
     };
-    return packagePrices[packageName] || 0;
+    return packagePrices[customer.currentPackage] || 0;
   };
 
   const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer);
     setSearchTerm(customer.name);
     setFilteredCustomers([]);
+    // Reset custom amount when selecting a new customer
+    setIsCustomAmount(false);
+    setCustomAmount(getPackagePrice(customer));
   };
 
   const handleClearSelection = () => {
     setSelectedCustomer(null);
     setSearchTerm("");
     setSelectedMonth("");
+    setIsCustomAmount(false);
+    setCustomAmount(0);
   };
 
   const generateInvoiceNumber = (
@@ -138,12 +162,29 @@ export function InvoiceGenerator({
     return date.toISOString().split("T")[0];
   };
 
+  const getInvoiceAmount = (): number => {
+    if (isCustomAmount) {
+      return customAmount;
+    }
+    return selectedCustomer ? getPackagePrice(selectedCustomer) : 0;
+  };
+
   const handleGenerateInvoice = async () => {
     if (!selectedCustomer || !selectedMonth || !selectedYear || !user) {
       toast({
         title: "Missing Information",
         description:
           "Please select a customer, month, and year to generate an invoice.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const finalAmount = getInvoiceAmount();
+    if (finalAmount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Invoice amount must be greater than $0.",
         variant: "destructive",
       });
       return;
@@ -159,20 +200,23 @@ export function InvoiceGenerator({
         customer: selectedCustomer,
         month: selectedMonth,
         year: selectedYear,
-        amount: getPackagePrice(selectedCustomer.currentPackage),
+        amount: finalAmount,
         dueDate: calculateDueDate(selectedMonth, selectedYear),
         invoiceNumber: generateInvoiceNumber(
           selectedCustomer,
           selectedMonth,
           selectedYear,
         ),
+        isCustomAmount,
       };
 
-      // Create billing record instead of downloading
+      // Create billing record
       const billingRecord = {
         customerId: selectedCustomer.id,
         customerName: selectedCustomer.name,
-        packageName: selectedCustomer.currentPackage,
+        packageName: selectedCustomer.customPlan
+          ? `Custom: ${selectedCustomer.customPlan.name}`
+          : selectedCustomer.currentPackage,
         amount: invoiceData.amount,
         dueDate: invoiceData.dueDate,
         status: "Pending" as const,
@@ -183,6 +227,7 @@ export function InvoiceGenerator({
         billingMonth: selectedMonth,
         billingYear: selectedYear,
         vcNumber: selectedCustomer.vcNumber,
+        customAmount: isCustomAmount ? customAmount : undefined,
       };
 
       // Save the billing record
@@ -190,7 +235,7 @@ export function InvoiceGenerator({
 
       toast({
         title: "Invoice Generated",
-        description: `Invoice ${invoiceData.invoiceNumber} has been created and added to billing records.`,
+        description: `Invoice ${invoiceData.invoiceNumber} has been created for $${invoiceData.amount.toFixed(2)}.`,
       });
 
       onOpenChange(false);
@@ -226,9 +271,13 @@ export function InvoiceGenerator({
     (currentYear - i).toString(),
   );
 
+  const defaultAmount = selectedCustomer
+    ? getPackagePrice(selectedCustomer)
+    : 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <FileText className="h-5 w-5" />
@@ -236,7 +285,7 @@ export function InvoiceGenerator({
           </DialogTitle>
           <DialogDescription>
             Search for a customer and select the billing period to generate an
-            invoice
+            invoice. You can also enter a custom amount if needed.
           </DialogDescription>
         </DialogHeader>
 
@@ -280,6 +329,12 @@ export function InvoiceGenerator({
                             <div className="font-medium">{customer.name}</div>
                             <div className="text-sm text-gray-500">
                               {customer.vcNumber} • {customer.currentPackage}
+                              {customer.customPlan && (
+                                <span className="text-blue-600">
+                                  {" "}
+                                  (Custom Plan)
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-gray-400">
                               {customer.address}
@@ -315,16 +370,21 @@ export function InvoiceGenerator({
                       <div className="text-sm text-gray-500">
                         {selectedCustomer.vcNumber} •{" "}
                         {selectedCustomer.currentPackage}
+                        {selectedCustomer.customPlan && (
+                          <span className="text-blue-600"> (Custom Plan)</span>
+                        )}
                       </div>
                       <div className="text-sm text-gray-500">
                         {selectedCustomer.address}
                       </div>
                       <div className="text-sm font-medium text-green-600 mt-1">
-                        Package Rate: $
-                        {getPackagePrice(
-                          selectedCustomer.currentPackage,
-                        ).toFixed(2)}
-                        /month
+                        Default Rate: ${defaultAmount.toFixed(2)}/month
+                        {selectedCustomer.numberOfConnections > 1 && (
+                          <span className="text-blue-600">
+                            {" "}
+                            ({selectedCustomer.numberOfConnections} connections)
+                          </span>
+                        )}
                       </div>
                     </div>
                     <Badge
@@ -343,54 +403,129 @@ export function InvoiceGenerator({
             )}
           </div>
 
-          {/* Billing Period Selection */}
+          {/* Billing Period and Amount Selection */}
           {selectedCustomer && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  Billing Month
-                </label>
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select month" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {months.map((month) => (
-                      <SelectItem key={month} value={month}>
-                        {month}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Billing Month
+                  </label>
+                  <Select
+                    value={selectedMonth}
+                    onValueChange={setSelectedMonth}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {months.map((month) => (
+                        <SelectItem key={month} value={month}>
+                          {month}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    Billing Year
+                  </label>
+                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  Billing Year
-                </label>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={year}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+              {/* Custom Amount Section */}
+              <Card className="border-blue-200 bg-blue-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="h-4 w-4 text-blue-600" />
+                      <Label className="text-blue-800 font-medium">
+                        Invoice Amount
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Label
+                        htmlFor="custom-amount"
+                        className="text-sm text-blue-700"
+                      >
+                        Custom Amount
+                      </Label>
+                      <Switch
+                        id="custom-amount"
+                        checked={isCustomAmount}
+                        onCheckedChange={(checked) => {
+                          setIsCustomAmount(checked);
+                          if (!checked) {
+                            setCustomAmount(defaultAmount);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {isCustomAmount ? (
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="amount-input"
+                        className="text-sm text-blue-700"
+                      >
+                        Enter Custom Amount
+                      </Label>
+                      <div className="relative">
+                        <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <Input
+                          id="amount-input"
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={customAmount}
+                          onChange={(e) =>
+                            setCustomAmount(parseFloat(e.target.value) || 0)
+                          }
+                          className="pl-10"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div className="text-xs text-blue-600">
+                        Default amount: ${defaultAmount.toFixed(2)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-800">
+                        ${defaultAmount.toFixed(2)}
+                      </div>
+                      <div className="text-sm text-blue-600">
+                        Using default package rate
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
           )}
 
           {/* Invoice Preview */}
           {selectedCustomer && selectedMonth && selectedYear && (
-            <Card className="bg-blue-50 border-blue-200">
+            <Card className="bg-green-50 border-green-200">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2 mb-3">
-                  <Calendar className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-blue-800">
+                  <Calendar className="h-4 w-4 text-green-600" />
+                  <span className="font-medium text-green-800">
                     Invoice Preview
                   </span>
                 </div>
@@ -413,14 +548,20 @@ export function InvoiceGenerator({
                   </div>
                   <div className="flex justify-between">
                     <span>Package:</span>
-                    <span>{selectedCustomer.currentPackage}</span>
-                  </div>
-                  <div className="flex justify-between font-medium">
-                    <span>Amount:</span>
                     <span>
-                      $
-                      {getPackagePrice(selectedCustomer.currentPackage).toFixed(
-                        2,
+                      {selectedCustomer.customPlan
+                        ? `Custom: ${selectedCustomer.customPlan.name}`
+                        : selectedCustomer.currentPackage}
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-medium text-lg">
+                    <span>Amount:</span>
+                    <span className="text-green-700">
+                      ${getInvoiceAmount().toFixed(2)}
+                      {isCustomAmount && (
+                        <span className="text-xs text-orange-600 ml-1">
+                          (Custom)
+                        </span>
                       )}
                     </span>
                   </div>
@@ -452,7 +593,8 @@ export function InvoiceGenerator({
                 !selectedCustomer ||
                 !selectedMonth ||
                 !selectedYear ||
-                isGenerating
+                isGenerating ||
+                getInvoiceAmount() <= 0
               }
             >
               {isGenerating ? (
@@ -463,7 +605,7 @@ export function InvoiceGenerator({
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Create Invoice
+                  Create Invoice - ${getInvoiceAmount().toFixed(2)}
                 </>
               )}
             </Button>
