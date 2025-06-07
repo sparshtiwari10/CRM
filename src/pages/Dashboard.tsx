@@ -25,25 +25,79 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const stats = mockDashboardStats;
-  const recentCustomers = mockCustomers.slice(0, 5);
-  const recentPayments = mockPayments.slice(0, 5);
 
-  // Filter payments for today and yesterday (for employees)
+  // Load customers data
+  useEffect(() => {
+    const loadCustomers = async () => {
+      try {
+        setIsLoading(true);
+        const customersData = await CustomerService.getAllCustomers();
+        setCustomers(customersData);
+      } catch (error) {
+        console.error("Failed to load customers:", error);
+        setCustomers([]); // Set empty array on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCustomers();
+  }, []);
+
+  // Calculate real statistics from customers data
+  const totalCustomers = customers.length;
+  const activeCustomers = customers.filter((c) => c.isActive).length;
+  const inactiveCustomers = customers.filter((c) => !c.isActive).length;
+  const paidCustomers = customers.filter(
+    (c) => c.billingStatus === "Paid",
+  ).length;
+  const pendingCustomers = customers.filter(
+    (c) => c.billingStatus === "Pending",
+  ).length;
+  const overdueCustomers = customers.filter(
+    (c) => c.billingStatus === "Overdue",
+  ).length;
+
+  // Calculate total revenue from all customers
+  const totalRevenue = customers.reduce(
+    (sum, customer) => sum + (customer.portalBill || 0),
+    0,
+  );
+  const monthlyRevenue = totalRevenue; // For now, treat all as monthly
+
+  const recentCustomers = customers.slice(0, 5);
+
+  // Mock payment data for today/yesterday (for employee view)
   const today = new Date().toISOString().split("T")[0];
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
     .toISOString()
     .split("T")[0];
 
-  const todayPayments = mockPayments.filter(
-    (payment) => payment.date === today,
-  );
-  const yesterdayPayments = mockPayments.filter(
-    (payment) => payment.date === yesterday,
-  );
+  // For now, create mock payments from recent customers for demonstration
+  const todayPayments = customers.slice(0, 3).map((customer, index) => ({
+    id: `today-${index}`,
+    customerId: customer.id,
+    customerName: customer.name,
+    amount: customer.portalBill || 0,
+    date: today,
+    status: "Paid" as const,
+    method: "Cash" as const,
+  }));
+
+  const yesterdayPayments = customers.slice(3, 6).map((customer, index) => ({
+    id: `yesterday-${index}`,
+    customerId: customer.id,
+    customerName: customer.name,
+    amount: customer.portalBill || 0,
+    date: yesterday,
+    status: "Paid" as const,
+    method: "Online" as const,
+  }));
 
   const todayTotal = todayPayments.reduce(
     (sum, payment) => sum + payment.amount,
