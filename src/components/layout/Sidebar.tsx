@@ -22,11 +22,11 @@ const baseNavigation = [
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Billing & Payments", href: "/billing", icon: CreditCard },
   { name: "Packages", href: "/packages", icon: Package },
+  { name: "Requests", href: "/requests", icon: ClipboardList },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 const adminOnlyNavigation = [
-  { name: "Requests", href: "/requests", icon: ClipboardList },
   { name: "Employees", href: "/employees", icon: UserCog },
 ];
 
