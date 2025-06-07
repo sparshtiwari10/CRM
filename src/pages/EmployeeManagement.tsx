@@ -55,7 +55,35 @@ export default function EmployeeManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteEmployee, setDeleteEmployee] = useState<User | null>(null);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+
+  // Load employees from Firebase on component mount
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        setIsLoading(true);
+        // Get all users from the authentication service
+        const allUsers = await authService.getAllUsers();
+        setEmployees(allUsers.filter((user) => user.role === "employee"));
+        console.log(
+          "Loaded employees:",
+          allUsers.filter((user) => user.role === "employee"),
+        );
+      } catch (error) {
+        console.error("Failed to load employees:", error);
+        toast({
+          title: "Loading Error",
+          description: "Failed to load employees. Starting with empty list.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadEmployees();
+  }, [toast]);
 
   const filteredEmployees = employees.filter(
     (employee) =>
