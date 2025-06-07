@@ -469,8 +469,9 @@ export default function Dashboard() {
                       {overdueCustomers} Overdue Accounts
                     </p>
                     <p className="text-sm text-red-600">
-                      Multiple customers have overdue payments requiring
-                      immediate attention.
+                      {overdueCustomers > 0
+                        ? `${overdueCustomers > 1 ? "Multiple customers have" : "One customer has"} overdue payments requiring immediate attention.`
+                        : "No overdue accounts - great job!"}
                     </p>
                   </div>
                   <Button
