@@ -1120,16 +1120,11 @@ export function CustomerTable({
                             size="sm"
                             onClick={() => handleActivationRequest(customer)}
                             disabled={customer.isActive}
-                            className="text-xs"
-                          >
-                            <Power className="mr-1 h-3 w-3" />
-                            Activate
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeactivationRequest(customer)}
-                            disabled={!customer.isActive}
+                        <p className="text-sm text-gray-600 mt-1">
+                          VC: <span className="font-mono text-blue-600">
+                            {formatVcNumbers(customer)}
+                          </span>
+                        </p>
                             className="text-xs"
                           >
                             <PowerOff className="mr-1 h-3 w-3" />
