@@ -758,9 +758,9 @@ export default function Billing() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="Paid">Paid</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Overdue">Overdue</SelectItem>
                 </SelectContent>
               </Select>
             </div>
