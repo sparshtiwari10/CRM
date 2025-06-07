@@ -260,16 +260,6 @@ export default function RequestManagement() {
   return (
     <DashboardLayout title="Request Management">
       <div className="p-6 space-y-6">
-        {/* Debug Info - Remove in production */}
-        <div className="bg-gray-100 p-4 rounded text-sm">
-          <div>
-            User: {user?.name} ({user?.role})
-          </div>
-          <div>Total Requests: {requests.length}</div>
-          <div>Filtered Requests: {filteredRequests.length}</div>
-          <div>Is Admin: {isAdmin ? "Yes" : "No"}</div>
-        </div>
-
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
