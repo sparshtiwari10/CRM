@@ -304,6 +304,10 @@ export class CustomerService {
           price: 899,
           description: "Custom enterprise solution with dedicated support",
         },
+        previousOutstanding: 899,
+        planBill: 899,
+        currentOutstanding: 1798,
+        packageAmount: 899,
       },
     ];
   }
