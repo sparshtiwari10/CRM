@@ -19,7 +19,7 @@ export const mockCustomers: Customer[] = [
     email: "john.smith@email.com",
     joinDate: "2023-06-15",
     vcNumber: "VC001234",
-    collectorName: "John Collector",
+    collectorName: "System Administrator",
     portalBill: 599,
     isActive: true,
     activationDate: "2023-06-15",
