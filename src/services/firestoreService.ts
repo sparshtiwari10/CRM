@@ -486,39 +486,59 @@ class FirestoreService {
   private convertCustomerToFirestoreCustomer(
     customer: Customer,
   ): FirestoreCustomer {
-    return {
-      name: customer.name,
-      phone: customer.phoneNumber,
-      address: customer.address,
-      package: customer.currentPackage,
-      vc_no: customer.vcNumber,
-      collector_name: customer.collectorName,
-      email: customer.email,
-      billing_status: customer.billingStatus,
-      last_payment_date: Timestamp.fromDate(new Date(customer.lastPaymentDate)),
-      join_date: Timestamp.fromDate(new Date(customer.joinDate)),
-      activation_date: customer.activationDate
-        ? Timestamp.fromDate(new Date(customer.activationDate))
-        : undefined,
-      deactivation_date: customer.deactivationDate
-        ? Timestamp.fromDate(new Date(customer.deactivationDate))
-        : undefined,
+    // Sanitize data to remove undefined values (Firestore doesn't accept undefined)
+    const sanitizedData: FirestoreCustomer = {
+      name: customer.name || "",
+      phone: customer.phoneNumber || "",
+      address: customer.address || "",
+      package: customer.currentPackage || "",
+      vc_no: customer.vcNumber || "",
+      collector_name: customer.collectorName || "",
+      billing_status: customer.billingStatus || "Pending",
+      last_payment_date: customer.lastPaymentDate
+        ? Timestamp.fromDate(new Date(customer.lastPaymentDate))
+        : Timestamp.now(),
+      join_date: customer.joinDate
+        ? Timestamp.fromDate(new Date(customer.joinDate))
+        : Timestamp.now(),
       status: customer.isActive ? "active" : "inactive",
       bill_amount: customer.portalBill || 0,
-      number_of_connections: customer.numberOfConnections,
-      connections: customer.connections,
-      custom_plan: customer.customPlan,
+      number_of_connections: customer.numberOfConnections || 1,
+      connections: customer.connections || [],
       // Fields from original Excel/CSV structure
-      prev_os: 0,
+      prev_os: customer.previousOutstanding || 0,
       date: Timestamp.now(),
       collected_cash: 0,
       collected_online: 0,
       discount: 0,
-      current_os: 0,
+      current_os: customer.currentOutstanding || 0,
       remark: "",
       created_at: Timestamp.now(),
       updated_at: Timestamp.now(),
     };
+
+    // Only add optional fields if they have valid values
+    if (customer.email && customer.email.trim() !== "") {
+      sanitizedData.email = customer.email.trim();
+    }
+
+    if (customer.activationDate) {
+      sanitizedData.activation_date = Timestamp.fromDate(
+        new Date(customer.activationDate),
+      );
+    }
+
+    if (customer.deactivationDate) {
+      sanitizedData.deactivation_date = Timestamp.fromDate(
+        new Date(customer.deactivationDate),
+      );
+    }
+
+    if (customer.customPlan) {
+      sanitizedData.custom_plan = customer.customPlan;
+    }
+
+    return sanitizedData;
   }
 
   private convertFirestoreBillingToBillingRecord(
