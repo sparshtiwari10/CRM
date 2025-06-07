@@ -124,8 +124,11 @@ export function CustomerTable({
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return `₹${amount.toFixed(2)}`;
+  const formatCurrency = (amount: number | undefined | null): string => {
+    if (amount === undefined || amount === null || isNaN(amount)) {
+      return "₹0.00";
+    }
+    return `₹${Number(amount).toFixed(2)}`;
   };
 
   const loadCustomerInvoices = async (customerId: string, vcNumber: string) => {
