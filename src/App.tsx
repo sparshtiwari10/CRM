@@ -20,13 +20,6 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function AppContent() {
-  useEffect(() => {
-    // Initialize demo data for development
-    if (import.meta.env.DEV) {
-      DataSeeder.seedAll().catch(console.error);
-    }
-  }, []);
-
   return (
     <BrowserRouter>
       <Routes>
