@@ -76,33 +76,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (credentials: LoginCredentials): Promise<User> => {
     try {
       setIsLoading(true);
-
-      // Create a timeout promise
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(
-            new Error(
-              "Login timeout - please check your Firebase configuration and try again",
-            ),
-          );
-        }, 10000); // 10 second timeout
-      });
-
-      // Race between login and timeout
-      const user = (await Promise.race([
-        authService.login(credentials),
-        timeoutPromise,
-      ])) as User;
-
+      const user = await authService.login(credentials);
       setUser(user);
       return user;
     } catch (error: any) {
       console.error("Login failed:", error);
 
       // Provide more helpful error messages
-      if (error.message.includes("timeout")) {
+      if (
+        error.message.includes("timeout") ||
+        error.message.includes("Firebase authentication timeout")
+      ) {
         throw new Error(
-          "Login is taking too long. Please check your Firebase configuration and internet connection.",
+          "Firebase connection issue - continuing in demo mode. Try refreshing the page.",
         );
       } else if (
         error.message.includes("permission-denied") ||
@@ -111,11 +97,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(
           "Firebase permission denied. Please set up Firestore security rules.",
         );
-      } else if (error.message.includes("not-found")) {
+      } else if (error.message.includes("Invalid username or password")) {
         throw new Error("Invalid username or password.");
+      } else {
+        // For any other error, still try to provide a helpful message
+        throw new Error(error.message || "Login failed. Please try again.");
       }
-
-      throw error;
     } finally {
       setIsLoading(false);
     }
