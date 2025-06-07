@@ -71,6 +71,7 @@ export default function Packages() {
       features: (formData.get("features") as string)
         .split("\n")
         .filter((f) => f.trim()),
+      portalAmount: parseFloat(formData.get("portalAmount") as string) || 0,
     };
 
     if (editingPackage) {
