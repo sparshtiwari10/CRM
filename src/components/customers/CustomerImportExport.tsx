@@ -63,7 +63,6 @@ export function CustomerImportExport({
         "Current Outstanding",
         "Bill Due Date",
         "Collector Name",
-        "Billing Status",
         "Is Active",
         "Last Payment Date",
         "Join Date",
@@ -87,7 +86,6 @@ export function CustomerImportExport({
             customer.currentOutstanding.toString(),
             customer.billDueDate.toString(),
             `"${customer.collectorName}"`,
-            `"${customer.billingStatus}"`,
             customer.isActive.toString(),
             `"${customer.lastPaymentDate}"`,
             `"${customer.joinDate}"`,
@@ -172,7 +170,6 @@ export function CustomerImportExport({
         "Current Outstanding": "currentOutstanding",
         "Bill Due Date": "billDueDate",
         "Collector Name": "collectorName",
-        "Billing Status": "billingStatus",
         "Is Active": "isActive",
         "Last Payment Date": "lastPaymentDate",
         "Join Date": "joinDate",
@@ -197,7 +194,6 @@ export function CustomerImportExport({
             connections: [],
             numberOfConnections: 1,
             isActive: true,
-            billingStatus: "Pending",
             packageAmount: 0,
             previousOutstanding: 0,
             currentOutstanding: 0,
@@ -225,12 +221,6 @@ export function CustomerImportExport({
                   break;
                 case "isActive":
                   customerData[fieldName] = value.toLowerCase() === "true";
-                  break;
-                case "billingStatus":
-                  if (!["Paid", "Pending", "Overdue"].includes(value)) {
-                    value = "Pending";
-                  }
-                  customerData[fieldName] = value;
                   break;
                 default:
                   customerData[fieldName] = value;
@@ -341,7 +331,6 @@ export function CustomerImportExport({
       "599",
       "5",
       "System Administrator",
-      "Pending",
       "true",
       "2024-01-15",
       "2024-01-01",
