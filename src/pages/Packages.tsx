@@ -444,7 +444,7 @@ export default function Packages() {
                   </div>
                   <div>
                     <label className="text-sm font-medium">
-                      Monthly Price ($)
+                      Monthly Price (₹)
                     </label>
                     <input
                       name="price"
