@@ -212,7 +212,7 @@ export default function Packages() {
                   </Badge>
                 </div>
                 <div className="text-3xl font-bold text-blue-600">
-                  ${pkg.price}
+                  ₹{pkg.price}
                   <span className="text-base font-normal text-gray-500">
                     /month
                   </span>
