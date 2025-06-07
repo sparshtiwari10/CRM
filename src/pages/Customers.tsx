@@ -42,10 +42,20 @@ export default function Customers() {
     if (!user) return;
 
     let unsubscribe: (() => void) | undefined;
+    setIsLoading(true);
 
     const setupListener = () => {
       const onCustomersUpdate = (updatedCustomers: Customer[]) => {
-        setCustomers(updatedCustomers);
+        // Use functional update to prevent stale closures
+        setCustomers((prevCustomers) => {
+          // Only update if the data actually changed
+          if (
+            JSON.stringify(prevCustomers) !== JSON.stringify(updatedCustomers)
+          ) {
+            return updatedCustomers;
+          }
+          return prevCustomers;
+        });
         setIsLoading(false);
       };
 
@@ -75,14 +85,16 @@ export default function Customers() {
       }
     };
 
-    setupListener();
+    // Add a small delay to prevent rapid re-subscriptions
+    const timeoutId = setTimeout(setupListener, 100);
 
     return () => {
+      clearTimeout(timeoutId);
       if (unsubscribe) {
         unsubscribe();
       }
     };
-  }, [user, isAdmin, toast]);
+  }, [user?.id, isAdmin]); // Only depend on user.id and isAdmin, not the full user object
 
   // Filter and search customers
   const filteredCustomers = useMemo(() => {
@@ -194,11 +206,30 @@ export default function Customers() {
     });
   };
 
-  const handleViewHistory = (customer: Customer) => {
-    toast({
-      title: "History",
-      description: `Viewing change history for ${customer.name}`,
-    });
+  const handleEditSave = async (customer: Customer) => {
+    try {
+      await CustomerService.updateCustomer(customer.id, customer);
+
+      toast({
+        title: "Success",
+        description: "Customer updated successfully.",
+      });
+
+      setEditingCustomer(null);
+
+      // For admin, force a page reload to ensure responsiveness
+      if (isAdmin) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update customer. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
