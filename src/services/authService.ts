@@ -274,6 +274,10 @@ class AuthService {
       throw new Error("Only administrators can create users");
     }
 
+    if (!isFirebaseAvailable || !db) {
+      throw new Error("User creation is not available in demo mode");
+    }
+
     try {
       // Check if username already exists
       const usersRef = collection(db, "users");
