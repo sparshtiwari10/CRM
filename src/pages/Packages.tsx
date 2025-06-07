@@ -193,7 +193,7 @@ export default function Packages() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${averageRevenuePerCustomer.toFixed(2)}
+                ₹{averageRevenuePerCustomer.toLocaleString()}
               </div>
               <p className="text-xs text-gray-600">Monthly average</p>
             </CardContent>
