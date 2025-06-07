@@ -215,14 +215,28 @@ export default function RequestManagement() {
     }
   };
 
-  const handleNewRequestClose = () => {
+  const handleNewRequestClose = async () => {
     setShowNewRequestModal(false);
-    // Refresh requests - in a real app this would come from the backend
-    toast({
-      title: "Request Submitted",
-      description:
-        "Your request has been submitted and is pending admin review.",
-    });
+
+    try {
+      // Refresh requests from Firebase to show the new request
+      const updatedRequests = await CustomerService.getAllRequests();
+      setRequests(updatedRequests || []);
+
+      toast({
+        title: "Request Submitted",
+        description:
+          "Your request has been submitted and saved to database. It is pending admin review.",
+      });
+    } catch (error) {
+      console.error("Failed to refresh requests:", error);
+      toast({
+        title: "Request Submitted",
+        description:
+          "Your request has been submitted but failed to refresh the list. Please reload the page.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
