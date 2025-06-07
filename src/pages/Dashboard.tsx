@@ -326,31 +326,45 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentCustomers.map((customer) => (
-                    <div
-                      key={customer.id}
-                      className="flex items-center justify-between py-2"
-                    >
-                      <div>
-                        <p className="font-medium">{customer.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {customer.currentPackage}
-                        </p>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={
-                          customer.billingStatus === "Paid"
-                            ? "bg-green-100 text-green-800"
-                            : customer.billingStatus === "Pending"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                        }
-                      >
-                        {customer.billingStatus}
-                      </Badge>
+                  {isLoading ? (
+                    <div className="text-center py-4 text-gray-500">
+                      Loading customers...
                     </div>
-                  ))}
+                  ) : recentCustomers.length > 0 ? (
+                    recentCustomers.map((customer) => (
+                      <div
+                        key={customer.id}
+                        className="flex items-center justify-between py-2"
+                      >
+                        <div>
+                          <p className="font-medium">{customer.name}</p>
+                          <p className="text-sm text-gray-500">
+                            {customer.currentPackage}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={
+                            customer.billingStatus === "Paid"
+                              ? "bg-green-100 text-green-800"
+                              : customer.billingStatus === "Pending"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                          }
+                        >
+                          {customer.billingStatus}
+                        </Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Users className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p>No customers yet</p>
+                      <p className="text-sm">
+                        Start by adding your first customer
+                      </p>
+                    </div>
+                  )}
 
                   <div className="pt-4 border-t">
                     <Button
