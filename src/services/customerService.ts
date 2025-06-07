@@ -238,6 +238,10 @@ export class CustomerService {
             isCustomPlan: false,
           },
         ],
+        previousOutstanding: 150,
+        planBill: 599,
+        currentOutstanding: 749,
+        packageAmount: 599,
       },
       {
         id: "2",
@@ -264,6 +268,10 @@ export class CustomerService {
             isCustomPlan: false,
           },
         ],
+        previousOutstanding: 0,
+        planBill: 299,
+        currentOutstanding: 299,
+        packageAmount: 299,
       },
       {
         id: "3",
@@ -296,6 +304,10 @@ export class CustomerService {
           price: 899,
           description: "Custom enterprise solution with dedicated support",
         },
+        previousOutstanding: 899,
+        planBill: 899,
+        currentOutstanding: 1798,
+        packageAmount: 899,
       },
     ];
   }

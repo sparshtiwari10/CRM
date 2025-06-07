@@ -34,9 +34,9 @@ export const mockCustomers: Customer[] = [
       },
     ],
     previousOutstanding: 150.0,
-    planBill: 599,
     currentOutstanding: 749.0,
     packageAmount: 599,
+    billDueDate: 5,
     invoiceHistory: [
       {
         id: "inv-1-1",
@@ -90,9 +90,9 @@ export const mockCustomers: Customer[] = [
       },
     ],
     previousOutstanding: 0,
-    planBill: 798, // 299 + 499
     currentOutstanding: 798,
     packageAmount: 798,
+    billDueDate: 10,
   },
   {
     id: "3",
@@ -126,9 +126,9 @@ export const mockCustomers: Customer[] = [
       description: "Custom enterprise solution with dedicated support",
     },
     previousOutstanding: 899,
-    planBill: 899,
     currentOutstanding: 1798, // Previous + current bill (unpaid)
     packageAmount: 899,
+    billDueDate: 15,
   },
   {
     id: "4",
@@ -170,9 +170,9 @@ export const mockCustomers: Customer[] = [
       },
     ],
     previousOutstanding: 0,
-    planBill: 1697, // 599 + 299 + 799
     currentOutstanding: 0, // Paid current bill
     packageAmount: 1697,
+    billDueDate: 20,
   },
   {
     id: "5",
@@ -200,9 +200,9 @@ export const mockCustomers: Customer[] = [
       },
     ],
     previousOutstanding: 0,
-    planBill: 499,
     currentOutstanding: 0, // Paid
     packageAmount: 499,
+    billDueDate: 25,
   },
   {
     id: "6",
@@ -236,9 +236,9 @@ export const mockCustomers: Customer[] = [
         "Tailored business solution with priority support and advanced features",
     },
     previousOutstanding: 0,
-    planBill: 1299,
     currentOutstanding: 1299, // Pending payment
     packageAmount: 1299,
+    billDueDate: 30,
   },
 ];
 

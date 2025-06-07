@@ -47,6 +47,7 @@ export interface FirestoreCustomer {
     price: number;
     description: string;
   };
+  bill_due_date: number; // Day of month (1-31)
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -528,10 +529,15 @@ class FirestoreService {
         .toISOString()
         .split("T")[0],
       isActive: data.status === "active",
-      portalBill: data.bill_amount,
+      portalBill: data.bill_amount || 0,
       numberOfConnections: data.number_of_connections,
       connections: data.connections,
       customPlan: data.custom_plan,
+      // Add billing fields with defaults
+      packageAmount: data.bill_amount || 0,
+      previousOutstanding: data.prev_os || 0,
+      currentOutstanding: data.current_os || 0,
+      billDueDate: data.bill_due_date || 1,
     };
   }
 
@@ -565,6 +571,7 @@ class FirestoreService {
       discount: 0,
       current_os: customer.currentOutstanding || 0,
       remark: "",
+      bill_due_date: customer.billDueDate || 1,
       created_at: Timestamp.now(),
       updated_at: Timestamp.now(),
     };

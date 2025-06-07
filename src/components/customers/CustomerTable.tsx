@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Eye,
   Edit,
@@ -14,6 +14,9 @@ import {
   Package,
   CreditCard,
   FileText,
+  Calendar,
+  IndianRupee,
+  ExternalLink,
 } from "lucide-react";
 import {
   Table,
@@ -47,13 +50,15 @@ import {
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Customer, BillingRecord } from "@/types";
 import { ActionRequest } from "@/types/auth";
 import { ActionRequestModal } from "./ActionRequestModal";
+import { CustomerService } from "@/services/customerService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { BillingCycleService } from "@/services/billingCycleService";
 
 interface CustomerTableProps {
   customers: Customer[];
@@ -79,13 +84,32 @@ export function CustomerTable({
     "activation" | "deactivation" | "plan_change"
   >("activation");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [customerInvoices, setCustomerInvoices] = useState<{
+    [key: string]: BillingRecord[];
+  }>({});
+  const [loadingInvoices, setLoadingInvoices] = useState<Set<string>>(
+    new Set(),
+  );
   const { user, isAdmin, canAccessCustomer } = useAuth();
   const { toast } = useToast();
 
-  // Filter customers based on user role and permissions
-  const accessibleCustomers = customers.filter(
-    (customer) => isAdmin || canAccessCustomer(customer.id),
-  );
+  // Calculate current outstanding using BillingCycleService
+  const calculateCurrentOutstanding = (customer: Customer) => {
+    return BillingCycleService.calculateCurrentOutstanding(customer);
+  };
+
+  // Filter customers based on user role and permissions and ensure data integrity
+  const accessibleCustomers = customers
+    .filter((customer) => isAdmin || canAccessCustomer(customer.id))
+    .map((customer) => ({
+      ...customer,
+      // Ensure all billing fields have default values and calculate current outstanding
+      packageAmount: customer.packageAmount ?? 0,
+      previousOutstanding: customer.previousOutstanding ?? 0,
+      currentOutstanding: calculateCurrentOutstanding(customer),
+      billDueDate: customer.billDueDate ?? 1,
+      portalBill: customer.portalBill ?? 0,
+    }));
 
   const getBillingStatusColor = (status: Customer["billingStatus"]) => {
     switch (status) {
@@ -114,16 +138,56 @@ export function CustomerTable({
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return `₹${amount.toFixed(2)}`;
+  const formatCurrency = (amount: number | undefined | null): string => {
+    if (amount === undefined || amount === null || isNaN(amount)) {
+      return "₹0.00";
+    }
+    return `₹${Number(amount).toFixed(2)}`;
   };
 
-  const toggleRowExpansion = (customerId: string) => {
+  const loadCustomerInvoices = async (customerId: string, vcNumber: string) => {
+    if (customerInvoices[customerId] || loadingInvoices.has(customerId)) {
+      return; // Already loaded or loading
+    }
+
+    setLoadingInvoices((prev) => new Set(prev).add(customerId));
+
+    try {
+      // Fetch all billing records for this customer using VC number
+      const allBillingRecords = await CustomerService.getAllBillingRecords();
+      const customerBillingRecords = allBillingRecords.filter(
+        (record) =>
+          record.vcNumber === vcNumber || record.customerId === customerId,
+      );
+
+      setCustomerInvoices((prev) => ({
+        ...prev,
+        [customerId]: customerBillingRecords,
+      }));
+    } catch (error) {
+      console.error("Failed to load customer invoices:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load invoice history",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingInvoices((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(customerId);
+        return newSet;
+      });
+    }
+  };
+
+  const toggleRowExpansion = async (customerId: string, vcNumber: string) => {
     const newExpanded = new Set(expandedRows);
     if (newExpanded.has(customerId)) {
       newExpanded.delete(customerId);
     } else {
       newExpanded.add(customerId);
+      // Load invoice history when expanding
+      await loadCustomerInvoices(customerId, vcNumber);
     }
     setExpandedRows(newExpanded);
   };
@@ -163,6 +227,21 @@ export function CustomerTable({
     setActionRequestCustomer(customer);
   };
 
+  if (!customers || customers.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <div className="text-gray-500">
+            <div className="text-lg font-medium mb-2">No customers found</div>
+            <div className="text-sm">
+              Please check your connection or try again later
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (accessibleCustomers.length === 0) {
     return (
       <Card>
@@ -181,7 +260,7 @@ export function CustomerTable({
   }
 
   return (
-    <>
+    <React.Fragment>
       <Card>
         <CardContent className="p-0">
           {/* Desktop Table */}
@@ -189,24 +268,25 @@ export function CustomerTable({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-8"></TableHead> {/* Expand button */}
+                  <TableHead className="w-8"></TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>VC Number</TableHead>
+                  <TableHead>Address</TableHead>
                   <TableHead>Package</TableHead>
+                  <TableHead>Package Amount</TableHead>
                   <TableHead>Previous O/S</TableHead>
-                  <TableHead>Plan Bill</TableHead>
                   <TableHead>Current O/S</TableHead>
+                  <TableHead>Bill Due Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Collector</TableHead>
                   <TableHead>Last Payment</TableHead>
-                  {isAdmin && <TableHead>Portal Bill</TableHead>}
+                  {isAdmin ? <TableHead>Portal Bill</TableHead> : null}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {accessibleCustomers.map((customer) => (
-                  <>
-                    <TableRow key={customer.id}>
+                  <React.Fragment key={customer.id}>
+                    <TableRow>
                       <TableCell>
                         <Collapsible>
                           <CollapsibleTrigger asChild>
@@ -214,7 +294,12 @@ export function CustomerTable({
                               variant="ghost"
                               size="sm"
                               className="h-6 w-6 p-0"
-                              onClick={() => toggleRowExpansion(customer.id)}
+                              onClick={() =>
+                                toggleRowExpansion(
+                                  customer.id,
+                                  customer.vcNumber,
+                                )
+                              }
                             >
                               {expandedRows.has(customer.id) ? (
                                 <ChevronDown className="h-4 w-4" />
@@ -226,19 +311,15 @@ export function CustomerTable({
                         </Collapsible>
                       </TableCell>
                       <TableCell className="font-medium">
-                        <div>
-                          <div className="font-medium">{customer.name}</div>
-                          {customer.email && (
-                            <div className="text-sm text-gray-500">
-                              {customer.email}
-                            </div>
-                          )}
-                        </div>
+                        <div className="font-medium">{customer.name}</div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono text-sm">
-                          {customer.vcNumber}
-                        </span>
+                        <div
+                          className="text-sm max-w-[200px] truncate"
+                          title={customer.address}
+                        >
+                          {customer.address}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
@@ -246,19 +327,33 @@ export function CustomerTable({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium text-orange-600">
+                        <span className="font-medium text-green-600">
+                          {formatCurrency(customer.packageAmount)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`font-medium ${customer.previousOutstanding < 0 ? "text-green-600" : "text-orange-600"}`}
+                        >
                           {formatCurrency(customer.previousOutstanding)}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium text-blue-600">
-                          {formatCurrency(customer.planBill)}
+                        <span
+                          className={`font-medium ${customer.currentOutstanding < 0 ? "text-green-600" : "text-red-600"}`}
+                        >
+                          {formatCurrency(customer.currentOutstanding)}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium text-red-600">
-                          {formatCurrency(customer.currentOutstanding)}
-                        </span>
+                        <div className="text-center">
+                          <span className="text-lg font-bold text-blue-600">
+                            {customer.billDueDate}
+                          </span>
+                          <div className="text-xs text-gray-500">
+                            of every month
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -290,17 +385,16 @@ export function CustomerTable({
                           </span>
                         </div>
                       </TableCell>
-                      {isAdmin && (
+                      {isAdmin ? (
                         <TableCell>
                           <span className="font-medium">
                             {formatCurrency(customer.portalBill || 0)}
                           </span>
                         </TableCell>
-                      )}
+                      ) : null}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-2">
-                          {/* Quick Action Buttons - Only for employees */}
-                          {!isAdmin && (
+                          {!isAdmin ? (
                             <>
                               <Button
                                 variant="outline"
@@ -338,7 +432,7 @@ export function CustomerTable({
                                 <RefreshCw className="h-3 w-3" />
                               </Button>
                             </>
-                          )}
+                          ) : null}
 
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -351,6 +445,15 @@ export function CustomerTable({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem className="flex flex-col items-start p-3">
+                                <div className="font-medium text-sm">
+                                  VC Number
+                                </div>
+                                <div className="font-mono text-blue-600 text-sm">
+                                  {customer.vcNumber}
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => onView(customer)}
                               >
@@ -361,20 +464,18 @@ export function CustomerTable({
                                 onClick={() => onViewHistory(customer)}
                               >
                                 <History className="mr-2 h-4 w-4" />
-                                View History
+                                Full Billing History
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {/* Edit Customer - Admin Only */}
-                              {isAdmin && (
+                              {isAdmin ? (
                                 <DropdownMenuItem
                                   onClick={() => onEdit(customer)}
                                 >
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit Customer
                                 </DropdownMenuItem>
-                              )}
-                              {/* Request Action - Employees Only */}
-                              {!isAdmin && canAccessCustomer(customer.id) && (
+                              ) : null}
+                              {!isAdmin && canAccessCustomer(customer.id) ? (
                                 <DropdownMenuItem
                                   onClick={() =>
                                     handleGenericActionRequest(customer)
@@ -383,9 +484,8 @@ export function CustomerTable({
                                   <RefreshCw className="mr-2 h-4 w-4" />
                                   Request Action
                                 </DropdownMenuItem>
-                              )}
-                              {/* Delete Customer - Admin Only */}
-                              {isAdmin && (
+                              ) : null}
+                              {isAdmin ? (
                                 <DropdownMenuItem
                                   onClick={() => setDeleteCustomer(customer)}
                                   className="text-red-600"
@@ -393,214 +493,215 @@ export function CustomerTable({
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   Delete Customer
                                 </DropdownMenuItem>
-                              )}
+                              ) : null}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
 
-                    {/* Expandable Row Content */}
-                    {expandedRows.has(customer.id) && (
+                    {/* Enhanced Expandable Row Content - Focus on Billing & Invoice History */}
+                    {expandedRows.has(customer.id) ? (
                       <TableRow>
                         <TableCell colSpan={isAdmin ? 12 : 11}>
-                          <div className="p-4 bg-gray-50 border-t">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                              {/* Contact Information */}
-                              <Card className="p-4">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <Phone className="h-4 w-4 text-blue-600" />
-                                  <h4 className="font-medium text-sm">
-                                    Contact
-                                  </h4>
-                                </div>
-                                <div className="space-y-1 text-sm">
+                          <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-200">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                              <Card className="lg:col-span-1">
+                                <CardHeader className="pb-3">
+                                  <CardTitle className="text-sm flex items-center">
+                                    <Phone className="h-4 w-4 mr-2 text-blue-600" />
+                                    Contact Information
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3 text-sm">
                                   <div>
-                                    <span className="text-gray-500">
+                                    <span className="text-gray-500 font-medium">
                                       Phone:
                                     </span>
-                                    <br />
-                                    <span className="font-medium">
+                                    <div className="font-medium">
                                       {customer.phoneNumber}
-                                    </span>
+                                    </div>
                                   </div>
                                   <div>
-                                    <span className="text-gray-500">
+                                    <span className="text-gray-500 font-medium">
+                                      Email:
+                                    </span>
+                                    <div className="font-medium">
+                                      {customer.email || "Not provided"}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500 font-medium">
                                       Address:
                                     </span>
-                                    <br />
-                                    <span className="text-xs">
+                                    <div className="text-sm">
                                       {customer.address}
-                                    </span>
-                                  </div>
-                                </div>
-                              </Card>
-
-                              {/* Package Information */}
-                              <Card className="p-4">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <Package className="h-4 w-4 text-green-600" />
-                                  <h4 className="font-medium text-sm">
-                                    Package
-                                  </h4>
-                                </div>
-                                <div className="space-y-1 text-sm">
-                                  <div>
-                                    <span className="text-gray-500">
-                                      Current:
-                                    </span>
-                                    <br />
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      {customer.currentPackage}
-                                    </Badge>
+                                    </div>
                                   </div>
                                   <div>
-                                    <span className="text-gray-500">
-                                      Monthly:
-                                    </span>
-                                    <br />
-                                    <span className="font-medium text-green-600">
-                                      {formatCurrency(customer.planBill)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </Card>
-
-                              {/* VC Information */}
-                              <Card className="p-4">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <CreditCard className="h-4 w-4 text-purple-600" />
-                                  <h4 className="font-medium text-sm">
-                                    VC Details
-                                  </h4>
-                                </div>
-                                <div className="space-y-1 text-sm">
-                                  <div>
-                                    <span className="text-gray-500">
+                                    <span className="text-gray-500 font-medium">
                                       VC Number:
                                     </span>
-                                    <br />
-                                    <span className="font-mono font-medium">
+                                    <div className="font-mono font-medium text-blue-600">
                                       {customer.vcNumber}
-                                    </span>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <span className="text-gray-500">
-                                      Connections:
-                                    </span>
-                                    <br />
-                                    <span className="font-medium">
-                                      {customer.numberOfConnections}
-                                    </span>
-                                  </div>
-                                </div>
+                                </CardContent>
                               </Card>
 
-                              {/* Billing Summary */}
-                              <Card className="p-4">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <FileText className="h-4 w-4 text-orange-600" />
-                                  <h4 className="font-medium text-sm">
-                                    Billing
-                                  </h4>
-                                </div>
-                                <div className="space-y-1 text-sm">
-                                  <div>
-                                    <span className="text-gray-500">
-                                      Outstanding:
-                                    </span>
-                                    <br />
-                                    <span className="font-medium text-red-600">
-                                      {formatCurrency(
-                                        customer.currentOutstanding,
-                                      )}
-                                    </span>
+                              <Card className="lg:col-span-2">
+                                <CardHeader className="pb-3">
+                                  <CardTitle className="text-sm flex items-center justify-between">
+                                    <div className="flex items-center">
+                                      <IndianRupee className="h-4 w-4 mr-2 text-green-600" />
+                                      Financial Overview
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => onViewHistory(customer)}
+                                      className="text-xs"
+                                    >
+                                      <ExternalLink className="h-3 w-3 mr-1" />
+                                      Full History
+                                    </Button>
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                                      <div className="text-xs text-green-600 font-medium">
+                                        Package Amount
+                                      </div>
+                                      <div className="text-lg font-bold text-green-700">
+                                        {formatCurrency(customer.packageAmount)}
+                                      </div>
+                                    </div>
+                                    <div className="text-center p-3 bg-orange-50 rounded-lg">
+                                      <div className="text-xs text-orange-600 font-medium">
+                                        Previous O/S
+                                      </div>
+                                      <div
+                                        className={`text-lg font-bold ${customer.previousOutstanding < 0 ? "text-green-700" : "text-orange-700"}`}
+                                      >
+                                        {formatCurrency(
+                                          customer.previousOutstanding,
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="text-center p-3 bg-red-50 rounded-lg">
+                                      <div className="text-xs text-red-600 font-medium">
+                                        Current O/S
+                                      </div>
+                                      <div
+                                        className={`text-lg font-bold ${customer.currentOutstanding < 0 ? "text-green-700" : "text-red-700"}`}
+                                      >
+                                        {formatCurrency(
+                                          customer.currentOutstanding,
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <span className="text-gray-500">
-                                      Last Payment:
-                                    </span>
-                                    <br />
-                                    <span className="text-xs">
-                                      {formatDate(customer.lastPaymentDate)}
-                                    </span>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                                      <div className="text-xs text-blue-600 font-medium">
+                                        Bill Due Date
+                                      </div>
+                                      <div className="text-lg font-bold text-blue-700">
+                                        {customer.billDueDate}{" "}
+                                        <span className="text-sm">
+                                          of every month
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="text-center p-3 bg-purple-50 rounded-lg">
+                                      <div className="text-xs text-purple-600 font-medium">
+                                        VC Number
+                                      </div>
+                                      <div className="text-lg font-bold text-purple-700 font-mono">
+                                        {customer.vcNumber}
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
+
+                                  <div className="text-xs text-gray-500 text-center p-2 bg-gray-50 rounded">
+                                    Current Outstanding = Package Amount +
+                                    Previous Outstanding - Paid Invoice Amounts
+                                    <br />
+                                    <span className="text-blue-600">
+                                      Monthly Cycle:
+                                    </span>{" "}
+                                    On bill due date, Previous O/S becomes
+                                    Current O/S, then Current O/S = Previous O/S
+                                    + Package Amount
+                                  </div>
+                                </CardContent>
                               </Card>
                             </div>
 
-                            {/* Previous Invoices Section */}
-                            {customer.invoiceHistory &&
-                              customer.invoiceHistory.length > 0 && (
-                                <div className="mt-4">
-                                  <h4 className="font-medium text-sm mb-2 text-gray-900">
-                                    Previous Invoices
-                                  </h4>
-                                  <div className="overflow-x-auto">
-                                    <table className="w-full text-xs">
-                                      <thead>
-                                        <tr className="border-b">
-                                          <th className="text-left p-2">
-                                            Invoice #
-                                          </th>
-                                          <th className="text-left p-2">
-                                            Date
-                                          </th>
-                                          <th className="text-left p-2">
-                                            Amount
-                                          </th>
-                                          <th className="text-left p-2">
-                                            Status
-                                          </th>
-                                          <th className="text-left p-2">
-                                            Due Date
-                                          </th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {customer.invoiceHistory
-                                          .slice(0, 5)
-                                          .map((invoice) => (
-                                            <tr
-                                              key={invoice.id}
-                                              className="border-b"
+                            <Card className="mt-6">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm flex items-center">
+                                  <FileText className="h-4 w-4 mr-2 text-purple-600" />
+                                  Recent Invoice History (VC:{" "}
+                                  {customer.vcNumber})
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                {loadingInvoices.has(customer.id) ? (
+                                  <div className="text-center py-4">
+                                    <div className="text-sm text-gray-500">
+                                      Loading invoice history...
+                                    </div>
+                                  </div>
+                                ) : customerInvoices[customer.id] &&
+                                  customerInvoices[customer.id].length > 0 ? (
+                                  <div className="space-y-2">
+                                    <div className="grid grid-cols-5 gap-2 text-xs font-medium text-gray-500 border-b pb-2">
+                                      <div>Invoice #</div>
+                                      <div>Date</div>
+                                      <div>Amount</div>
+                                      <div>Status</div>
+                                      <div>Payment Mode</div>
+                                    </div>
+                                    {customerInvoices[customer.id]
+                                      .slice(0, 10)
+                                      .map((invoice) => (
+                                        <div
+                                          key={invoice.id}
+                                          className="grid grid-cols-5 gap-2 text-sm py-2 border-b border-gray-100 hover:bg-gray-50 rounded"
+                                        >
+                                          <div className="font-mono text-xs">
+                                            {invoice.invoiceNumber}
+                                          </div>
+                                          <div className="text-xs">
+                                            {formatDate(invoice.generatedDate)}
+                                          </div>
+                                          <div className="font-medium">
+                                            {formatCurrency(invoice.amount)}
+                                          </div>
+                                          <div>
+                                            <Badge
+                                              variant="outline"
+                                              className={cn(
+                                                "text-xs",
+                                                getBillingStatusColor(
+                                                  invoice.status,
+                                                ),
+                                              )}
                                             >
-                                              <td className="p-2 font-mono">
-                                                {invoice.invoiceNumber}
-                                              </td>
-                                              <td className="p-2">
-                                                {formatDate(
-                                                  invoice.generatedDate,
-                                                )}
-                                              </td>
-                                              <td className="p-2 font-medium">
-                                                {formatCurrency(invoice.amount)}
-                                              </td>
-                                              <td className="p-2">
-                                                <Badge
-                                                  variant="outline"
-                                                  className={cn(
-                                                    "text-xs",
-                                                    getBillingStatusColor(
-                                                      invoice.status,
-                                                    ),
-                                                  )}
-                                                >
-                                                  {invoice.status}
-                                                </Badge>
-                                              </td>
-                                              <td className="p-2">
-                                                {formatDate(invoice.dueDate)}
-                                              </td>
-                                            </tr>
-                                          ))}
-                                      </tbody>
-                                    </table>
-                                    {customer.invoiceHistory.length > 5 && (
-                                      <div className="text-center py-2">
+                                              {invoice.status}
+                                            </Badge>
+                                          </div>
+                                          <div className="text-xs text-gray-500">
+                                            {invoice.paymentMethod || "N/A"}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    {customerInvoices[customer.id].length >
+                                      10 && (
+                                      <div className="text-center pt-3">
                                         <Button
                                           variant="ghost"
                                           size="sm"
@@ -610,25 +711,37 @@ export function CustomerTable({
                                           className="text-xs"
                                         >
                                           View All{" "}
-                                          {customer.invoiceHistory.length}{" "}
+                                          {customerInvoices[customer.id].length}{" "}
                                           Invoices
                                         </Button>
                                       </div>
                                     )}
                                   </div>
-                                </div>
-                              )}
+                                ) : (
+                                  <div className="text-center py-6 text-gray-500">
+                                    <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                                    <div className="text-sm">
+                                      No invoice history found
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                      Invoices for VC {customer.vcNumber} will
+                                      appear here
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
                           </div>
                         </TableCell>
                       </TableRow>
-                    )}
-                  </>
+                    ) : null}
+                  </React.Fragment>
                 ))}
               </TableBody>
             </Table>
           </div>
 
-          {/* Mobile Cards */}
+          {/* Enhanced Mobile Cards */}
           <div className="lg:hidden space-y-4 p-4">
             {accessibleCustomers.map((customer) => (
               <Card key={customer.id} className="p-4">
@@ -636,11 +749,9 @@ export function CustomerTable({
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="font-medium text-lg">{customer.name}</h3>
-                      {customer.email && (
-                        <p className="text-sm text-gray-500">
-                          {customer.email}
-                        </p>
-                      )}
+                      <p className="text-sm text-gray-500">
+                        {customer.address}
+                      </p>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Badge
@@ -654,7 +765,9 @@ export function CustomerTable({
                           variant="ghost"
                           size="sm"
                           className="h-6 w-6 p-0"
-                          onClick={() => toggleRowExpansion(customer.id)}
+                          onClick={() =>
+                            toggleRowExpansion(customer.id, customer.vcNumber)
+                          }
                         >
                           {expandedRows.has(customer.id) ? (
                             <ChevronDown className="h-4 w-4" />
@@ -674,6 +787,13 @@ export function CustomerTable({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem className="flex flex-col items-start p-3">
+                            <div className="font-medium text-sm">VC Number</div>
+                            <div className="font-mono text-blue-600 text-sm">
+                              {customer.vcNumber}
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => onView(customer)}>
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
@@ -682,18 +802,16 @@ export function CustomerTable({
                             onClick={() => onViewHistory(customer)}
                           >
                             <History className="mr-2 h-4 w-4" />
-                            View History
+                            Full Billing History
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          {/* Edit Customer - Admin Only */}
-                          {isAdmin && (
+                          {isAdmin ? (
                             <DropdownMenuItem onClick={() => onEdit(customer)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Customer
                             </DropdownMenuItem>
-                          )}
-                          {/* Request Action - Employees Only */}
-                          {!isAdmin && canAccessCustomer(customer.id) && (
+                          ) : null}
+                          {!isAdmin && canAccessCustomer(customer.id) ? (
                             <DropdownMenuItem
                               onClick={() =>
                                 handleGenericActionRequest(customer)
@@ -702,9 +820,8 @@ export function CustomerTable({
                               <RefreshCw className="mr-2 h-4 w-4" />
                               Request Action
                             </DropdownMenuItem>
-                          )}
-                          {/* Delete Customer - Admin Only */}
-                          {isAdmin && (
+                          ) : null}
+                          {isAdmin ? (
                             <DropdownMenuItem
                               onClick={() => setDeleteCustomer(customer)}
                               className="text-red-600"
@@ -712,37 +829,52 @@ export function CustomerTable({
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete Customer
                             </DropdownMenuItem>
-                          )}
+                          ) : null}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
                   </div>
 
                   <div className="space-y-3 text-sm">
-                    {/* Key Info Section */}
-                    <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg border">
+                    {/* Financial Info Grid */}
+                    <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-lg border">
                       <div className="text-center">
                         <div className="text-xs text-gray-500 font-medium">
-                          PREV O/S
+                          PACKAGE AMT
                         </div>
-                        <div className="font-medium text-orange-600 mt-1">
-                          {formatCurrency(customer.previousOutstanding)}
+                        <div className="font-medium text-green-600 mt-1">
+                          {formatCurrency(customer.packageAmount)}
                         </div>
                       </div>
                       <div className="text-center">
                         <div className="text-xs text-gray-500 font-medium">
-                          PLAN BILL
+                          PREV O/S
                         </div>
-                        <div className="font-medium text-blue-600 mt-1">
-                          {formatCurrency(customer.planBill)}
+                        <div
+                          className={`font-medium mt-1 ${customer.previousOutstanding < 0 ? "text-green-600" : "text-orange-600"}`}
+                        >
+                          {formatCurrency(customer.previousOutstanding)}
                         </div>
                       </div>
                       <div className="text-center">
                         <div className="text-xs text-gray-500 font-medium">
                           CURRENT O/S
                         </div>
-                        <div className="font-medium text-red-600 mt-1">
+                        <div
+                          className={`font-medium mt-1 ${customer.currentOutstanding < 0 ? "text-green-600" : "text-red-600"}`}
+                        >
                           {formatCurrency(customer.currentOutstanding)}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xs text-gray-500 font-medium">
+                          BILL DUE DATE
+                        </div>
+                        <div className="font-medium text-blue-600 mt-1">
+                          {customer.billDueDate}{" "}
+                          <span className="text-xs text-gray-500">
+                            of month
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -751,7 +883,9 @@ export function CustomerTable({
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span className="text-gray-500">VC Number:</span>
-                        <span className="font-mono">{customer.vcNumber}</span>
+                        <span className="font-mono text-blue-600">
+                          {customer.vcNumber}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Package:</span>
@@ -793,90 +927,78 @@ export function CustomerTable({
                             {customer.phoneNumber}
                           </div>
                           <div>
+                            <span className="text-gray-500">Email:</span>{" "}
+                            {customer.email || "Not provided"}
+                          </div>
+                          <div>
                             <span className="text-gray-500">Address:</span>{" "}
                             {customer.address}
                           </div>
                         </div>
                       </div>
 
-                      {/* Package Details */}
+                      {/* Recent Invoices for Mobile */}
                       <div>
                         <h4 className="font-medium text-sm mb-2 flex items-center">
-                          <Package className="h-4 w-4 mr-2 text-green-600" />
-                          Package Details
+                          <FileText className="h-4 w-4 mr-2 text-orange-600" />
+                          Recent Invoices
                         </h4>
-                        <div className="text-sm space-y-1">
-                          <div>
-                            <span className="text-gray-500">
-                              Current Package:
-                            </span>{" "}
-                            {customer.currentPackage}
+                        {loadingInvoices.has(customer.id) ? (
+                          <div className="text-sm text-gray-500">
+                            Loading...
                           </div>
-                          <div>
-                            <span className="text-gray-500">VC Number:</span>{" "}
-                            {customer.vcNumber}
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Connections:</span>{" "}
-                            {customer.numberOfConnections}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Recent Invoices */}
-                      {customer.invoiceHistory &&
-                        customer.invoiceHistory.length > 0 && (
-                          <div>
-                            <h4 className="font-medium text-sm mb-2 flex items-center">
-                              <FileText className="h-4 w-4 mr-2 text-orange-600" />
-                              Recent Invoices
-                            </h4>
-                            <div className="space-y-2">
-                              {customer.invoiceHistory
-                                .slice(0, 3)
-                                .map((invoice) => (
-                                  <div
-                                    key={invoice.id}
-                                    className="flex justify-between items-center text-xs p-2 bg-gray-50 rounded"
-                                  >
-                                    <div>
-                                      <div className="font-mono">
-                                        {invoice.invoiceNumber}
-                                      </div>
-                                      <div className="text-gray-500">
-                                        {formatDate(invoice.generatedDate)}
-                                      </div>
+                        ) : customerInvoices[customer.id] &&
+                          customerInvoices[customer.id].length > 0 ? (
+                          <div className="space-y-2">
+                            {customerInvoices[customer.id]
+                              .slice(0, 3)
+                              .map((invoice) => (
+                                <div
+                                  key={invoice.id}
+                                  className="flex justify-between items-center text-xs p-2 bg-gray-50 rounded"
+                                >
+                                  <div>
+                                    <div className="font-mono">
+                                      {invoice.invoiceNumber}
                                     </div>
-                                    <div className="text-right">
-                                      <div className="font-medium">
-                                        {formatCurrency(invoice.amount)}
-                                      </div>
-                                      <Badge
-                                        variant="outline"
-                                        className={cn(
-                                          "text-xs",
-                                          getBillingStatusColor(invoice.status),
-                                        )}
-                                      >
-                                        {invoice.status}
-                                      </Badge>
+                                    <div className="text-gray-500">
+                                      {formatDate(invoice.generatedDate)}
                                     </div>
                                   </div>
-                                ))}
-                              {customer.invoiceHistory.length > 3 && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => onViewHistory(customer)}
-                                  className="w-full text-xs"
-                                >
-                                  View All {customer.invoiceHistory.length}{" "}
-                                  Invoices
-                                </Button>
-                              )}
-                            </div>
+                                  <div className="text-right">
+                                    <div className="font-medium">
+                                      {formatCurrency(invoice.amount)}
+                                    </div>
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "text-xs",
+                                        getBillingStatusColor(invoice.status),
+                                      )}
+                                    >
+                                      {invoice.status}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            {customerInvoices[customer.id].length > 3 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onViewHistory(customer)}
+                                className="w-full text-xs"
+                              >
+                                View All {customerInvoices[customer.id].length}{" "}
+                                Invoices
+                              </Button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500">
+                            No invoices found
                           </div>
                         )}
+                      </div>
                     </div>
                   </CollapsibleContent>
 
@@ -959,6 +1081,6 @@ export function CustomerTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </React.Fragment>
   );
 }

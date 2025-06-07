@@ -122,7 +122,6 @@ export default function Billing() {
       setIsLoading(true);
       try {
         const records = await CustomerService.getAllBillingRecords();
-        console.log("Loaded billing records:", records);
         setBillingRecords(records);
       } catch (error) {
         console.error("Error loading billing records:", error);
@@ -201,10 +200,6 @@ export default function Billing() {
       hasAccess
     );
   });
-
-  console.log("Total billing records:", billingRecords.length);
-  console.log("Filtered billing records:", filteredBillingRecords.length);
-  console.log("Status filter:", statusFilter);
 
   // Get unique employees from billing records for filter dropdown
   const uniqueEmployees = Array.from(

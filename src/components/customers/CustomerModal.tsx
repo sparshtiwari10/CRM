@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { authService } from "@/services/authService";
 import {
   Dialog,
@@ -56,23 +56,24 @@ export function CustomerModal({
       const loadCollectors = async () => {
         try {
           const users = await authService.getAllUsers();
-          const collectors = users
-            .filter(
-              (user) =>
-                user.isActive &&
-                (user.role === "employee" || user.role === "admin"),
-            )
+          const employees = users
+            .filter((user) => user.role === "employee" && user.isActive)
             .map((user) => user.name);
 
-          // Always ensure at least System Administrator is available
-          if (
-            collectors.length === 0 ||
-            !collectors.includes("System Administrator")
-          ) {
-            collectors.unshift("System Administrator");
+          // Add System Administrator if no employees exist
+          if (employees.length === 0) {
+            setAvailableCollectors(["System Administrator"]);
+          } else {
+            // Add System Administrator as an option along with employees
+            setAvailableCollectors(["System Administrator", ...employees]);
           }
 
-          setAvailableCollectors(collectors);
+          console.log(
+            "Loaded collectors:",
+            employees.length > 0
+              ? ["System Administrator", ...employees]
+              : ["System Administrator"],
+          );
         } catch (error) {
           console.error("Failed to load collectors:", error);
           // Fallback to default admin
@@ -102,8 +103,8 @@ export function CustomerModal({
         customPlan: customer.customPlan || null,
         packageAmount: customer.packageAmount || 0,
         previousOutstanding: customer.previousOutstanding || 0,
-        planBill: customer.planBill || 0,
         currentOutstanding: customer.currentOutstanding || 0,
+        billDueDate: customer.billDueDate || 1,
         isInitialized: true,
       };
     } else {
@@ -124,6 +125,7 @@ export function CustomerModal({
         packageAmount: 0,
         previousOutstanding: 0,
         currentOutstanding: 0,
+        billDueDate: 1,
         isInitialized: false,
       };
     }
@@ -203,6 +205,7 @@ export function CustomerModal({
       packageAmount: 0,
       previousOutstanding: 0,
       currentOutstanding: 0,
+      billDueDate: 1,
       isInitialized: true,
     });
     setShowCustomPlan(false);
@@ -406,6 +409,7 @@ export function CustomerModal({
       packageAmount: formData.packageAmount,
       previousOutstanding: formData.previousOutstanding,
       currentOutstanding: formData.currentOutstanding,
+      billDueDate: formData.billDueDate,
     };
 
     // Only add optional fields if they have valid values (avoid undefined)
@@ -775,7 +779,7 @@ export function CustomerModal({
                     <h4 className="font-medium text-gray-900">
                       Billing Calculations
                     </h4>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="packageAmount">
                           Package Amount (₹)
@@ -817,14 +821,53 @@ export function CustomerModal({
                       </div>
 
                       <div>
+                        <Label htmlFor="billDueDate">Bill Due Date</Label>
+                        <Select
+                          value={formData.billDueDate?.toString() || "1"}
+                          onValueChange={(value) =>
+                            handleInputChange("billDueDate", parseInt(value))
+                          }
+                          disabled={isSaving}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select due date" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map(
+                              (day) => (
+                                <SelectItem key={day} value={day.toString()}>
+                                  {day}{" "}
+                                  {day === 1
+                                    ? "st"
+                                    : day === 2
+                                      ? "nd"
+                                      : day === 3
+                                        ? "rd"
+                                        : "th"}{" "}
+                                  of every month
+                                </SelectItem>
+                              ),
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Monthly billing cycle date
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
                         <Label htmlFor="previousOutstanding">
-                          Previous O/S (₹)
+                          Previous O/S (₹){" "}
+                          <span className="text-xs text-gray-500">
+                            (can be negative)
+                          </span>
                         </Label>
                         <Input
                           id="previousOutstanding"
                           type="number"
                           step="0.01"
-                          min="0"
                           value={formData.previousOutstanding}
                           onChange={(e) =>
                             handleInputChange(
@@ -841,13 +884,15 @@ export function CustomerModal({
 
                       <div>
                         <Label htmlFor="currentOutstanding">
-                          Current O/S (₹)
+                          Current O/S (₹){" "}
+                          <span className="text-xs text-gray-500">
+                            (can be negative)
+                          </span>
                         </Label>
                         <Input
                           id="currentOutstanding"
                           type="number"
                           step="0.01"
-                          min="0"
                           value={formData.currentOutstanding}
                           onChange={(e) =>
                             handleInputChange(
@@ -859,7 +904,8 @@ export function CustomerModal({
                           className="font-medium"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Current outstanding: Prev O/S + Bill
+                          Auto-calculated: Package Amount + Previous O/S - Paid
+                          Invoices
                         </p>
                       </div>
                     </div>
@@ -868,14 +914,21 @@ export function CustomerModal({
                     <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
                       <h5 className="font-medium mb-1">Billing Logic:</h5>
                       <ul className="text-xs space-y-1">
-                        <li>• Current O/S = Previous O/S + Package Amount</li>
                         <li>
-                          • When invoice is generated: New Current O/S = Current
-                          O/S - Invoice Amount
+                          • Current O/S = Package Amount + Previous O/S - Paid
+                          Invoice Amounts
                         </li>
                         <li>
-                          • Monthly: Current O/S transfers to Previous O/S, New
-                          bill generated
+                          • When invoice is generated: Deduct invoice amount
+                          from Current O/S
+                        </li>
+                        <li>
+                          • On bill due date each month: Previous O/S = Current
+                          O/S, then Current O/S = Previous O/S + Package Amount
+                        </li>
+                        <li>
+                          • Both Previous O/S and Current O/S can be negative
+                          (credit balance)
                         </li>
                       </ul>
                     </div>

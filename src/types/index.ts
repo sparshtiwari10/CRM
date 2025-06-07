@@ -31,10 +31,10 @@ export interface Customer {
     description: string;
   };
   // Enhanced billing calculation fields
-  packageAmount?: number; // Monthly package amount
-  previousOutstanding: number; // Previous outstanding amount (required)
-  planBill: number; // Plan bill amount (required)
-  currentOutstanding: number; // Current outstanding amount (calculated: previous + plan - paid)
+  packageAmount: number; // Monthly package amount (required)
+  previousOutstanding: number; // Previous outstanding amount (can be negative)
+  currentOutstanding: number; // Current outstanding amount (calculated: previous + package - paid invoices, can be negative)
+  billDueDate: number; // Due date (1-31) - on this date each month billing cycle runs
   // Invoice history for expanded row
   invoiceHistory?: BillingRecord[];
 }
