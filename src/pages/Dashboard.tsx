@@ -177,7 +177,7 @@ export default function Dashboard() {
             />
             <StatCard
               title="Monthly Revenue"
-              value={`$${stats.monthlyRevenue.toLocaleString()}`}
+              value={`₹${stats.monthlyRevenue.toLocaleString()}`}
               icon={DollarSign}
               change="+8.3% from last month"
               changeType="positive"
@@ -303,7 +303,7 @@ export default function Dashboard() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">${payment.amount}</p>
+                        <p className="font-medium">₹{payment.amount}</p>
                         <Badge
                           variant="outline"
                           className="bg-green-100 text-green-800"
@@ -406,26 +406,80 @@ export default function Dashboard() {
     );
   }
 
-  // Render employee dashboard (restricted content)
+  // Render employee dashboard (restricted content with mobile-optimized containers)
   return (
     <DashboardLayout title="Employee Dashboard">
-      <div className="p-6 space-y-6">
-        {/* Employee: Only Payment Stats for Today & Yesterday */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <StatCard
-            title="Today's Payments"
-            value={`$${todayTotal.toFixed(2)}`}
-            icon={DollarSign}
-            change={`${todayPayments.length} payments collected`}
-            changeType="positive"
-          />
-          <StatCard
-            title="Yesterday's Payments"
-            value={`$${yesterdayTotal.toFixed(2)}`}
-            icon={Clock}
-            change={`${yesterdayPayments.length} payments collected`}
-            changeType="neutral"
-          />
+      <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
+        {/* Employee: Compact Today & Yesterday Billing Containers */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-6">
+          <Card className="compact-mobile">
+            <CardHeader className="pb-2 lg:pb-3">
+              <CardTitle className="text-base lg:text-lg font-medium text-gray-900 flex items-center space-x-2">
+                <DollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-green-600" />
+                <span>Today's Billing</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-2xl lg:text-3xl font-bold text-green-600">
+                ₹{todayTotal.toFixed(2)}
+              </div>
+              <p className="text-xs lg:text-sm text-gray-600 mt-1">
+                {todayPayments.length} invoices generated today
+              </p>
+              <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
+                <div className="text-xs text-gray-500">Status breakdown:</div>
+                <div className="flex space-x-2 lg:space-x-4 text-xs">
+                  <span className="text-green-600">
+                    Paid:{" "}
+                    {
+                      todayPayments.filter((r) => r.status === "Completed")
+                        .length
+                    }
+                  </span>
+                  <span className="text-yellow-600">
+                    Pending:{" "}
+                    {todayPayments.filter((r) => r.status === "Pending").length}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="compact-mobile">
+            <CardHeader className="pb-2 lg:pb-3">
+              <CardTitle className="text-base lg:text-lg font-medium text-gray-900 flex items-center space-x-2">
+                <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600" />
+                <span>Yesterday's Billing</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-2xl lg:text-3xl font-bold text-blue-600">
+                ₹{yesterdayTotal.toFixed(2)}
+              </div>
+              <p className="text-xs lg:text-sm text-gray-600 mt-1">
+                {yesterdayPayments.length} invoices generated yesterday
+              </p>
+              <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
+                <div className="text-xs text-gray-500">Status breakdown:</div>
+                <div className="flex space-x-2 lg:space-x-4 text-xs">
+                  <span className="text-green-600">
+                    Paid:{" "}
+                    {
+                      yesterdayPayments.filter((r) => r.status === "Completed")
+                        .length
+                    }
+                  </span>
+                  <span className="text-yellow-600">
+                    Pending:{" "}
+                    {
+                      yesterdayPayments.filter((r) => r.status === "Pending")
+                        .length
+                    }
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Employee: Action Buttons */}
@@ -479,7 +533,7 @@ export default function Dashboard() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">${payment.amount}</p>
+                        <p className="font-medium">₹{payment.amount}</p>
                         <Badge
                           variant="outline"
                           className="bg-green-100 text-green-800"
@@ -529,7 +583,7 @@ export default function Dashboard() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">${payment.amount}</p>
+                        <p className="font-medium">₹{payment.amount}</p>
                         <Badge
                           variant="outline"
                           className="bg-green-100 text-green-800"
@@ -565,6 +619,18 @@ export default function Dashboard() {
           onOpenChange={setShowInvoiceGenerator}
         />
       </div>
+
+      {/* Add CSS for mobile optimization */}
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .compact-mobile .card-header {
+            padding: 12px 16px 8px 16px;
+          }
+          .compact-mobile .card-content {
+            padding: 0 16px 12px 16px;
+          }
+        }
+      `}</style>
     </DashboardLayout>
   );
 }
