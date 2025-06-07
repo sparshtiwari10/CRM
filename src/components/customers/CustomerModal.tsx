@@ -119,7 +119,7 @@ export function CustomerModal({
       phoneNumber: "",
       email: "",
       address: "",
-      vcNumber: `VC${Math.random().toString().substr(2, 6)}`,
+      vcNumber: "",
       currentPackage: "",
       collectorName: "",
       billingStatus: "Pending",
