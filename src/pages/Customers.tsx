@@ -76,40 +76,47 @@ export default function Customers() {
     return matchesSearch && matchesStatus && matchesPackage;
   });
 
-  const handleAdd = () => {
+  const handleAdd = useCallback(() => {
     console.log("Add customer clicked");
     setEditingCustomer(null);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (customer: Customer) => {
+  const handleEdit = useCallback((customer: Customer) => {
     console.log("Edit customer clicked:", customer.id);
     setEditingCustomer(customer);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleView = (customer: Customer) => {
+  const handleView = useCallback((customer: Customer) => {
     console.log("View customer clicked:", customer.id);
     // For now, just open edit modal in view mode
     setEditingCustomer(customer);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleViewHistory = (customer: Customer) => {
-    console.log("View history clicked:", customer.id);
-    toast({
-      title: "History",
-      description: `Viewing history for ${customer.name}`,
-    });
-  };
+  const handleViewHistory = useCallback(
+    (customer: Customer) => {
+      console.log("View history clicked:", customer.id);
+      toast({
+        title: "History",
+        description: `Viewing history for ${customer.name}`,
+      });
+    },
+    [toast],
+  );
 
-  const handleActionRequest = (request: Omit<ActionRequest, "id">) => {
-    console.log("Action request:", request);
-    toast({
-      title: "Request Submitted",
-      description: "Your action request has been submitted for admin approval.",
-    });
-  };
+  const handleActionRequest = useCallback(
+    (request: Omit<ActionRequest, "id">) => {
+      console.log("Action request:", request);
+      toast({
+        title: "Request Submitted",
+        description:
+          "Your action request has been submitted for admin approval.",
+      });
+    },
+    [toast],
+  );
 
   const handleSave = async (customer: Customer) => {
     console.log("Save started:", customer.id, customer.name);
