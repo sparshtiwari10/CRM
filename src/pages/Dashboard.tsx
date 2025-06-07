@@ -513,7 +513,9 @@ export default function Dashboard() {
                       {newCustomersThisMonth} New Customers This Month
                     </p>
                     <p className="text-sm text-green-600">
-                      Customer acquisition is up 12% compared to last month.
+                      {newCustomersThisMonth > 0
+                        ? `Good growth in customer acquisition this month.`
+                        : "Ready to add new customers for this month."}
                     </p>
                   </div>
                   <Button
