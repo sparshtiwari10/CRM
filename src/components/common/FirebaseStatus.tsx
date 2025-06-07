@@ -15,6 +15,10 @@ import {
 } from "@/utils/networkUtils";
 import { getConnectionStatus, retryFirebaseConnection } from "@/lib/firebase";
 import {
+  runFirebaseDiagnostics,
+  downloadDiagnosticsReport,
+} from "@/utils/firebaseDiagnostics";
+import {
   Cloud,
   CloudOff,
   AlertTriangle,
@@ -22,6 +26,8 @@ import {
   Wifi,
   Clock,
   XCircle,
+  Download,
+  Bug,
 } from "lucide-react";
 import type { ConnectivityCheck } from "@/utils/networkUtils";
 
