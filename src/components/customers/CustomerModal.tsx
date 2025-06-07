@@ -112,6 +112,9 @@ export function CustomerModal({
       numberOfConnections: customer.numberOfConnections || "",
       connections: customer.connections || [],
       customPlan: customer.customPlan || null,
+      packageAmount: customer.packageAmount || 0,
+      previousOutstanding: customer.previousOutstanding || 0,
+      currentOutstanding: customer.currentOutstanding || 0,
       isInitialized: true,
     });
     setShowCustomPlan(!!customer.customPlan);
