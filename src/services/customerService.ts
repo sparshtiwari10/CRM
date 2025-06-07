@@ -238,6 +238,10 @@ export class CustomerService {
             isCustomPlan: false,
           },
         ],
+        previousOutstanding: 150,
+        planBill: 599,
+        currentOutstanding: 749,
+        packageAmount: 599,
       },
       {
         id: "2",
