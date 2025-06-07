@@ -47,7 +47,7 @@ export function CustomerDataImport({
         "collectorName",
         "billingStatus",
         "portalBill",
-        "isActive"
+        "isActive",
       ],
       [
         "John Smith",
@@ -58,7 +58,7 @@ export function CustomerDataImport({
         "Collector A",
         "Paid",
         "599",
-        "true"
+        "true",
       ],
       [
         "Sarah Johnson",
@@ -69,9 +69,8 @@ export function CustomerDataImport({
         "Collector B",
         "Pending",
         "299",
-        "true"
-      ]
-    ];
+        "true",
+      ],
     ];
 
     const csvContent = sampleData.map((row) => row.join(",")).join("\n");
