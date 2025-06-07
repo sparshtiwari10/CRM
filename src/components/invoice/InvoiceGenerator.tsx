@@ -234,9 +234,19 @@ export function InvoiceGenerator({
       // Save the billing record
       await CustomerService.addBillingRecord(billingRecord);
 
+      // Update customer's current outstanding by deducting the invoice amount
+      const updatedCustomer = {
+        ...selectedCustomer,
+        currentOutstanding:
+          selectedCustomer.currentOutstanding - invoiceData.amount,
+      };
+
+      // Save the updated customer data
+      await CustomerService.updateCustomer(updatedCustomer);
+
       toast({
         title: "Invoice Generated",
-        description: `Invoice ${invoiceData.invoiceNumber} has been created for ₹${invoiceData.amount.toFixed(2)}.`,
+        description: `Invoice ${invoiceData.invoiceNumber} has been created for ₹${invoiceData.amount.toFixed(2)}. Customer's outstanding balance updated.`,
       });
 
       onOpenChange(false);
