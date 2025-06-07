@@ -112,8 +112,8 @@ export function CustomerModal({
     setErrors({});
   }
 
-  // Reset form when switching from edit to add
-  if (open && !customer && formData.name !== "") {
+  // Reset form when switching from edit to add mode
+  if (open && !customer && !formData.isInitialized) {
     setFormData({
       name: "",
       phoneNumber: "",
