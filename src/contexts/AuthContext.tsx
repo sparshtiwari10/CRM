@@ -76,11 +76,45 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (credentials: LoginCredentials): Promise<User> => {
     try {
       setIsLoading(true);
-      const user = await authService.login(credentials);
+
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(
+              "Login timeout - please check your Firebase configuration and try again",
+            ),
+          );
+        }, 10000); // 10 second timeout
+      });
+
+      // Race between login and timeout
+      const user = (await Promise.race([
+        authService.login(credentials),
+        timeoutPromise,
+      ])) as User;
+
       setUser(user);
       return user;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed:", error);
+
+      // Provide more helpful error messages
+      if (error.message.includes("timeout")) {
+        throw new Error(
+          "Login is taking too long. Please check your Firebase configuration and internet connection.",
+        );
+      } else if (
+        error.message.includes("permission-denied") ||
+        error.message.includes("PERMISSION_DENIED")
+      ) {
+        throw new Error(
+          "Firebase permission denied. Please set up Firestore security rules.",
+        );
+      } else if (error.message.includes("not-found")) {
+        throw new Error("Invalid username or password.");
+      }
+
       throw error;
     } finally {
       setIsLoading(false);
