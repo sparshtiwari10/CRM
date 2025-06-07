@@ -82,8 +82,16 @@ class AuthService {
   async login(credentials: LoginCredentials): Promise<User> {
     try {
       if (isFirebaseAvailable && db) {
-        // Use Firebase when available
-        return await this.loginWithFirebase(credentials);
+        // Try Firebase with a quick timeout, fallback to mock on any issue
+        try {
+          return await this.loginWithFirebaseTimeout(credentials);
+        } catch (firebaseError: any) {
+          console.warn(
+            "Firebase login failed, falling back to mock authentication:",
+            firebaseError.message,
+          );
+          return await this.loginWithMockData(credentials);
+        }
       } else {
         // Use mock data when Firebase is unavailable
         return await this.loginWithMockData(credentials);
@@ -92,6 +100,30 @@ class AuthService {
       console.error("❌ Login failed:", error);
       throw error;
     }
+  }
+
+  /**
+   * Login with Firebase with timeout
+   */
+  private async loginWithFirebaseTimeout(
+    credentials: LoginCredentials,
+  ): Promise<User> {
+    return new Promise((resolve, reject) => {
+      // Set a 3-second timeout for Firebase operations
+      const timeoutId = setTimeout(() => {
+        reject(new Error("Firebase authentication timeout - using demo mode"));
+      }, 3000);
+
+      this.loginWithFirebase(credentials)
+        .then((user) => {
+          clearTimeout(timeoutId);
+          resolve(user);
+        })
+        .catch((error) => {
+          clearTimeout(timeoutId);
+          reject(error);
+        });
+    });
   }
 
   /**
