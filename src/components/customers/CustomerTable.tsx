@@ -64,9 +64,11 @@ export function CustomerTable({
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
   const [actionRequestCustomer, setActionRequestCustomer] =
     useState<Customer | null>(null);
+  const [actionType, setActionType] = useState<
+    "activation" | "deactivation" | "plan_change"
+  >("activation");
   const { user, isAdmin, canAccessCustomer } = useAuth();
   const { toast } = useToast();
-
   // Filter customers based on user role and permissions
   const accessibleCustomers = customers.filter(
     (customer) => isAdmin || canAccessCustomer(customer.id),
