@@ -378,7 +378,7 @@ export function InvoiceGenerator({
                         {selectedCustomer.address}
                       </div>
                       <div className="text-sm font-medium text-green-600 mt-1">
-                        Default Rate: ${defaultAmount.toFixed(2)}/month
+                        Default Rate: ₹{defaultAmount.toFixed(2)}/month
                         {selectedCustomer.numberOfConnections > 1 && (
                           <span className="text-blue-600">
                             {" "}
