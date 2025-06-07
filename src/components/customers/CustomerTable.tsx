@@ -308,9 +308,12 @@ export function CustomerTable({
                         <div className="font-medium">{customer.name}</div>
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono text-sm">
-                          {customer.vcNumber}
-                        </span>
+                        <div
+                          className="text-sm max-w-[200px] truncate"
+                          title={customer.address}
+                        >
+                          {customer.address}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
@@ -319,23 +322,32 @@ export function CustomerTable({
                       </TableCell>
                       <TableCell>
                         <span className="font-medium text-green-600">
-                          {formatCurrency(customer.packageAmount || 0)}
+                          {formatCurrency(customer.packageAmount)}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium text-orange-600">
+                        <span
+                          className={`font-medium ${customer.previousOutstanding < 0 ? "text-green-600" : "text-orange-600"}`}
+                        >
                           {formatCurrency(customer.previousOutstanding)}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium text-blue-600">
-                          {formatCurrency(customer.planBill)}
+                        <span
+                          className={`font-medium ${customer.currentOutstanding < 0 ? "text-green-600" : "text-red-600"}`}
+                        >
+                          {formatCurrency(customer.currentOutstanding)}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium text-red-600">
-                          {formatCurrency(customer.currentOutstanding)}
-                        </span>
+                        <div className="text-center">
+                          <span className="text-lg font-bold text-blue-600">
+                            {customer.billDueDate}
+                          </span>
+                          <div className="text-xs text-gray-500">
+                            of every month
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge
