@@ -33,12 +33,7 @@ interface CustomerModalProps {
   isSaving?: boolean;
 }
 
-const mockCollectors = [
-  "John Collector",
-  "Sarah Collector",
-  "Mike Field",
-  "System Administrator",
-];
+// Dynamic collectors will be loaded from active employees
 
 export function CustomerModal({
   open,
