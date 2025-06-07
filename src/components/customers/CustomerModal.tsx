@@ -634,6 +634,83 @@ export function CustomerModal({
                 )}
               </div>
 
+              {/* Billing Calculations - Admin Only */}
+              {isAdmin && (
+                <div className="space-y-4">
+                  <h4 className="font-medium text-gray-900">Billing Calculations</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="packageAmount">Package Amount (₹)</Label>
+                      <Input
+                        id="packageAmount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.packageAmount}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "packageAmount",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
+                        disabled={isSaving}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Monthly package amount</p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="previousOutstanding">Previous O/S (₹)</Label>
+                      <Input
+                        id="previousOutstanding"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.previousOutstanding}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "previousOutstanding",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
+                        disabled={isSaving}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Previous outstanding amount</p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="currentOutstanding">Current O/S (₹)</Label>
+                      <Input
+                        id="currentOutstanding"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.currentOutstanding}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "currentOutstanding",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
+                        disabled={isSaving}
+                        className="font-medium"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Current outstanding: Prev O/S + Bill</p>
+                    </div>
+                  </div>
+
+                  {/* Billing Logic Info */}
+                  <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+                    <h5 className="font-medium mb-1">Billing Logic:</h5>
+                    <ul className="text-xs space-y-1">
+                      <li>• Current O/S = Previous O/S + Package Amount</li>
+                      <li>• When invoice is generated: New Current O/S = Current O/S - Invoice Amount</li>
+                      <li>• Monthly: Current O/S transfers to Previous O/S, New bill generated</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+              </div>
+
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                   <Label>Active Status</Label>
