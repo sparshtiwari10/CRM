@@ -221,6 +221,21 @@ export function CustomerTable({
     setActionRequestCustomer(customer);
   };
 
+  if (!customers || customers.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <div className="text-gray-500">
+            <div className="text-lg font-medium mb-2">No customers found</div>
+            <div className="text-sm">
+              Please check your connection or try again later
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (accessibleCustomers.length === 0) {
     return (
       <Card>
