@@ -279,8 +279,8 @@ export function CustomerTable({
               </TableHeader>
               <TableBody>
                 {accessibleCustomers.map((customer) => (
-                  <>
-                    <TableRow key={customer.id}>
+                  <React.Fragment key={customer.id}>
+                    <TableRow>
                       <TableCell>
                         <Collapsible>
                           <CollapsibleTrigger asChild>
