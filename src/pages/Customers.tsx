@@ -41,7 +41,6 @@ export default function Customers() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [showImport, setShowImport] = useState(false);
   const [showImportExport, setShowImportExport] = useState(false);
 
   const { user, isAdmin } = useContext(AuthContext);
