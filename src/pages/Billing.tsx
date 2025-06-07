@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useContext } from "react";
 import {
   FileText,
   Download,
@@ -6,6 +6,7 @@ import {
   DollarSign,
   Calendar,
   AlertCircle,
+  User,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,22 +29,72 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { InvoiceGenerator } from "@/components/invoice/InvoiceGenerator";
-import { mockBillingRecords } from "@/data/mockData";
+import { CustomerService } from "@/services/customerService";
+import { AuthContext } from "@/contexts/AuthContext";
 import { BillingRecord } from "@/types";
 import { cn } from "@/lib/utils";
 
 export default function Billing() {
-  const [billingRecords] = useState<BillingRecord[]>(mockBillingRecords);
+  const [billingRecords, setBillingRecords] = useState<BillingRecord[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [employeeFilter, setEmployeeFilter] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { user, isAdmin } = useContext(AuthContext);
+
+  // Load billing records
+  useEffect(() => {
+    const loadBillingRecords = async () => {
+      setIsLoading(true);
+      try {
+        const records = await CustomerService.getAllBillingRecords();
+        setBillingRecords(records);
+      } catch (error) {
+        console.error("Error loading billing records:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadBillingRecords();
+  }, []);
+
+  // Refresh billing records when invoice generator closes
+  const handleInvoiceGeneratorClose = async (open: boolean) => {
+    setShowInvoiceGenerator(open);
+    if (!open) {
+      // Refresh billing records
+      const records = await CustomerService.getAllBillingRecords();
+      setBillingRecords(records);
+    }
+  };
 
   const filteredRecords = billingRecords.filter((record) => {
     const matchesSearch =
       record.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      record.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.vcNumber.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !statusFilter || record.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesEmployee =
+      !employeeFilter || record.employeeId === employeeFilter;
+
+    // For employees, only show their own records
+    const hasAccess = isAdmin || record.employeeId === user?.id;
+
+    return matchesSearch && matchesStatus && matchesEmployee && hasAccess;
+  });
+
+  // Get unique employees from billing records for filter dropdown
+  const uniqueEmployees = Array.from(
+    new Set(
+      billingRecords.map(
+        (record) => `${record.employeeId}:${record.generatedBy}`,
+      ),
+    ),
+  ).map((emp) => {
+    const [id, name] = emp.split(":");
+    return { id, name };
   });
 
   const getBillingStatusColor = (status: BillingRecord["status"]) => {
@@ -173,7 +224,7 @@ export default function Billing() {
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
               <div className="flex-1">
                 <Input
-                  placeholder="Search by customer name or invoice number..."
+                  placeholder="Search by customer name, invoice number, or VC number..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -183,11 +234,30 @@ export default function Billing() {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="">All Status</SelectItem>
                   <SelectItem value="Paid">Paid</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="Overdue">Overdue</SelectItem>
                 </SelectContent>
               </Select>
+              {isAdmin && (
+                <Select
+                  value={employeeFilter}
+                  onValueChange={setEmployeeFilter}
+                >
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Filter by employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Employees</SelectItem>
+                    {uniqueEmployees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.id}>
+                        {employee.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -203,47 +273,86 @@ export default function Billing() {
                 <TableRow>
                   <TableHead>Invoice #</TableHead>
                   <TableHead>Customer</TableHead>
+                  <TableHead>VC Number</TableHead>
                   <TableHead>Package</TableHead>
                   <TableHead>Amount</TableHead>
+                  <TableHead>Period</TableHead>
                   <TableHead>Generated</TableHead>
                   <TableHead>Due Date</TableHead>
+                  {isAdmin && <TableHead>Generated By</TableHead>}
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRecords.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell className="font-medium">
-                      {record.invoiceNumber}
-                    </TableCell>
-                    <TableCell>{record.customerName}</TableCell>
-                    <TableCell>{record.packageName}</TableCell>
-                    <TableCell className="font-medium">
-                      ${record.amount.toFixed(2)}
-                    </TableCell>
-                    <TableCell>{formatDate(record.generatedDate)}</TableCell>
-                    <TableCell>{formatDate(record.dueDate)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(getBillingStatusColor(record.status))}
-                      >
-                        {record.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={isAdmin ? 11 : 10}
+                      className="text-center py-8"
+                    >
+                      Loading billing records...
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : filteredRecords.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={isAdmin ? 11 : 10}
+                      className="text-center py-8"
+                    >
+                      No billing records found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredRecords.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell className="font-medium">
+                        {record.invoiceNumber}
+                      </TableCell>
+                      <TableCell>{record.customerName}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {record.vcNumber}
+                      </TableCell>
+                      <TableCell>{record.packageName}</TableCell>
+                      <TableCell className="font-medium">
+                        ${record.amount.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {record.billingMonth} {record.billingYear}
+                      </TableCell>
+                      <TableCell>{formatDate(record.generatedDate)}</TableCell>
+                      <TableCell>{formatDate(record.dueDate)}</TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          <div className="flex items-center space-x-1">
+                            <User className="h-3 w-3 text-gray-400" />
+                            <span className="text-sm">
+                              {record.generatedBy}
+                            </span>
+                          </div>
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(getBillingStatusColor(record.status))}
+                        >
+                          {record.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -252,7 +361,7 @@ export default function Billing() {
         {/* Invoice Generator Modal */}
         <InvoiceGenerator
           open={showInvoiceGenerator}
-          onOpenChange={setShowInvoiceGenerator}
+          onOpenChange={handleInvoiceGeneratorClose}
         />
       </div>
     </DashboardLayout>
