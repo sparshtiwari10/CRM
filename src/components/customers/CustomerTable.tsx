@@ -59,6 +59,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { BillingCycleService } from "@/services/billingCycleService";
+import { BillingCycleService } from "@/services/billingCycleService";
 
 interface CustomerTableProps {
   customers: Customer[];
@@ -93,19 +94,9 @@ export function CustomerTable({
   const { user, isAdmin, canAccessCustomer } = useAuth();
   const { toast } = useToast();
 
-  // Calculate current outstanding based on package amount + previous outstanding - paid invoices
+  // Calculate current outstanding using BillingCycleService
   const calculateCurrentOutstanding = (customer: Customer) => {
-    // Current O/S = Package Amount + Previous O/S - Paid Invoice Amounts
-    const paidInvoices =
-      customer.invoiceHistory?.filter((invoice) => invoice.status === "Paid") ||
-      [];
-    const totalPaidAmount = paidInvoices.reduce(
-      (sum, invoice) => sum + invoice.amount,
-      0,
-    );
-    return (
-      customer.packageAmount + customer.previousOutstanding - totalPaidAmount
-    );
+    return BillingCycleService.calculateCurrentOutstanding(customer);
   };
 
   // Filter customers based on user role and permissions and ensure data integrity
