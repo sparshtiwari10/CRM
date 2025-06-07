@@ -382,9 +382,57 @@ export default function Customers() {
                       {viewingCustomer.vcNumber}
                     </p>
                   </div>
-                  {/* Add more customer details as needed */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Phone
+                    </label>
+                    <p className="text-lg font-medium">
+                      {viewingCustomer.phoneNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Email
+                    </label>
+                    <p className="text-lg font-medium">
+                      {viewingCustomer.email || "Not provided"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Address
+                    </label>
+                    <p className="text-lg font-medium">
+                      {viewingCustomer.address}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Current Package
+                    </label>
+                    <p className="text-lg font-medium">
+                      {viewingCustomer.currentPackage}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Billing Status
+                    </label>
+                    <p className="text-lg font-medium">
+                      {viewingCustomer.billingStatus}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Status
+                    </label>
+                    <p
+                      className={`text-lg font-medium ${viewingCustomer.isActive ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {viewingCustomer.isActive ? "Active" : "Inactive"}
+                    </p>
+                  </div>
                 </div>
-
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button
                     variant="outline"
