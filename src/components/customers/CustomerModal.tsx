@@ -61,6 +61,7 @@ interface CustomerModalProps {
   onOpenChange: (open: boolean) => void;
   customer?: Customer | null;
   onSave: (customer: Omit<Customer, "id"> & { id?: string }) => void;
+  isLoading?: boolean;
 }
 
 // Mock collectors for the dropdown - in real app this would come from employee data
