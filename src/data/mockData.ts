@@ -104,7 +104,6 @@ export const mockCustomers: Customer[] = [
     phoneNumber: "+1 (555) 345-6789",
     address: "789 Pine Rd, Riverside, TX 75001",
     currentPackage: "Custom Plan",
-    billingStatus: "Overdue",
     lastPaymentDate: "2023-11-25",
     email: "mbrown@email.com",
     joinDate: "2022-12-05",
@@ -122,6 +121,8 @@ export const mockCustomers: Customer[] = [
         planName: "Enterprise Package",
         planPrice: 899,
         isCustomPlan: true,
+        isPrimary: true,
+        connectionIndex: 1,
       },
     ],
     customPlan: {
