@@ -47,6 +47,8 @@ export default function Customers() {
 
   // Load customers on component mount
   useEffect(() => {
+    let mounted = true;
+
     const loadCustomers = async () => {
       try {
         setIsLoading(true);
@@ -61,22 +63,34 @@ export default function Customers() {
           );
         }
 
-        setCustomers(customerData);
+        // Only update state if component is still mounted
+        if (mounted) {
+          setCustomers(customerData);
+        }
       } catch (error) {
         console.error("Error loading customers:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load customers",
-          variant: "destructive",
-        });
+        if (mounted) {
+          toast({
+            title: "Error",
+            description: "Failed to load customers",
+            variant: "destructive",
+          });
+        }
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     if (user) {
       loadCustomers();
     }
+
+    // Cleanup function
+    return () => {
+      mounted = false;
+    };
   }, [user, isAdmin, toast]);
 
   // Filter customers based on search and filters
@@ -152,8 +166,9 @@ export default function Customers() {
     try {
       if (editingCustomer) {
         await CustomerService.updateCustomer(customer.id, customer);
+        // Use functional update to ensure we have the latest state
         setCustomers((prev) =>
-          prev.map((c) => (c.id === customer.id ? customer : c)),
+          prev.map((c) => (c.id === customer.id ? { ...customer } : c)),
         );
         toast({
           title: "Customer Updated",
@@ -167,8 +182,12 @@ export default function Customers() {
           description: `${customer.name} has been successfully added.`,
         });
       }
-      setIsModalOpen(false);
-      setEditingCustomer(null);
+
+      // Close modal and reset state in the next tick to prevent state conflicts
+      setTimeout(() => {
+        setIsModalOpen(false);
+        setEditingCustomer(null);
+      }, 0);
     } catch (error) {
       console.error("Save error:", error);
       toast({
@@ -380,6 +399,7 @@ export default function Customers() {
         {/* Customer Modal */}
         {isAdmin && (
           <CustomerModal
+            key={editingCustomer?.id || "new"}
             open={isModalOpen}
             onOpenChange={setIsModalOpen}
             customer={editingCustomer}

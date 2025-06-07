@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { authService } from "@/services/authService";
 import {
   Dialog,
@@ -149,77 +149,114 @@ export function CustomerModal({
   const [showCustomPlan, setShowCustomPlan] = useState(!!customer?.customPlan);
 
   // Reset form when modal opens with different customer
-  if (open && customer && formData.vcNumber !== customer.vcNumber) {
-    setFormData({
-      name: customer.name || "",
-      phoneNumber: customer.phoneNumber || "",
-      email: customer.email || "",
-      address: customer.address || "",
-      vcNumber: customer.vcNumber || "",
-      currentPackage: customer.currentPackage || "",
-      collectorName: customer.collectorName || "",
-      isActive: customer.isActive !== undefined ? customer.isActive : true,
-      portalBill: customer.portalBill || 0,
-      numberOfConnections: customer.numberOfConnections || "",
-      connections: customer.connections || [],
-      customPlan: customer.customPlan || null,
-      packageAmount: customer.packageAmount || 0,
-      previousOutstanding: customer.previousOutstanding || 0,
-      currentOutstanding: customer.currentOutstanding || 0,
-      isInitialized: true,
-    });
-    setShowCustomPlan(!!customer.customPlan);
-    setErrors({});
-  }
+  useEffect(() => {
+    if (open && customer && formData.vcNumber !== customer.vcNumber) {
+      setFormData({
+        name: customer.name || "",
+        phoneNumber: customer.phoneNumber || "",
+        email: customer.email || "",
+        address: customer.address || "",
+        vcNumber: customer.vcNumber || "",
+        currentPackage: customer.currentPackage || "",
+        collectorName: customer.collectorName || "",
+        isActive: customer.isActive !== undefined ? customer.isActive : true,
+        portalBill: customer.portalBill || 0,
+        numberOfConnections: customer.numberOfConnections || "",
+        connections: customer.connections || [],
+        customPlan: customer.customPlan || null,
+        packageAmount: customer.packageAmount || 0,
+        previousOutstanding: customer.previousOutstanding || 0,
+        currentOutstanding: customer.currentOutstanding || 0,
+        billDueDate: customer.billDueDate || 1,
+        isInitialized: true,
+      });
+      setShowCustomPlan(!!customer.customPlan);
+      setErrors({});
+    }
+  }, [open, customer?.id]);
 
   // Load available collectors when modal opens
-  useState(() => {
+  useEffect(() => {
     if (open) {
       const loadCollectors = async () => {
         try {
+          console.log("Loading collectors...");
           const users = await authService.getAllUsers();
-          const collectors = users
-            .filter(
-              (user) =>
-                user.isActive &&
-                (user.role === "employee" || user.role === "admin"),
-            )
+          console.log("All users:", users);
+
+          const employees = users
+            .filter((user) => {
+              console.log(
+                `User ${user.name}: role=${user.role}, isActive=${user.is_active}`,
+              );
+              return user.role === "employee" && user.is_active;
+            })
             .map((user) => user.name);
+
+          console.log("Filtered employees:", employees);
+
+          // Always include System Administrator as first option
+          const collectors = ["System Administrator"];
+
+          // Add active employees
+          if (employees.length > 0) {
+            collectors.push(...employees);
+          }
+
           setAvailableCollectors(collectors);
+          console.log("Final collectors list:", collectors);
         } catch (error) {
           console.error("Failed to load collectors:", error);
           // Fallback to default admin
           setAvailableCollectors(["System Administrator"]);
+          toast({
+            title: "Warning",
+            description:
+              "Could not load employee list. Using default collectors.",
+            variant: "destructive",
+          });
         }
       };
+
       loadCollectors();
     }
-  }, [open]);
+  }, [open, toast]);
 
   // Reset form when switching from edit to add mode
-  if (open && !customer && !formData.isInitialized) {
-    setFormData({
-      name: "",
-      phoneNumber: "",
-      email: "",
-      address: "",
-      vcNumber: "",
-      currentPackage: "",
-      collectorName: "",
-      isActive: true,
-      portalBill: 0,
-      numberOfConnections: "",
-      connections: [],
-      customPlan: null,
-      packageAmount: 0,
-      previousOutstanding: 0,
-      currentOutstanding: 0,
-      billDueDate: 1,
-      isInitialized: true,
-    });
-    setShowCustomPlan(false);
-    setErrors({});
-  }
+  useEffect(() => {
+    if (open && !customer && !formData.isInitialized) {
+      setFormData({
+        name: "",
+        phoneNumber: "",
+        email: "",
+        address: "",
+        vcNumber: "",
+        currentPackage: "",
+        collectorName: "",
+        isActive: true,
+        portalBill: 0,
+        numberOfConnections: "",
+        connections: [],
+        customPlan: null,
+        packageAmount: 0,
+        previousOutstanding: 0,
+        currentOutstanding: 0,
+        billDueDate: 1,
+        isInitialized: true,
+      });
+      setShowCustomPlan(false);
+      setErrors({});
+    }
+  }, [open, customer]);
+
+  // Clean up form state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setFormData(initialData);
+      setShowCustomPlan(false);
+      setErrors({});
+    }
+  }, [open]);
 
   function handleInputChange(field: string, value: any) {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -441,6 +478,11 @@ export function CustomerModal({
     }
 
     onSave(customerData);
+
+    // Reset form state after save
+    setFormData(initialData);
+    setShowCustomPlan(false);
+    setErrors({});
 
     // Show toast notification at bottom for mobile
     toast({
