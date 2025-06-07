@@ -345,6 +345,57 @@ class AuthService {
       console.error("❌ Failed to seed default admin:", error);
     }
   }
+
+  /**
+   * Static method to seed demo users (for DataSeeder)
+   */
+  static async seedDemoUsers(): Promise<void> {
+    const instance = new AuthService();
+    await instance.seedDefaultAdmin();
+
+    // Add demo employee user
+    try {
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("username", "==", "employee"));
+      const employeeUsers = await getDocs(q);
+
+      if (employeeUsers.empty) {
+        console.log("🌱 Creating demo employee user...");
+
+        const saltRounds = 12;
+        const password_hash = await bcrypt.hash("employee123", saltRounds);
+
+        await addDoc(usersRef, {
+          username: "employee",
+          password_hash,
+          name: "Demo Employee",
+          role: "employee",
+          collector_name: "John Collector",
+          access_scope: [],
+          created_at: Timestamp.now(),
+          is_active: true,
+        });
+
+        console.log(
+          "✅ Demo employee user created (username: employee, password: employee123)",
+        );
+      }
+    } catch (error) {
+      console.error("❌ Failed to seed demo employee:", error);
+    }
+  }
+
+  /**
+   * Static method to check Firebase status
+   */
+  static getFirebaseStatus(): boolean {
+    try {
+      // Check if firebase is initialized and working
+      return !!db;
+    } catch (error) {
+      return false;
+    }
+  }
 }
 
 // Export both the class and the singleton instance
