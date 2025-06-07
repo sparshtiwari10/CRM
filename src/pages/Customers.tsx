@@ -280,17 +280,29 @@ export default function Customers() {
                 : "View customers assigned to you"}
             </p>
           </div>
-          {/* Only show Add Customer button for admins */}
+          {/* Only show Add Customer and Import buttons for admins */}
           {isAdmin && (
-            <Button
-              onClick={handleAdd}
-              disabled={isSaving}
-              className="lg:h-10 h-8 text-sm lg:text-base"
-            >
-              <Plus className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" />
-              <span className="hidden sm:inline">Add Customer</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
+            <div className="flex space-x-2">
+              <Button
+                onClick={handleAdd}
+                disabled={isSaving}
+                className="lg:h-10 h-8 text-sm lg:text-base"
+              >
+                <Plus className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Add Customer</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowImport(!showImport)}
+                disabled={isSaving}
+                className="lg:h-10 h-8 text-sm lg:text-base"
+              >
+                <Upload className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" />
+                <span className="hidden sm:inline">Import Data</span>
+                <span className="sm:hidden">Import</span>
+              </Button>
+            </div>
           )}
         </div>
 
