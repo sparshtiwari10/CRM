@@ -178,7 +178,7 @@ export default function Packages() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${totalRevenue.toFixed(2)}
+                ₹{totalRevenue.toLocaleString()}
               </div>
               <p className="text-xs text-gray-600">From all packages</p>
             </CardContent>
