@@ -88,24 +88,38 @@ export function CustomerSearch({
                   <label className="text-sm font-medium mb-2 block">
                     Package
                   </label>
-                  <Select
-                    value={filters.package}
-                    onValueChange={(value) => onFilterChange("package", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filter by package" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Basic">Basic</SelectItem>
-                      <SelectItem value="Premium HD">Premium HD</SelectItem>
-                      <SelectItem value="Sports Package">
-                        Sports Package
-                      </SelectItem>
-                      <SelectItem value="Family Bundle">
-                        Family Bundle
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex space-x-2">
+                    <Select
+                      value={filters.package}
+                      onValueChange={(value) =>
+                        onFilterChange("package", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Filter by package" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Basic">Basic</SelectItem>
+                        <SelectItem value="Premium HD">Premium HD</SelectItem>
+                        <SelectItem value="Sports Package">
+                          Sports Package
+                        </SelectItem>
+                        <SelectItem value="Family Bundle">
+                          Family Bundle
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {filters.package && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onFilterChange("package", "")}
+                        className="px-2"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div>
