@@ -54,6 +54,7 @@ export default function Customers() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
