@@ -479,7 +479,6 @@ export function CustomerTable({
                         <TableCell colSpan={isAdmin ? 13 : 12}>
                           <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-200">
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                              {/* Customer Contact Information */}
                               <Card className="lg:col-span-1">
                                 <CardHeader className="pb-3">
                                   <CardTitle className="text-sm flex items-center">
@@ -523,7 +522,6 @@ export function CustomerTable({
                                 </CardContent>
                               </Card>
 
-                              {/* Enhanced Billing Summary */}
                               <Card className="lg:col-span-2">
                                 <CardHeader className="pb-3">
                                   <CardTitle className="text-sm flex items-center justify-between">
@@ -592,7 +590,6 @@ export function CustomerTable({
                               </Card>
                             </div>
 
-                            {/* Invoice History Section */}
                             <Card className="mt-6">
                               <CardHeader className="pb-3">
                                 <CardTitle className="text-sm flex items-center">
