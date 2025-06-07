@@ -15,7 +15,7 @@ import {
   QuerySnapshot,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Customer } from "@/types";
+import { Customer, BillingRecord } from "@/types";
 import { AuthService } from "./authService";
 
 const CUSTOMERS_COLLECTION = "customers";
@@ -124,6 +124,9 @@ const MOCK_CUSTOMERS: Customer[] = [
 // Store mock customers in localStorage for persistence
 let mockCustomersState: Customer[] = [];
 
+// Store mock billing records
+let mockBillingRecordsState: BillingRecord[] = [];
+
 // Load mock customers from localStorage or use defaults
 const initializeMockCustomers = () => {
   const stored = localStorage.getItem("cabletv_mock_customers");
@@ -138,11 +141,41 @@ const initializeMockCustomers = () => {
   }
 };
 
+// Load mock billing records from localStorage or use defaults
+const initializeMockBillingRecords = () => {
+  const stored = localStorage.getItem("cabletv_mock_billing_records");
+  if (stored) {
+    try {
+      mockBillingRecordsState = JSON.parse(stored);
+    } catch (error) {
+      // Import mock data if localStorage is corrupted
+      import("@/data/mockData").then(({ mockBillingRecords }) => {
+        mockBillingRecordsState = [...mockBillingRecords];
+        saveMockBillingRecords();
+      });
+    }
+  } else {
+    // Import mock data if no localStorage
+    import("@/data/mockData").then(({ mockBillingRecords }) => {
+      mockBillingRecordsState = [...mockBillingRecords];
+      saveMockBillingRecords();
+    });
+  }
+};
+
 // Save mock customers to localStorage
 const saveMockCustomers = () => {
   localStorage.setItem(
     "cabletv_mock_customers",
     JSON.stringify(mockCustomersState),
+  );
+};
+
+// Save mock billing records to localStorage
+const saveMockBillingRecords = () => {
+  localStorage.setItem(
+    "cabletv_mock_billing_records",
+    JSON.stringify(mockBillingRecordsState),
   );
 };
 
@@ -192,9 +225,10 @@ const convertCustomerToFirestore = (
 };
 
 export class CustomerService {
-  // Initialize mock customers
+  // Initialize mock data
   static initialize() {
     initializeMockCustomers();
+    initializeMockBillingRecords();
   }
 
   // Get all customers
@@ -429,5 +463,43 @@ export class CustomerService {
         customer.vcNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.email?.toLowerCase().includes(searchTerm.toLowerCase()),
     );
+  }
+
+  // Get all billing records
+  static async getAllBillingRecords(): Promise<BillingRecord[]> {
+    if (!AuthService.getFirebaseStatus()) {
+      return [...mockBillingRecordsState];
+    }
+
+    // TODO: Implement Firebase billing records fetching
+    return [...mockBillingRecordsState];
+  }
+
+  // Add new billing record (invoice)
+  static async addBillingRecord(
+    billingRecord: Omit<BillingRecord, "id">,
+  ): Promise<string> {
+    if (!AuthService.getFirebaseStatus()) {
+      const newId = Date.now().toString();
+      const newRecord = { ...billingRecord, id: newId };
+      mockBillingRecordsState.unshift(newRecord);
+      saveMockBillingRecords();
+      return newId;
+    }
+
+    // TODO: Implement Firebase billing record creation
+    const newId = Date.now().toString();
+    const newRecord = { ...billingRecord, id: newId };
+    mockBillingRecordsState.unshift(newRecord);
+    saveMockBillingRecords();
+    return newId;
+  }
+
+  // Get billing records by employee
+  static async getBillingRecordsByEmployee(
+    employeeId: string,
+  ): Promise<BillingRecord[]> {
+    const allRecords = await this.getAllBillingRecords();
+    return allRecords.filter((record) => record.employeeId === employeeId);
   }
 }

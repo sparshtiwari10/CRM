@@ -204,6 +204,11 @@ export const mockBillingRecords: BillingRecord[] = [
     status: "Pending",
     invoiceNumber: "INV-2024-004",
     generatedDate: "2024-01-01",
+    generatedBy: "John Collector",
+    employeeId: "emp-1",
+    billingMonth: "January",
+    billingYear: "2024",
+    vcNumber: "VC001235",
   },
   {
     id: "2",
@@ -215,6 +220,11 @@ export const mockBillingRecords: BillingRecord[] = [
     status: "Overdue",
     invoiceNumber: "INV-2024-005",
     generatedDate: "2023-12-15",
+    generatedBy: "Sarah Collector",
+    employeeId: "emp-2",
+    billingMonth: "December",
+    billingYear: "2023",
+    vcNumber: "VC001236",
   },
   {
     id: "3",
@@ -226,6 +236,11 @@ export const mockBillingRecords: BillingRecord[] = [
     status: "Pending",
     invoiceNumber: "INV-2024-006",
     generatedDate: "2024-01-05",
+    generatedBy: "Sarah Collector",
+    employeeId: "emp-2",
+    billingMonth: "January",
+    billingYear: "2024",
+    vcNumber: "VC001239",
   },
 ];
 

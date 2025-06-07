@@ -47,6 +47,11 @@ export interface BillingRecord {
   status: "Paid" | "Pending" | "Overdue";
   invoiceNumber: string;
   generatedDate: string;
+  generatedBy: string; // Employee who generated the invoice
+  employeeId: string; // Employee ID who generated the invoice
+  billingMonth: string; // e.g., "January 2024"
+  billingYear: string;
+  vcNumber: string; // Customer VC Number
 }
 
 export interface DashboardStats {
