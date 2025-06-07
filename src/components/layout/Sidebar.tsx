@@ -12,6 +12,7 @@ import {
   DollarSign,
   Settings,
   UserCog,
+  ClipboardList,
   Menu,
   X,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const baseNavigation = [
 ];
 
 const adminOnlyNavigation = [
+  { name: "Requests", href: "/requests", icon: ClipboardList },
   { name: "Employees", href: "/employees", icon: UserCog },
 ];
 
