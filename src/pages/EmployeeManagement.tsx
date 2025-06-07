@@ -169,18 +169,20 @@ export default function EmployeeManagement() {
         return;
       }
 
-      // Simulate API call to create user in Firebase Auth
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const newEmployee: User = {
-        id: `emp-${Date.now()}`,
+      // Create user through authentication service
+      const newUser = await authService.createUser({
+        username: employeeData.username,
+        password: employeeData.password,
         name: employeeData.name,
-        email: `${employeeData.username}@agvcabletv.local`, // Generate email from username
-        phone: employeeData.phone,
         role: employeeData.role,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: undefined,
+        access_scope: [],
+      });
+
+      // Add phone number to the user object
+      const newEmployee: User = {
+        ...newUser,
+        phone: employeeData.phone,
+        email: `${employeeData.username}@agvcabletv.local`,
         assignedCustomers: [],
       };
 
@@ -189,9 +191,10 @@ export default function EmployeeManagement() {
 
       toast({
         title: "Employee Created",
-        description: `${newEmployee.name} has been successfully created with username: ${employeeData.username}`,
+        description: `${newEmployee.name} has been successfully created and saved to Firebase with username: ${employeeData.username}`,
       });
     } catch (error) {
+      console.error("Failed to create employee:", error);
       toast({
         title: "Creation Failed",
         description: "Failed to create employee account. Please try again.",
