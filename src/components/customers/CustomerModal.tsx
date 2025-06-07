@@ -55,34 +55,47 @@ export function CustomerModal({
     if (open) {
       const loadCollectors = async () => {
         try {
+          console.log("Loading collectors...");
           const users = await authService.getAllUsers();
+          console.log("All users:", users);
+
           const employees = users
-            .filter((user) => user.role === "employee" && user.isActive)
+            .filter((user) => {
+              console.log(
+                `User ${user.name}: role=${user.role}, isActive=${user.is_active}`,
+              );
+              return user.role === "employee" && user.is_active;
+            })
             .map((user) => user.name);
 
-          // Add System Administrator if no employees exist
-          if (employees.length === 0) {
-            setAvailableCollectors(["System Administrator"]);
-          } else {
-            // Add System Administrator as an option along with employees
-            setAvailableCollectors(["System Administrator", ...employees]);
+          console.log("Filtered employees:", employees);
+
+          // Always include System Administrator as first option
+          const collectors = ["System Administrator"];
+
+          // Add active employees
+          if (employees.length > 0) {
+            collectors.push(...employees);
           }
 
-          console.log(
-            "Loaded collectors:",
-            employees.length > 0
-              ? ["System Administrator", ...employees]
-              : ["System Administrator"],
-          );
+          setAvailableCollectors(collectors);
+          console.log("Final collectors list:", collectors);
         } catch (error) {
           console.error("Failed to load collectors:", error);
           // Fallback to default admin
           setAvailableCollectors(["System Administrator"]);
+          toast({
+            title: "Warning",
+            description:
+              "Could not load employee list. Using default collectors.",
+            variant: "destructive",
+          });
         }
       };
+
       loadCollectors();
     }
-  }, [open]);
+  }, [open, toast]);
 
   // Initialize with either customer data or empty form
   const getInitialData = () => {
