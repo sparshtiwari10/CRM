@@ -89,26 +89,33 @@ export function CustomerSearch({
                     Package
                   </label>
                   <div className="flex space-x-2">
-                    <Select
-                      value={filters.package}
-                      onValueChange={(value) =>
-                        onFilterChange("package", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Filter by package" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Basic">Basic</SelectItem>
-                        <SelectItem value="Premium HD">Premium HD</SelectItem>
-                        <SelectItem value="Sports Package">
-                          Sports Package
-                        </SelectItem>
-                        <SelectItem value="Family Bundle">
-                          Family Bundle
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex space-x-2">
+                      <Select
+                        value={filters.billingStatus}
+                        onValueChange={(value) =>
+                          onFilterChange("billingStatus", value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Paid">Paid</SelectItem>
+                          <SelectItem value="Pending">Pending</SelectItem>
+                          <SelectItem value="Overdue">Overdue</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {filters.billingStatus && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onFilterChange("billingStatus", "")}
+                          className="px-2"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                     {filters.package && (
                       <Button
                         variant="ghost"
