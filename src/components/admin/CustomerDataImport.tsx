@@ -116,7 +116,6 @@ export function CustomerDataImport({
     if (!data.name?.trim()) errors.push("Name is required");
     if (!data.phoneNumber?.trim()) errors.push("Phone number is required");
     if (!data.address?.trim()) errors.push("Address is required");
-    if (!data.vcNumber?.trim()) errors.push("VC Number is required");
     if (!data.collectorName?.trim()) errors.push("Collector name is required");
 
     // Validate phone number format (basic)
@@ -143,25 +142,32 @@ export function CustomerDataImport({
     return { isValid: errors.length === 0, errors };
   };
 
-  const convertToCustomer = (data: any): Omit<Customer, 'id'> => {
-    const isActive = data.isActive?.toLowerCase() === 'true';
+  const convertToCustomer = (data: any): Omit<Customer, "id"> => {
+    const isActive = data.isActive?.toLowerCase() === "true";
     return {
-      name: data.name?.trim() || '',
-      phoneNumber: data.phoneNumber?.trim() || '',
-      address: data.address?.trim() || '',
-      vcNumber: data.vcNumber?.trim() || '',
-      currentPackage: data.currentPackage?.trim() || 'Basic',
-      collectorName: data.collectorName?.trim() || '',
-      billingStatus: (data.billingStatus?.trim() as any) || 'Pending',
+      name: data.name?.trim() || "",
+      phoneNumber: data.phoneNumber?.trim() || "",
+      address: data.address?.trim() || "",
+      vcNumber: data.vcNumber?.trim() || "",
+      currentPackage: data.currentPackage?.trim() || "Basic",
+      collectorName: data.collectorName?.trim() || "",
+      billingStatus: (data.billingStatus?.trim() as any) || "Pending",
       portalBill: Number(data.portalBill) || 0,
       isActive: isActive,
-      email: data.email?.trim() || '',
-      joinDate: new Date().toISOString().split('T')[0],
-      lastPaymentDate: data.lastPaymentDate || new Date().toISOString().split('T')[0],
-      activationDate: new Date().toISOString().split('T')[0],
-      deactivationDate: !isActive ? new Date().toISOString().split('T')[0] : null,
+      email: data.email?.trim() || "",
+      joinDate: new Date().toISOString().split("T")[0],
+      lastPaymentDate:
+        data.lastPaymentDate || new Date().toISOString().split("T")[0],
+      activationDate: new Date().toISOString().split("T")[0],
+      deactivationDate: !isActive
+        ? new Date().toISOString().split("T")[0]
+        : null,
+      numberOfConnections: 1,
+      connections: [],
+      packageAmount: Number(data.portalBill) || 0,
+      previousOutstanding: 0,
+      currentOutstanding: Number(data.portalBill) || 0,
     };
-  };
   };
 
   const handleFileImport = async (
