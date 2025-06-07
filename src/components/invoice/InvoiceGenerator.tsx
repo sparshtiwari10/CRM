@@ -184,7 +184,7 @@ export function InvoiceGenerator({
     if (finalAmount <= 0) {
       toast({
         title: "Invalid Amount",
-        description: "Invoice amount must be greater than $0.",
+        description: "Invoice amount must be greater than ₹0.",
         variant: "destructive",
       });
       return;
