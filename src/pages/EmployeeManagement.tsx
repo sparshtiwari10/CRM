@@ -599,9 +599,10 @@ export default function EmployeeManagement() {
 
                 <div className="text-sm text-gray-500 bg-blue-50 p-3 rounded-md">
                   <p>
-                    <strong>Note:</strong> The employee will receive login
-                    credentials via email. Default password will be
-                    "employee123" which should be changed on first login.
+                    <strong>Note:</strong> The employee will be able to login
+                    using the username and password provided above. These
+                    credentials will be saved securely in Firebase
+                    Authentication.
                   </p>
                 </div>
               </div>
