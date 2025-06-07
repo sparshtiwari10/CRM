@@ -1,6 +1,5 @@
 import { Users, DollarSign, TrendingUp, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Package, Customer } from "@/types";
 
 interface PackageMetricsProps {
@@ -23,27 +22,6 @@ export function PackageMetrics({
   // Calculate average revenue per customer (should be same as package price, but good for consistency)
   const avgRevenuePerCustomer =
     customerCount > 0 ? monthlyRevenue / customerCount : 0;
-
-  // Determine revenue performance level
-  const getRevenueLevel = (revenue: number) => {
-    if (revenue >= 5000)
-      return { level: "high", color: "text-green-600", bgColor: "bg-green-50" };
-    if (revenue >= 2000)
-      return {
-        level: "medium",
-        color: "text-yellow-600",
-        bgColor: "bg-yellow-50",
-      };
-    if (revenue >= 500)
-      return {
-        level: "low",
-        color: "text-orange-600",
-        bgColor: "bg-orange-50",
-      };
-    return { level: "minimal", color: "text-red-600", bgColor: "bg-red-50" };
-  };
-
-  const revenueLevel = getRevenueLevel(monthlyRevenue);
 
   return (
     <div className="space-y-3">
