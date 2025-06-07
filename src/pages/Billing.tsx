@@ -42,8 +42,79 @@ export default function Billing() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
+
+  // Export billing data to CSV
+  const handleExportStatement = () => {
+    try {
+      const filteredData = billingRecords;
+
+      if (filteredData.length === 0) {
+        toast({
+          title: "No Data",
+          description: "No billing records to export",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const csvContent = [
+        // CSV Headers
+        [
+          "Date",
+          "Customer Name",
+          "VC Number",
+          "Amount (₹)",
+          "Payment Method",
+          "Status",
+          "Invoice Number",
+          "Collector",
+        ].join(","),
+        // CSV Data
+        ...filteredData.map((record) =>
+          [
+            record.date,
+            `"${record.customerName}"`,
+            record.vcNumber || "",
+            record.amount,
+            record.paymentMethod || "",
+            record.status,
+            record.invoiceNumber || "",
+            `"${record.collectorName || ""}"`,
+          ].join(","),
+        ),
+      ].join("\n");
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `billing-statement-${new Date().toISOString().split("T")[0]}.csv`,
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Export Successful",
+        description: `Exported ${filteredData.length} billing records`,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export billing statement",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Load billing records
   useEffect(() => {
@@ -98,17 +169,36 @@ export default function Billing() {
       employeeFilter === "all" ||
       record.employeeId === employeeFilter;
 
-    // For employees, only show their own records for today and yesterday
+    // Date range filtering
+    const matchesDateRange = (() => {
+      if (!fromDate && !toDate) return true;
+
+      const recordDate = record.generatedDate || record.date;
+      if (!recordDate) return true;
+
+      if (fromDate && recordDate < fromDate) return false;
+      if (toDate && recordDate > toDate) return false;
+
+      return true;
+    })();
+
+    // For employees, only show their own records for today and yesterday (unless date filter is applied)
     let hasAccess = isAdmin || record.employeeId === user?.id;
 
-    if (!isAdmin) {
-      // Employees only see records from today and yesterday
+    if (!isAdmin && !fromDate && !toDate) {
+      // Employees only see records from today and yesterday when no date filter is applied
       hasAccess =
         hasAccess &&
         (record.generatedDate === today || record.generatedDate === yesterday);
     }
 
-    return matchesSearch && matchesStatus && matchesEmployee && hasAccess;
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesEmployee &&
+      matchesDateRange &&
+      hasAccess
+    );
   });
 
   // Get unique employees from billing records for filter dropdown
@@ -227,7 +317,7 @@ export default function Billing() {
               </p>
             </div>
             <div className="flex space-x-2">
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleExportStatement}>
                 <Download className="mr-2 h-4 w-4" />
                 Export Statement
               </Button>
@@ -393,40 +483,81 @@ export default function Billing() {
           {/* Billing Filters */}
           <Card>
             <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Search by customer name, invoice number, or VC number..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+              <div className="space-y-4">
+                {/* Search and Status Filters */}
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search by customer name, invoice number, or VC number..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="overdue">Overdue</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={employeeFilter}
+                    onValueChange={setEmployeeFilter}
+                  >
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                      <SelectValue placeholder="Filter by employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Employees</SelectItem>
+                      {uniqueEmployees.map((employee) => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employee.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="overdue">Overdue</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={employeeFilter}
-                  onValueChange={setEmployeeFilter}
-                >
-                  <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="Filter by employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Employees</SelectItem>
-                    {uniqueEmployees.map((employee) => (
-                      <SelectItem key={employee.id} value={employee.id}>
-                        {employee.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+                {/* Date Range Filters */}
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-sm font-medium text-gray-700">
+                      From Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={fromDate}
+                      onChange={(e) => setFromDate(e.target.value)}
+                      className="w-full sm:w-[180px]"
+                    />
+                  </div>
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-sm font-medium text-gray-700">
+                      To Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={toDate}
+                      onChange={(e) => setToDate(e.target.value)}
+                      className="w-full sm:w-[180px]"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setFromDate("");
+                        setToDate("");
+                      }}
+                      className="text-sm"
+                    >
+                      Clear Dates
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

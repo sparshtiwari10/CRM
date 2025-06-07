@@ -13,36 +13,60 @@ export interface ConnectivityCheck {
  * Check basic internet connectivity
  */
 export async function checkInternetConnectivity(): Promise<boolean> {
-  try {
-    // Try to fetch a small resource from a reliable source
-    const response = await fetch("https://www.google.com/favicon.ico", {
-      method: "HEAD",
-      mode: "no-cors",
-      cache: "no-cache",
-    });
-    return true;
-  } catch (error) {
-    console.warn("Internet connectivity check failed:", error);
-    return false;
+  const testUrls = [
+    "https://www.google.com/favicon.ico",
+    "https://httpbin.org/status/200",
+    "https://jsonplaceholder.typicode.com/posts/1",
+  ];
+
+  // Try multiple reliable endpoints
+  for (const url of testUrls) {
+    try {
+      const response = await fetch(url, {
+        method: "HEAD",
+        mode: "no-cors",
+        cache: "no-cache",
+        signal: AbortSignal.timeout(2000), // 2 second timeout
+      });
+      console.log(`✅ Internet connectivity confirmed via ${url}`);
+      return true;
+    } catch (error) {
+      console.warn(`❌ Internet test ${url} failed:`, error);
+    }
   }
+
+  console.warn("❌ All internet connectivity tests failed");
+  return false;
 }
 
 /**
  * Check if Firebase domains are reachable
  */
 export async function checkFirebaseConnectivity(): Promise<boolean> {
-  try {
-    // Try to reach Firebase's status page or a minimal endpoint
-    const response = await fetch("https://status.firebase.google.com", {
-      method: "HEAD",
-      mode: "no-cors",
-      cache: "no-cache",
-    });
-    return true;
-  } catch (error) {
-    console.warn("Firebase connectivity check failed:", error);
-    return false;
+  const firebaseUrls = [
+    "https://firestore.googleapis.com",
+    "https://firebase.googleapis.com",
+    "https://status.firebase.google.com",
+  ];
+
+  // Try multiple Firebase endpoints
+  for (const url of firebaseUrls) {
+    try {
+      const response = await fetch(url, {
+        method: "HEAD",
+        mode: "no-cors",
+        cache: "no-cache",
+        signal: AbortSignal.timeout(3000), // 3 second timeout
+      });
+      console.log(`✅ Firebase endpoint ${url} is reachable`);
+      return true;
+    } catch (error) {
+      console.warn(`❌ Firebase endpoint ${url} failed:`, error);
+    }
   }
+
+  console.warn("❌ All Firebase endpoints unreachable");
+  return false;
 }
 
 /**

@@ -53,8 +53,8 @@ export function CustomerDataImport({
         "John Smith",
         "+91 98765 43210",
         "123 Main Street, City",
-        "VC001001",
-        "Premium HD",
+        "",
+        "Gold",
         "Collector A",
         "Paid",
         "599",
@@ -64,8 +64,8 @@ export function CustomerDataImport({
         "Sarah Johnson",
         "+91 98765 43211",
         "456 Oak Avenue, City",
-        "VC001002",
-        "Basic",
+        "",
+        "Silver",
         "Collector B",
         "Pending",
         "299",
@@ -116,7 +116,6 @@ export function CustomerDataImport({
     if (!data.name?.trim()) errors.push("Name is required");
     if (!data.phoneNumber?.trim()) errors.push("Phone number is required");
     if (!data.address?.trim()) errors.push("Address is required");
-    if (!data.vcNumber?.trim()) errors.push("VC Number is required");
     if (!data.collectorName?.trim()) errors.push("Collector name is required");
 
     // Validate phone number format (basic)
@@ -144,6 +143,7 @@ export function CustomerDataImport({
   };
 
   const convertToCustomer = (data: any): Omit<Customer, "id"> => {
+    const isActive = data.isActive?.toLowerCase() === "true";
     return {
       name: data.name?.trim() || "",
       phoneNumber: data.phoneNumber?.trim() || "",
@@ -153,12 +153,20 @@ export function CustomerDataImport({
       collectorName: data.collectorName?.trim() || "",
       billingStatus: (data.billingStatus?.trim() as any) || "Pending",
       portalBill: Number(data.portalBill) || 0,
-      isActive: data.isActive?.toLowerCase() === "true",
+      isActive: isActive,
       email: data.email?.trim() || "",
       joinDate: new Date().toISOString().split("T")[0],
       lastPaymentDate:
         data.lastPaymentDate || new Date().toISOString().split("T")[0],
       activationDate: new Date().toISOString().split("T")[0],
+      deactivationDate: !isActive
+        ? new Date().toISOString().split("T")[0]
+        : null,
+      numberOfConnections: 1,
+      connections: [],
+      packageAmount: Number(data.portalBill) || 0,
+      previousOutstanding: 0,
+      currentOutstanding: Number(data.portalBill) || 0,
     };
   };
 

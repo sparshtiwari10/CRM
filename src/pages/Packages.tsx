@@ -178,7 +178,7 @@ export default function Packages() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${totalRevenue.toFixed(2)}
+                ₹{totalRevenue.toLocaleString()}
               </div>
               <p className="text-xs text-gray-600">From all packages</p>
             </CardContent>
@@ -193,7 +193,7 @@ export default function Packages() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${averageRevenuePerCustomer.toFixed(2)}
+                ₹{averageRevenuePerCustomer.toLocaleString()}
               </div>
               <p className="text-xs text-gray-600">Monthly average</p>
             </CardContent>
@@ -212,7 +212,7 @@ export default function Packages() {
                   </Badge>
                 </div>
                 <div className="text-3xl font-bold text-blue-600">
-                  ${pkg.price}
+                  ₹{pkg.price}
                   <span className="text-base font-normal text-gray-500">
                     /month
                   </span>
@@ -293,7 +293,7 @@ export default function Packages() {
                       Monthly Price
                     </label>
                     <p className="text-lg font-bold text-blue-600">
-                      ${viewingPackage.price}
+                      ₹{viewingPackage.price}
                     </p>
                   </div>
                   <div>
@@ -358,7 +358,7 @@ export default function Packages() {
                       Monthly Revenue
                     </label>
                     <p className="text-lg font-bold text-green-600">
-                      ${getTotalRevenue(viewingPackage).toFixed(2)}
+                      ₹{getTotalRevenue(viewingPackage).toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -444,7 +444,7 @@ export default function Packages() {
                   </div>
                   <div>
                     <label className="text-sm font-medium">
-                      Monthly Price ($)
+                      Monthly Price (₹)
                     </label>
                     <input
                       name="price"

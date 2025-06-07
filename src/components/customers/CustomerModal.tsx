@@ -52,11 +52,12 @@ export function CustomerModal({
   const isEditing = !!customer;
 
   // Initialize with either customer data or empty form
-  const initialData = customer
-    ? {
+  const getInitialData = () => {
+    if (customer) {
+      return {
         name: customer.name || "",
         phoneNumber: customer.phoneNumber || "",
-        email: customer.email || "",
+        email: customer.email || "", // Always ensure string, not undefined
         address: customer.address || "",
         vcNumber: customer.vcNumber || "",
         currentPackage: customer.currentPackage || "",
@@ -64,27 +65,38 @@ export function CustomerModal({
         billingStatus: customer.billingStatus || "Pending",
         isActive: customer.isActive !== undefined ? customer.isActive : true,
         portalBill: customer.portalBill || 0,
-        numberOfConnections: customer.numberOfConnections || "",
+        numberOfConnections: customer.numberOfConnections || 1,
         connections: customer.connections || [],
         customPlan: customer.customPlan || null,
-        isInitialized: false,
-      }
-    : {
+        packageAmount: customer.packageAmount || 0,
+        previousOutstanding: customer.previousOutstanding || 0,
+        currentOutstanding: customer.currentOutstanding || 0,
+        isInitialized: true,
+      };
+    } else {
+      return {
         name: "",
         phoneNumber: "",
-        email: "",
+        email: "", // Empty string, not undefined
         address: "",
-        vcNumber: `VC${Math.random().toString().substr(2, 6)}`,
+        vcNumber: "", // Start blank as requested
         currentPackage: "",
         collectorName: "",
         billingStatus: "Pending" as const,
         isActive: true,
         portalBill: 0,
-        numberOfConnections: "",
+        numberOfConnections: 1,
         connections: [] as Connection[],
         customPlan: null,
+        packageAmount: 0,
+        previousOutstanding: 0,
+        currentOutstanding: 0,
         isInitialized: false,
       };
+    }
+  };
+
+  const initialData = getInitialData();
 
   const [formData, setFormData] = useState(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -106,6 +118,9 @@ export function CustomerModal({
       numberOfConnections: customer.numberOfConnections || "",
       connections: customer.connections || [],
       customPlan: customer.customPlan || null,
+      packageAmount: customer.packageAmount || 0,
+      previousOutstanding: customer.previousOutstanding || 0,
+      currentOutstanding: customer.currentOutstanding || 0,
       isInitialized: true,
     });
     setShowCustomPlan(!!customer.customPlan);
@@ -119,7 +134,7 @@ export function CustomerModal({
       phoneNumber: "",
       email: "",
       address: "",
-      vcNumber: `VC${Math.random().toString().substr(2, 6)}`,
+      vcNumber: "",
       currentPackage: "",
       collectorName: "",
       billingStatus: "Pending",
@@ -128,6 +143,9 @@ export function CustomerModal({
       numberOfConnections: "",
       connections: [],
       customPlan: null,
+      packageAmount: 0,
+      previousOutstanding: 0,
+      currentOutstanding: 0,
       isInitialized: true,
     });
     setShowCustomPlan(false);
@@ -136,6 +154,20 @@ export function CustomerModal({
 
   function handleInputChange(field: string, value: any) {
     setFormData((prev) => ({ ...prev, [field]: value }));
+
+    // Auto-populate package amount when selecting a package
+    if (field === "currentPackage" && value && !showCustomPlan) {
+      const selectedPackage = mockPackages.find((pkg) => pkg.name === value);
+      if (selectedPackage) {
+        setFormData((prev) => ({
+          ...prev,
+          [field]: value,
+          packageAmount: selectedPackage.price,
+          portalBill: selectedPackage.price, // Also update portal bill for consistency
+        }));
+      }
+    }
+
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
@@ -210,11 +242,18 @@ export function CustomerModal({
   }
 
   function handleCustomPlanChange(field: string, value: any) {
+    const newCustomPlan = formData.customPlan
+      ? { ...formData.customPlan, [field]: value }
+      : { name: "", price: 0, description: "", [field]: value };
+
     setFormData((prev) => ({
       ...prev,
-      customPlan: prev.customPlan
-        ? { ...prev.customPlan, [field]: value }
-        : { name: "", price: 0, description: "", [field]: value },
+      customPlan: newCustomPlan,
+      // Auto-populate package amount and portal bill when custom plan price changes
+      ...(field === "price" && {
+        packageAmount: value || 0,
+        portalBill: value || 0,
+      }),
     }));
   }
 
@@ -280,11 +319,11 @@ export function CustomerModal({
         ? 1
         : parseInt(formData.numberOfConnections) || 1;
 
+    // Build customer data with proper handling of optional fields
     const customerData: Customer = {
       id: customer?.id || Date.now().toString(),
       name: formData.name.trim(),
       phoneNumber: formData.phoneNumber.trim(),
-      email: formData.email.trim() || undefined,
       address: formData.address.trim(),
       vcNumber: formData.vcNumber.trim(),
       currentPackage: showCustomPlan
@@ -303,11 +342,22 @@ export function CustomerModal({
       deactivationDate:
         !formData.isActive && customer?.isActive
           ? new Date().toISOString().split("T")[0]
-          : customer?.deactivationDate,
+          : customer?.deactivationDate || undefined,
       numberOfConnections: finalNumberOfConnections,
       connections: formData.connections.slice(0, finalNumberOfConnections),
-      customPlan: showCustomPlan ? formData.customPlan || undefined : undefined,
+      packageAmount: formData.packageAmount,
+      previousOutstanding: formData.previousOutstanding,
+      currentOutstanding: formData.currentOutstanding,
     };
+
+    // Only add optional fields if they have valid values (avoid undefined)
+    if (formData.email && formData.email.trim() !== "") {
+      customerData.email = formData.email.trim();
+    }
+
+    if (showCustomPlan && formData.customPlan) {
+      customerData.customPlan = formData.customPlan;
+    }
 
     onSave(customerData);
 
@@ -482,7 +532,30 @@ export function CustomerModal({
                 <div className="flex items-center space-x-2">
                   <Switch
                     checked={showCustomPlan}
-                    onCheckedChange={setShowCustomPlan}
+                    onCheckedChange={(checked) => {
+                      setShowCustomPlan(checked);
+                      // Reset package amount when switching between custom and regular packages
+                      if (checked) {
+                        // Switching to custom plan - reset amounts to allow manual entry
+                        setFormData((prev) => ({
+                          ...prev,
+                          packageAmount: formData.customPlan?.price || 0,
+                          portalBill: formData.customPlan?.price || 0,
+                        }));
+                      } else {
+                        // Switching to regular package - auto-populate if package selected
+                        const selectedPackage = mockPackages.find(
+                          (pkg) => pkg.name === formData.currentPackage,
+                        );
+                        if (selectedPackage) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            packageAmount: selectedPackage.price,
+                            portalBill: selectedPackage.price,
+                          }));
+                        }
+                      }
+                    }}
                     disabled={isSaving}
                   />
                   <Label>Use Custom Plan</Label>
@@ -603,7 +676,14 @@ export function CustomerModal({
 
                 {isAdmin && (
                   <div>
-                    <Label htmlFor="portalBill">Portal Bill (₹)</Label>
+                    <Label htmlFor="portalBill">
+                      Portal Bill (₹)
+                      {!showCustomPlan && formData.currentPackage && (
+                        <span className="text-green-600 text-xs ml-1">
+                          (Auto-filled)
+                        </span>
+                      )}
+                    </Label>
                     <Input
                       id="portalBill"
                       type="number"
@@ -617,7 +697,130 @@ export function CustomerModal({
                         )
                       }
                       disabled={isSaving}
+                      className={
+                        !showCustomPlan && formData.currentPackage
+                          ? "bg-green-50 border-green-200"
+                          : ""
+                      }
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {!showCustomPlan && formData.currentPackage
+                        ? "Auto-populated from package amount"
+                        : "Monthly billing amount"}
+                    </p>
+                  </div>
+                )}
+
+                {/* Billing Calculations - Admin Only */}
+                {isAdmin && (
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-gray-900">
+                      Billing Calculations
+                    </h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="packageAmount">
+                          Package Amount (₹)
+                          {!showCustomPlan && formData.currentPackage && (
+                            <span className="text-green-600 text-xs ml-1">
+                              (Auto-filled from {formData.currentPackage})
+                            </span>
+                          )}
+                          {showCustomPlan && (
+                            <span className="text-blue-600 text-xs ml-1">
+                              (From custom plan)
+                            </span>
+                          )}
+                        </Label>
+                        <Input
+                          id="packageAmount"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.packageAmount}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "packageAmount",
+                              parseFloat(e.target.value) || 0,
+                            )
+                          }
+                          disabled={isSaving}
+                          className={
+                            !showCustomPlan && formData.currentPackage
+                              ? "bg-green-50 border-green-200"
+                              : ""
+                          }
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {!showCustomPlan && formData.currentPackage
+                            ? "Auto-populated from selected package"
+                            : "Monthly package amount"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="previousOutstanding">
+                          Previous O/S (₹)
+                        </Label>
+                        <Input
+                          id="previousOutstanding"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.previousOutstanding}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "previousOutstanding",
+                              parseFloat(e.target.value) || 0,
+                            )
+                          }
+                          disabled={isSaving}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Previous outstanding amount
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="currentOutstanding">
+                          Current O/S (₹)
+                        </Label>
+                        <Input
+                          id="currentOutstanding"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.currentOutstanding}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "currentOutstanding",
+                              parseFloat(e.target.value) || 0,
+                            )
+                          }
+                          disabled={isSaving}
+                          className="font-medium"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Current outstanding: Prev O/S + Bill
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Billing Logic Info */}
+                    <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+                      <h5 className="font-medium mb-1">Billing Logic:</h5>
+                      <ul className="text-xs space-y-1">
+                        <li>• Current O/S = Previous O/S + Package Amount</li>
+                        <li>
+                          • When invoice is generated: New Current O/S = Current
+                          O/S - Invoice Amount
+                        </li>
+                        <li>
+                          • Monthly: Current O/S transfers to Previous O/S, New
+                          bill generated
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 )}
               </div>

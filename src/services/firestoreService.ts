@@ -176,9 +176,15 @@ class FirestoreService {
         throw new Error("Only administrators can add customers");
       }
 
+      // Validate required fields before processing
+      this.validateCustomerData(customer);
+
       const customersRef = collection(db, "customers");
       const customerData: FirestoreCustomer =
         this.convertCustomerToFirestoreCustomer(customer);
+
+      // Additional sanitization check
+      this.sanitizeFirestoreData(customerData);
 
       const docRef = await addDoc(customersRef, customerData);
       console.log(`✅ Customer ${customer.name} added successfully`);
@@ -268,24 +274,40 @@ class FirestoreService {
         throw new Error("User not authenticated");
       }
 
+      // Validate billing record data
+      this.validateBillingRecordData(record);
+
       const billingRef = collection(db, "billing");
+
+      // Build record data with proper handling of optional fields
       const recordData: FirestoreBillingRecord = {
-        customer_id: record.customerId,
-        customer_name: record.customerName,
-        package_name: record.packageName,
-        amount: record.amount,
+        customer_id: record.customerId || "",
+        customer_name: record.customerName || "",
+        package_name: record.packageName || "",
+        amount: record.amount || 0,
         due_date: Timestamp.fromDate(new Date(record.dueDate)),
-        status: record.status,
-        invoice_number: record.invoiceNumber,
+        status: record.status || "Pending",
+        invoice_number: record.invoiceNumber || "",
         generated_date: Timestamp.fromDate(new Date(record.generatedDate)),
-        generated_by: record.generatedBy,
-        employee_id: record.employeeId,
-        billing_month: record.billingMonth,
-        billing_year: record.billingYear,
-        vc_number: record.vcNumber,
-        custom_amount: record.customAmount,
+        generated_by: record.generatedBy || "",
+        employee_id: record.employeeId || "",
+        billing_month: record.billingMonth || "",
+        billing_year: record.billingYear || "",
+        vc_number: record.vcNumber || "",
         created_at: Timestamp.now(),
       };
+
+      // Only add optional fields if they have valid values
+      if (
+        record.customAmount !== undefined &&
+        record.customAmount !== null &&
+        record.customAmount > 0
+      ) {
+        recordData.custom_amount = record.customAmount;
+      }
+
+      // Additional sanitization check
+      this.sanitizeFirestoreData(recordData);
 
       const docRef = await addDoc(billingRef, recordData);
       console.log(
@@ -486,39 +508,160 @@ class FirestoreService {
   private convertCustomerToFirestoreCustomer(
     customer: Customer,
   ): FirestoreCustomer {
-    return {
-      name: customer.name,
-      phone: customer.phoneNumber,
-      address: customer.address,
-      package: customer.currentPackage,
-      vc_no: customer.vcNumber,
-      collector_name: customer.collectorName,
-      email: customer.email,
-      billing_status: customer.billingStatus,
-      last_payment_date: Timestamp.fromDate(new Date(customer.lastPaymentDate)),
-      join_date: Timestamp.fromDate(new Date(customer.joinDate)),
-      activation_date: customer.activationDate
-        ? Timestamp.fromDate(new Date(customer.activationDate))
-        : undefined,
-      deactivation_date: customer.deactivationDate
-        ? Timestamp.fromDate(new Date(customer.deactivationDate))
-        : undefined,
+    // Sanitize data to remove undefined values (Firestore doesn't accept undefined)
+    const sanitizedData: FirestoreCustomer = {
+      name: customer.name || "",
+      phone: customer.phoneNumber || "",
+      address: customer.address || "",
+      package: customer.currentPackage || "",
+      vc_no: customer.vcNumber || "",
+      collector_name: customer.collectorName || "",
+      billing_status: customer.billingStatus || "Pending",
+      last_payment_date: customer.lastPaymentDate
+        ? Timestamp.fromDate(new Date(customer.lastPaymentDate))
+        : Timestamp.now(),
+      join_date: customer.joinDate
+        ? Timestamp.fromDate(new Date(customer.joinDate))
+        : Timestamp.now(),
       status: customer.isActive ? "active" : "inactive",
       bill_amount: customer.portalBill || 0,
-      number_of_connections: customer.numberOfConnections,
-      connections: customer.connections,
-      custom_plan: customer.customPlan,
+      number_of_connections: customer.numberOfConnections || 1,
+      connections: customer.connections || [],
       // Fields from original Excel/CSV structure
-      prev_os: 0,
+      prev_os: customer.previousOutstanding || 0,
       date: Timestamp.now(),
       collected_cash: 0,
       collected_online: 0,
       discount: 0,
-      current_os: 0,
+      current_os: customer.currentOutstanding || 0,
       remark: "",
       created_at: Timestamp.now(),
       updated_at: Timestamp.now(),
     };
+
+    // Only add optional fields if they have valid values
+    if (customer.email && customer.email.trim() !== "") {
+      sanitizedData.email = customer.email.trim();
+    }
+
+    if (customer.activationDate) {
+      sanitizedData.activation_date = Timestamp.fromDate(
+        new Date(customer.activationDate),
+      );
+    }
+
+    if (customer.deactivationDate) {
+      sanitizedData.deactivation_date = Timestamp.fromDate(
+        new Date(customer.deactivationDate),
+      );
+    }
+
+    if (customer.customPlan) {
+      sanitizedData.custom_plan = customer.customPlan;
+    }
+
+    return sanitizedData;
+  }
+
+  /**
+   * Validate customer data before saving to Firestore
+   */
+  private validateCustomerData(customer: Customer): void {
+    const errors: string[] = [];
+
+    if (!customer.name || customer.name.trim() === "") {
+      errors.push("Customer name is required");
+    }
+
+    if (!customer.phoneNumber || customer.phoneNumber.trim() === "") {
+      errors.push("Phone number is required");
+    }
+
+    if (!customer.address || customer.address.trim() === "") {
+      errors.push("Address is required");
+    }
+
+    if (!customer.collectorName || customer.collectorName.trim() === "") {
+      errors.push("Collector name is required");
+    }
+
+    if (!customer.vcNumber || customer.vcNumber.trim() === "") {
+      errors.push("VC Number is required");
+    }
+
+    // Validate email format if provided
+    if (customer.email && customer.email.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(customer.email.trim())) {
+        errors.push("Invalid email format");
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Validation failed: ${errors.join(", ")}`);
+    }
+  }
+
+  /**
+   * Validate billing record data before saving to Firestore
+   */
+  private validateBillingRecordData(record: Omit<BillingRecord, "id">): void {
+    const errors: string[] = [];
+
+    if (!record.customerId || record.customerId.trim() === "") {
+      errors.push("Customer ID is required");
+    }
+
+    if (!record.customerName || record.customerName.trim() === "") {
+      errors.push("Customer name is required");
+    }
+
+    if (!record.packageName || record.packageName.trim() === "") {
+      errors.push("Package name is required");
+    }
+
+    if (!record.amount || record.amount <= 0) {
+      errors.push("Amount must be greater than 0");
+    }
+
+    if (!record.invoiceNumber || record.invoiceNumber.trim() === "") {
+      errors.push("Invoice number is required");
+    }
+
+    if (!record.dueDate) {
+      errors.push("Due date is required");
+    }
+
+    if (!record.generatedBy || record.generatedBy.trim() === "") {
+      errors.push("Generated by field is required");
+    }
+
+    if (!record.employeeId || record.employeeId.trim() === "") {
+      errors.push("Employee ID is required");
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Billing record validation failed: ${errors.join(", ")}`);
+    }
+  }
+
+  /**
+   * Sanitize data to ensure Firestore compatibility
+   */
+  private sanitizeFirestoreData(data: any): void {
+    for (const [key, value] of Object.entries(data)) {
+      if (value === undefined) {
+        console.warn(
+          `⚠️ Removing undefined field '${key}' from Firestore data`,
+        );
+        delete data[key];
+      } else if (typeof value === "string" && value.trim() === "") {
+        // Convert empty strings to null for optional fields
+        if (key === "email" || key === "remark" || key === "custom_amount") {
+          delete data[key];
+        }
+      }
+    }
   }
 
   private convertFirestoreBillingToBillingRecord(

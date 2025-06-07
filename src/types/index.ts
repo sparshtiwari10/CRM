@@ -30,6 +30,10 @@ export interface Customer {
     price: number;
     description: string;
   };
+  // Billing calculation fields
+  packageAmount?: number; // Monthly package amount
+  previousOutstanding?: number; // Previous outstanding amount
+  currentOutstanding?: number; // Current outstanding amount
 }
 
 export interface Package {
