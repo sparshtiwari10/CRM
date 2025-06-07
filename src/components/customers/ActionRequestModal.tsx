@@ -102,7 +102,7 @@ export function ActionRequestModal({
   };
 
   // Reset form when modal opens with new action type
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       form.reset({
         actionType: defaultActionType,
