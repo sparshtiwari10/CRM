@@ -478,7 +478,7 @@ export function CustomerTable({
                     </TableRow>
 
                     {/* Enhanced Expandable Row Content - Focus on Billing & Invoice History */}
-                    {expandedRows.has(customer.id) && (
+                    {expandedRows.has(customer.id) ? (
                       <TableRow>
                         <TableCell colSpan={isAdmin ? 13 : 12}>
                           <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-200">
@@ -691,7 +691,7 @@ export function CustomerTable({
                           </div>
                         </TableCell>
                       </TableRow>
-                    )}
+                    ) : null}
                   </React.Fragment>
                 ))}
               </TableBody>
