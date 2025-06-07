@@ -97,20 +97,24 @@ export function ActionRequestModal({
   };
 
   const handleClose = () => {
+    form.reset({
+      actionType: "activation",
+      requestedPlan: "",
+      reason: "",
+    });
     onOpenChange(false);
-    form.reset();
   };
 
-  // Reset form when modal opens with new action type
+  // Reset form when modal opens with new action type - using useEffect without form dependency
   useEffect(() => {
-    if (open) {
+    if (open && defaultActionType) {
       form.reset({
         actionType: defaultActionType,
         requestedPlan: "",
         reason: "",
       });
     }
-  }, [open, defaultActionType, form]);
+  }, [open, defaultActionType]); // Removed 'form' from dependencies to prevent infinite loops
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
