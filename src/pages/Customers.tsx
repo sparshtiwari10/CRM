@@ -46,16 +46,8 @@ export default function Customers() {
 
     const setupListener = () => {
       const onCustomersUpdate = (updatedCustomers: Customer[]) => {
-        // Use functional update to prevent stale closures
-        setCustomers((prevCustomers) => {
-          // Only update if the data actually changed
-          if (
-            JSON.stringify(prevCustomers) !== JSON.stringify(updatedCustomers)
-          ) {
-            return updatedCustomers;
-          }
-          return prevCustomers;
-        });
+        // Use a simple update without complex comparison
+        setCustomers(updatedCustomers);
         setIsLoading(false);
       };
 
@@ -208,6 +200,28 @@ export default function Customers() {
     console.log("Viewing history for customer:", customerId);
   };
 
+  const refreshCustomerData = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      const customerData = isAdmin
+        ? await CustomerService.getAllCustomers()
+        : await CustomerService.getCustomersByCollector(user.name);
+
+      setCustomers(customerData);
+    } catch (error) {
+      console.error("Error refreshing customer data:", error);
+      toast({
+        title: "Refresh Error",
+        description: "Failed to refresh customer data.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleActionRequest = (request: Omit<ActionRequest, "id">) => {
     // For now, just show a toast - you can implement request storage later
     toast({
@@ -220,6 +234,11 @@ export default function Customers() {
     try {
       await CustomerService.updateCustomer(customer.id, customer);
 
+      // Manually update the customer in the local state immediately
+      setCustomers((prevCustomers) =>
+        prevCustomers.map((c) => (c.id === customer.id ? customer : c)),
+      );
+
       toast({
         title: "Success",
         description: "Customer updated successfully.",
@@ -227,11 +246,16 @@ export default function Customers() {
 
       setEditingCustomer(null);
 
-      // For admin, force a page reload to ensure responsiveness
-      if (isAdmin) {
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+      // Refresh the data from the service to ensure consistency
+      try {
+        const refreshedData = isAdmin
+          ? await CustomerService.getAllCustomers()
+          : await CustomerService.getCustomersByCollector(user?.name || "");
+
+        setCustomers(refreshedData);
+      } catch (refreshError) {
+        console.warn("Failed to refresh customer data:", refreshError);
+        // Don't show error to user since the update was successful
       }
     } catch (error) {
       toast({
