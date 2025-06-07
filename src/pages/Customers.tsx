@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useCallback } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Plus } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,8 +25,8 @@ export default function Customers() {
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
 
-  // Simple data loading - wrapped in useCallback to prevent re-creation
-  const loadData = useCallback(async () => {
+  // Simple data loading
+  const loadData = async () => {
     if (!user) return;
 
     console.log("Loading customers...");
@@ -49,12 +49,12 @@ export default function Customers() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, isAdmin, toast]);
+  };
 
-  // Load once on mount and when user changes
+  // Load data on mount
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, []); // Intentionally no dependencies to avoid loops
 
   // Enhanced search and filter
   const filteredCustomers = customers.filter((customer) => {
@@ -76,127 +76,126 @@ export default function Customers() {
     return matchesSearch && matchesStatus && matchesPackage;
   });
 
-  const handleAdd = useCallback(() => {
-    console.log("Add customer clicked");
-    setEditingCustomer(null);
-    setIsModalOpen(true);
-  }, []);
-
-  const handleEdit = useCallback((customer: Customer) => {
-    console.log("Edit customer clicked:", customer.id);
-    setEditingCustomer(customer);
-    setIsModalOpen(true);
-  }, []);
-
-  const handleView = useCallback((customer: Customer) => {
-    console.log("View customer clicked:", customer.id);
-    // For now, just open edit modal in view mode
-    setEditingCustomer(customer);
-    setIsModalOpen(true);
-  }, []);
-
-  const handleViewHistory = useCallback(
-    (customer: Customer) => {
-      console.log("View history clicked:", customer.id);
-      toast({
-        title: "History",
-        description: `Viewing history for ${customer.name}`,
-      });
-    },
-    [toast],
-  );
-
-  const handleActionRequest = useCallback(
-    (request: Omit<ActionRequest, "id">) => {
-      console.log("Action request:", request);
-      toast({
-        title: "Request Submitted",
-        description:
-          "Your action request has been submitted for admin approval.",
-      });
-    },
-    [toast],
-  );
-
-  const handleSave = useCallback(
-    async (customer: Customer) => {
-      console.log("Save started:", customer.id, customer.name);
-      setIsSaving(true);
-
-      try {
-        if (editingCustomer) {
-          console.log("Updating customer...");
-          await CustomerService.updateCustomer(customer.id, customer);
-
-          // Simple state update - no complex logic
-          setCustomers((prev) =>
-            prev.map((c) => (c.id === customer.id ? customer : c)),
-          );
-
-          toast({
-            title: "Success",
-            description: "Customer updated successfully.",
-          });
-        } else {
-          console.log("Adding customer...");
-          const newId = await CustomerService.addCustomer(customer);
-          const newCustomer = { ...customer, id: newId };
-
-          setCustomers((prev) => [...prev, newCustomer]);
-
-          toast({
-            title: "Success",
-            description: "Customer added successfully.",
-          });
-        }
-
-        console.log("Closing modal...");
-        setIsModalOpen(false);
-        setEditingCustomer(null);
-      } catch (error) {
-        console.error("Save error:", error);
-        toast({
-          title: "Error",
-          description: "Failed to save customer",
-          variant: "destructive",
-        });
-      } finally {
-        console.log("Save completed");
-        setIsSaving(false);
-      }
-    },
-    [editingCustomer, toast],
-  );
-
-  const handleDelete = useCallback(
-    async (customerId: string) => {
-      const customer = customers.find((c) => c.id === customerId);
-      console.log("Delete customer:", customerId);
-
-      try {
-        await CustomerService.deleteCustomer(customerId);
-        setCustomers((prev) => prev.filter((c) => c.id !== customerId));
-
-        toast({
-          title: "Success",
-          description: `${customer?.name} deleted successfully.`,
-          variant: "destructive",
-        });
-      } catch (error) {
-        console.error("Delete error:", error);
-        toast({
-          title: "Error",
-          description: "Failed to delete customer",
-          variant: "destructive",
-        });
-      }
-    },
-    [customers, toast],
-  );
-
   const uniquePackages = Array.from(
     new Set(customers.map((c) => c.currentPackage)),
   );
+
+  // Event handlers - simplified without useCallback
+  function handleAdd() {
+    console.log("Add customer clicked");
+    setEditingCustomer(null);
+    setIsModalOpen(true);
+  }
+
+  function handleEdit(customer: Customer) {
+    console.log("Edit customer clicked:", customer.id);
+    setEditingCustomer({ ...customer }); // Create a copy to avoid reference issues
+    setIsModalOpen(true);
+  }
+
+  function handleView(customer: Customer) {
+    console.log("View customer clicked:", customer.id);
+    setEditingCustomer({ ...customer }); // Create a copy
+    setIsModalOpen(true);
+  }
+
+  function handleViewHistory(customer: Customer) {
+    console.log("View history clicked:", customer.id);
+    toast({
+      title: "History",
+      description: `Viewing history for ${customer.name}`,
+    });
+  }
+
+  function handleActionRequest(request: Omit<ActionRequest, "id">) {
+    console.log("Action request:", request);
+    toast({
+      title: "Request Submitted",
+      description: "Your action request has been submitted for admin approval.",
+    });
+  }
+
+  async function handleSave(customer: Customer) {
+    console.log("Save started:", customer.id, customer.name);
+    setIsSaving(true);
+
+    try {
+      if (editingCustomer) {
+        console.log("Updating customer...");
+        await CustomerService.updateCustomer(customer.id, customer);
+
+        // Update state directly
+        setCustomers((prevCustomers) =>
+          prevCustomers.map((c) => (c.id === customer.id ? customer : c)),
+        );
+
+        toast({
+          title: "Success",
+          description: "Customer updated successfully.",
+        });
+      } else {
+        console.log("Adding customer...");
+        const newId = await CustomerService.addCustomer(customer);
+        const newCustomer = { ...customer, id: newId };
+
+        setCustomers((prevCustomers) => [...prevCustomers, newCustomer]);
+
+        toast({
+          title: "Success",
+          description: "Customer added successfully.",
+        });
+      }
+
+      console.log("Closing modal...");
+      setIsModalOpen(false);
+      setEditingCustomer(null);
+    } catch (error) {
+      console.error("Save error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save customer",
+        variant: "destructive",
+      });
+    } finally {
+      console.log("Save completed");
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDelete(customerId: string) {
+    const customer = customers.find((c) => c.id === customerId);
+    console.log("Delete customer:", customerId);
+
+    try {
+      await CustomerService.deleteCustomer(customerId);
+      setCustomers((prevCustomers) =>
+        prevCustomers.filter((c) => c.id !== customerId),
+      );
+
+      toast({
+        title: "Success",
+        description: `${customer?.name} deleted successfully.`,
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete customer",
+        variant: "destructive",
+      });
+    }
+  }
+
+  function handleModalClose(open: boolean) {
+    console.log("Modal open change:", open);
+    if (!isSaving) {
+      setIsModalOpen(open);
+      if (!open) {
+        setEditingCustomer(null);
+      }
+    }
+  }
 
   console.log(
     "Render - customers:",
@@ -284,15 +283,7 @@ export default function Customers() {
         {/* Customer Modal */}
         <CustomerModal
           open={isModalOpen}
-          onOpenChange={(open) => {
-            console.log("Modal open change:", open);
-            if (!isSaving) {
-              setIsModalOpen(open);
-              if (!open) {
-                setEditingCustomer(null);
-              }
-            }
-          }}
+          onOpenChange={handleModalClose}
           customer={editingCustomer}
           onSave={handleSave}
           isSaving={isSaving}
