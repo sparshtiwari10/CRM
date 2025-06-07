@@ -96,7 +96,6 @@ export function CustomerSearch({
                       <SelectValue placeholder="All packages" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All packages</SelectItem>
                       <SelectItem value="Basic">Basic</SelectItem>
                       <SelectItem value="Premium HD">Premium HD</SelectItem>
                       <SelectItem value="Sports Package">
