@@ -64,9 +64,9 @@ export function CustomerModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Generate VC Number
-  const generateVCNumber = useCallback(() => {
+  const generateVCNumber = () => {
     return `VC${Math.random().toString().substr(2, 6)}`;
-  }, []);
+  };
 
   // Reset form when modal opens/closes or customer changes
   useEffect(() => {
@@ -102,7 +102,7 @@ export function CustomerModal({
       }
       setErrors({});
     }
-  }, [open, customer, generateVCNumber]);
+  }, [open, customer]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
