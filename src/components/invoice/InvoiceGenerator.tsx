@@ -228,6 +228,7 @@ export function InvoiceGenerator({
         billingYear: selectedYear,
         vcNumber: selectedCustomer.vcNumber,
         customAmount: isCustomAmount ? customAmount : undefined,
+        savedInBillingRecords: true, // Ensure this is marked as saved
       };
 
       // Save the billing record
