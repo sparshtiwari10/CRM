@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -61,61 +61,67 @@ export function ActionRequestModal({
   const form = useForm<ActionRequestFormValues>({
     resolver: zodResolver(actionRequestSchema),
     defaultValues: {
-      actionType: "activation",
+      actionType: defaultActionType,
       requestedPlan: "",
       reason: "",
     },
   });
 
+  // Watch the action type to show/hide plan selection
   const actionType = form.watch("actionType");
 
-  // Set the action type when the modal opens
-  useEffect(() => {
-    if (open) {
-      form.setValue("actionType", defaultActionType);
-      form.setValue("requestedPlan", "");
-      form.setValue("reason", "");
-    }
-  }, [open, defaultActionType]);
+  // Reset form when opening with new action type
+  const resetForm = () => {
+    form.reset({
+      actionType: defaultActionType,
+      requestedPlan: "",
+      reason: "",
+    });
+  };
 
   const handleSubmit = async (values: ActionRequestFormValues) => {
     if (!customer || !user) return;
 
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const request: Omit<ActionRequest, "id"> = {
-      customerId: customer.id,
-      customerName: customer.name,
-      employeeId: user.id,
-      employeeName: user.name,
-      actionType: values.actionType,
-      currentPlan: customer.currentPackage,
-      requestedPlan: values.requestedPlan || undefined,
-      reason: values.reason,
-      status: "pending",
-      requestDate: new Date().toISOString().split("T")[0],
-    };
+      const request: Omit<ActionRequest, "id"> = {
+        customerId: customer.id,
+        customerName: customer.name,
+        employeeId: user.id,
+        employeeName: user.name,
+        actionType: values.actionType,
+        currentPlan: customer.currentPackage,
+        requestedPlan: values.requestedPlan || undefined,
+        reason: values.reason,
+        status: "pending",
+        requestDate: new Date().toISOString().split("T")[0],
+      };
 
-    onSubmit(request);
-    setIsLoading(false);
-    onOpenChange(false);
-    form.reset();
+      onSubmit(request);
+      handleClose();
+    } catch (error) {
+      console.error("Error submitting request:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleClose = () => {
+    resetForm();
     onOpenChange(false);
-    form.reset({
-      actionType: "activation",
-      requestedPlan: "",
-      reason: "",
-    });
   };
 
+  // Reset form when modal opens or action type changes
+  if (open && form.getValues("actionType") !== defaultActionType) {
+    resetForm();
+  }
+
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Request Customer Action</DialogTitle>
