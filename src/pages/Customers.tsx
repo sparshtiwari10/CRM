@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { CustomerTable } from "@/components/customers/CustomerTable";
@@ -15,17 +15,16 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Customer } from "@/types";
 import { ActionRequest } from "@/types/auth";
-import {
-  mockCustomers,
-  mockActionRequests,
-  mockChangeHistory,
-} from "@/data/mockData";
+import { CustomerService } from "@/services/customerService";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Customers() {
-  const [customers, setCustomers] = useState<Customer[]>(mockCustomers);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({
     package: "",
@@ -34,8 +33,56 @@ export default function Customers() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
-  const [actionRequests, setActionRequests] = useState(mockActionRequests);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const { user, isAdmin } = useAuth();
+
+  // Set up real-time listener for customers
+  useEffect(() => {
+    if (!user) return;
+
+    let unsubscribe: (() => void) | undefined;
+
+    const setupListener = () => {
+      const onCustomersUpdate = (updatedCustomers: Customer[]) => {
+        setCustomers(updatedCustomers);
+        setIsLoading(false);
+      };
+
+      const onError = (error: Error) => {
+        console.error("Error syncing customers:", error);
+        toast({
+          title: "Sync Error",
+          description: "Failed to sync customer data. Please refresh the page.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+      };
+
+      if (isAdmin) {
+        // Admin can see all customers
+        unsubscribe = CustomerService.subscribeToCustomers(
+          onCustomersUpdate,
+          onError,
+        );
+      } else {
+        // Employee sees only assigned customers
+        unsubscribe = CustomerService.subscribeToCustomersByCollector(
+          user.name,
+          onCustomersUpdate,
+          onError,
+        );
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [user, isAdmin, toast]);
 
   // Filter and search customers
   const filteredCustomers = useMemo(() => {
@@ -56,6 +103,7 @@ export default function Customers() {
       return matchesSearch && matchesPackage && matchesStatus;
     });
   }, [customers, searchTerm, filters]);
+
   const handleAddCustomer = () => {
     setEditingCustomer(null);
     setIsModalOpen(true);
@@ -70,50 +118,63 @@ export default function Customers() {
     setViewingCustomer(customer);
   };
 
-  const handleSaveCustomer = (
+  const handleSaveCustomer = async (
     customerData: Omit<Customer, "id"> & { id?: string },
   ) => {
-    if (customerData.id) {
-      // Edit existing customer
-      setCustomers((prev) =>
-        prev.map((customer) =>
-          customer.id === customerData.id
-            ? { ...(customerData as Customer) }
-            : customer,
-        ),
-      );
-      toast({
-        title: "Customer updated",
-        description: "Customer information has been successfully updated.",
-      });
-    } else {
-      // Add new customer
-      const newCustomer: Customer = {
-        ...customerData,
-        id: Date.now().toString(),
-      } as Customer;
-      setCustomers((prev) => [newCustomer, ...prev]);
-      toast({
-        title: "Customer added",
-        description: "New customer has been successfully added.",
-      });
-    }
+    setIsSaving(true);
 
-    // Close modal and reset state
-    setIsModalOpen(false);
-    setEditingCustomer(null);
+    try {
+      if (customerData.id) {
+        // Edit existing customer
+        await CustomerService.updateCustomer(customerData.id, customerData);
+        toast({
+          title: "Customer updated",
+          description: "Customer information has been successfully updated.",
+        });
+      } else {
+        // Add new customer
+        const newCustomerId = await CustomerService.addCustomer(customerData);
+        toast({
+          title: "Customer added",
+          description: "New customer has been successfully added.",
+        });
+      }
+
+      // Close modal and reset state
+      setIsModalOpen(false);
+      setEditingCustomer(null);
+    } catch (error: any) {
+      console.error("Save customer error:", error);
+      toast({
+        title: "Error",
+        description:
+          error.message || "Failed to save customer. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteCustomer = (customerId: string) => {
+  const handleDeleteCustomer = async (customerId: string) => {
     const customer = customers.find((c) => c.id === customerId);
-    setCustomers((prev) =>
-      prev.filter((customer) => customer.id !== customerId),
-    );
-    toast({
-      title: "Customer deleted",
-      description: `${customer?.name} has been successfully removed.`,
-      variant: "destructive",
-    });
+
+    try {
+      await CustomerService.deleteCustomer(customerId);
+      toast({
+        title: "Customer deleted",
+        description: `${customer?.name} has been successfully removed.`,
+        variant: "destructive",
+      });
+    } catch (error: any) {
+      console.error("Delete customer error:", error);
+      toast({
+        title: "Error",
+        description:
+          error.message || "Failed to delete customer. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleFilterChange = (key: string, value: string) => {
@@ -126,15 +187,14 @@ export default function Customers() {
   };
 
   const handleActionRequest = (request: Omit<ActionRequest, "id">) => {
-    const newRequest = {
-      ...request,
-      id: `req-${Date.now()}`,
-    };
-    setActionRequests((prev) => [newRequest, ...prev]);
+    // For now, just show a toast - you can implement request storage later
+    toast({
+      title: "Request submitted",
+      description: "Your action request has been submitted for admin approval.",
+    });
   };
 
   const handleViewHistory = (customer: Customer) => {
-    // For now, just show a toast - you can implement a history modal later
     toast({
       title: "History",
       description: `Viewing change history for ${customer.name}`,
@@ -163,6 +223,45 @@ export default function Customers() {
     }
   };
 
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <DashboardLayout title="Customers">
+        <div className="p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div>
+              <Skeleton className="h-8 w-64 mb-2" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+            <Skeleton className="h-10 w-40" />
+          </div>
+
+          <Card>
+            <CardContent className="pt-6">
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center space-x-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-64" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout title="Customers">
       <div className="p-6 space-y-6">
@@ -174,12 +273,15 @@ export default function Customers() {
             </h2>
             <p className="text-gray-600">
               Showing {filteredCustomers.length} of {customers.length} customers
+              {!isAdmin && " (assigned to you)"}
             </p>
           </div>
-          <Button onClick={handleAddCustomer}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add New Customer
-          </Button>
+          {isAdmin && (
+            <Button onClick={handleAddCustomer}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add New Customer
+            </Button>
+          )}
         </div>
 
         {/* Search and Filters */}
@@ -212,6 +314,7 @@ export default function Customers() {
           }}
           customer={editingCustomer}
           onSave={handleSaveCustomer}
+          isLoading={isSaving}
         />
 
         {/* View Customer Dialog */}
@@ -255,11 +358,63 @@ export default function Customers() {
                   )}
                   <div>
                     <label className="text-sm font-medium text-gray-500">
+                      VC Number
+                    </label>
+                    <p className="text-lg font-mono">
+                      {viewingCustomer.vcNumber}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Service Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
                       Current Package
                     </label>
                     <div className="mt-1">
                       <Badge variant="outline" className="text-sm">
                         {viewingCustomer.currentPackage}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Assigned Collector
+                    </label>
+                    <p className="text-lg">{viewingCustomer.collectorName}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Service Status
+                    </label>
+                    <div className="mt-1">
+                      <Badge
+                        variant="outline"
+                        className={
+                          viewingCustomer.isActive
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }
+                      >
+                        {viewingCustomer.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Billing Status
+                    </label>
+                    <div className="mt-1">
+                      <Badge
+                        variant="outline"
+                        className={getBillingStatusColor(
+                          viewingCustomer.billingStatus,
+                        )}
+                      >
+                        {viewingCustomer.billingStatus}
                       </Badge>
                     </div>
                   </div>
@@ -277,23 +432,8 @@ export default function Customers() {
 
                 <Separator />
 
-                {/* Billing Info */}
+                {/* Dates */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">
-                      Billing Status
-                    </label>
-                    <div className="mt-1">
-                      <Badge
-                        variant="outline"
-                        className={getBillingStatusColor(
-                          viewingCustomer.billingStatus,
-                        )}
-                      >
-                        {viewingCustomer.billingStatus}
-                      </Badge>
-                    </div>
-                  </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">
                       Last Payment Date
@@ -310,7 +450,42 @@ export default function Customers() {
                       {formatDate(viewingCustomer.joinDate)}
                     </p>
                   </div>
+                  {viewingCustomer.activationDate && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Activation Date
+                      </label>
+                      <p className="text-lg">
+                        {formatDate(viewingCustomer.activationDate)}
+                      </p>
+                    </div>
+                  )}
+                  {viewingCustomer.deactivationDate && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Deactivation Date
+                      </label>
+                      <p className="text-lg">
+                        {formatDate(viewingCustomer.deactivationDate)}
+                      </p>
+                    </div>
+                  )}
                 </div>
+
+                {/* Admin-only portal bill */}
+                {isAdmin && viewingCustomer.portalBill && (
+                  <>
+                    <Separator />
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">
+                        Portal Bill (Admin Only)
+                      </label>
+                      <p className="text-lg font-bold">
+                        ${viewingCustomer.portalBill.toFixed(2)}
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button
@@ -319,14 +494,16 @@ export default function Customers() {
                   >
                     Close
                   </Button>
-                  <Button
-                    onClick={() => {
-                      setViewingCustomer(null);
-                      handleEditCustomer(viewingCustomer);
-                    }}
-                  >
-                    Edit Customer
-                  </Button>
+                  {isAdmin && (
+                    <Button
+                      onClick={() => {
+                        setViewingCustomer(null);
+                        handleEditCustomer(viewingCustomer);
+                      }}
+                    >
+                      Edit Customer
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
