@@ -358,7 +358,7 @@ export default function Packages() {
                       Monthly Revenue
                     </label>
                     <p className="text-lg font-bold text-green-600">
-                      ${getTotalRevenue(viewingPackage).toFixed(2)}
+                      ₹{getTotalRevenue(viewingPackage).toLocaleString()}
                     </p>
                   </div>
                 </div>
