@@ -273,35 +273,36 @@ export function CustomerTable({
                               <History className="mr-2 h-4 w-4" />
                               View History
                             </DropdownMenuItem>
-                            {(isAdmin || canAccessCustomer(customer.id)) && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => onEdit(customer)}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Edit Customer
-                                </DropdownMenuItem>
-                                {!isAdmin && (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      setActionRequestCustomer(customer)
-                                    }
-                                  >
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Request Action
-                                  </DropdownMenuItem>
-                                )}
-                                {isAdmin && (
-                                  <DropdownMenuItem
-                                    onClick={() => setDeleteCustomer(customer)}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete Customer
-                                  </DropdownMenuItem>
-                                )}
-                              </>
+                            <DropdownMenuSeparator />
+                            {/* Edit Customer - Admin Only */}
+                            {isAdmin && (
+                              <DropdownMenuItem
+                                onClick={() => onEdit(customer)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Customer
+                              </DropdownMenuItem>
+                            )}
+                            {/* Request Action - Employees Only */}
+                            {!isAdmin && canAccessCustomer(customer.id) && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setActionRequestCustomer(customer)
+                                }
+                              >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Request Action
+                              </DropdownMenuItem>
+                            )}
+                            {/* Delete Customer - Admin Only */}
+                            {isAdmin && (
+                              <DropdownMenuItem
+                                onClick={() => setDeleteCustomer(customer)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Customer
+                              </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
