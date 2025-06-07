@@ -303,7 +303,7 @@ export function CustomerModal({
       deactivationDate:
         !formData.isActive && customer?.isActive
           ? new Date().toISOString().split("T")[0]
-          : customer?.deactivationDate,
+          : customer?.deactivationDate || null,
       numberOfConnections: finalNumberOfConnections,
       connections: formData.connections.slice(0, finalNumberOfConnections),
       customPlan: showCustomPlan ? formData.customPlan || undefined : undefined,
