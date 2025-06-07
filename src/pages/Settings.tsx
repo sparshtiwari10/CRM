@@ -1,0 +1,530 @@
+import { useState } from "react";
+import {
+  Save,
+  User,
+  Building,
+  Bell,
+  Shield,
+  Database,
+  Palette,
+} from "lucide-react";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+
+export default function Settings() {
+  const [companySettings, setCompanySettings] = useState({
+    companyName: "CableTV Operator",
+    address: "123 Main Street, Anytown, State 12345",
+    phone: "+1 (555) 123-4567",
+    email: "info@cabletv.com",
+    website: "https://cabletv.com",
+    description:
+      "Premium cable TV services for residential and commercial customers.",
+  });
+
+  const [notificationSettings, setNotificationSettings] = useState({
+    emailNotifications: true,
+    smsNotifications: false,
+    overdueReminders: true,
+    paymentConfirmations: true,
+    systemAlerts: true,
+    marketingEmails: false,
+  });
+
+  const [systemSettings, setSystemSettings] = useState({
+    timezone: "America/New_York",
+    dateFormat: "MM/DD/YYYY",
+    currency: "USD",
+    language: "en",
+    theme: "light",
+    autoBackup: true,
+    sessionTimeout: "30",
+  });
+
+  const { toast } = useToast();
+
+  const handleSaveCompanySettings = () => {
+    // Simulate API call
+    setTimeout(() => {
+      toast({
+        title: "Settings saved",
+        description: "Company settings have been updated successfully.",
+      });
+    }, 500);
+  };
+
+  const handleSaveNotificationSettings = () => {
+    setTimeout(() => {
+      toast({
+        title: "Notifications updated",
+        description: "Notification preferences have been saved.",
+      });
+    }, 500);
+  };
+
+  const handleSaveSystemSettings = () => {
+    setTimeout(() => {
+      toast({
+        title: "System settings updated",
+        description: "System configuration has been saved.",
+      });
+    }, 500);
+  };
+
+  return (
+    <DashboardLayout title="Settings">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
+          <p className="text-gray-600">
+            Manage your application settings and preferences
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Company Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Building className="h-5 w-5" />
+                <span>Company Information</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label htmlFor="companyName">Company Name</Label>
+                  <Input
+                    id="companyName"
+                    value={companySettings.companyName}
+                    onChange={(e) =>
+                      setCompanySettings((prev) => ({
+                        ...prev,
+                        companyName: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="address">Address</Label>
+                  <Textarea
+                    id="address"
+                    value={companySettings.address}
+                    onChange={(e) =>
+                      setCompanySettings((prev) => ({
+                        ...prev,
+                        address: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={companySettings.phone}
+                      onChange={(e) =>
+                        setCompanySettings((prev) => ({
+                          ...prev,
+                          phone: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={companySettings.email}
+                      onChange={(e) =>
+                        setCompanySettings((prev) => ({
+                          ...prev,
+                          email: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="website">Website</Label>
+                  <Input
+                    id="website"
+                    value={companySettings.website}
+                    onChange={(e) =>
+                      setCompanySettings((prev) => ({
+                        ...prev,
+                        website: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={companySettings.description}
+                    onChange={(e) =>
+                      setCompanySettings((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <Button onClick={handleSaveCompanySettings} className="w-full">
+                <Save className="mr-2 h-4 w-4" />
+                Save Company Settings
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Notification Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Bell className="h-5 w-5" />
+                <span>Notification Settings</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Email Notifications</Label>
+                    <p className="text-sm text-gray-500">
+                      Receive notifications via email
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.emailNotifications}
+                    onCheckedChange={(checked) =>
+                      setNotificationSettings((prev) => ({
+                        ...prev,
+                        emailNotifications: checked,
+                      }))
+                    }
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>SMS Notifications</Label>
+                    <p className="text-sm text-gray-500">
+                      Receive notifications via SMS
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.smsNotifications}
+                    onCheckedChange={(checked) =>
+                      setNotificationSettings((prev) => ({
+                        ...prev,
+                        smsNotifications: checked,
+                      }))
+                    }
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Overdue Reminders</Label>
+                    <p className="text-sm text-gray-500">
+                      Alerts for overdue payments
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.overdueReminders}
+                    onCheckedChange={(checked) =>
+                      setNotificationSettings((prev) => ({
+                        ...prev,
+                        overdueReminders: checked,
+                      }))
+                    }
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Payment Confirmations</Label>
+                    <p className="text-sm text-gray-500">
+                      Notify when payments are received
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.paymentConfirmations}
+                    onCheckedChange={(checked) =>
+                      setNotificationSettings((prev) => ({
+                        ...prev,
+                        paymentConfirmations: checked,
+                      }))
+                    }
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>System Alerts</Label>
+                    <p className="text-sm text-gray-500">
+                      Important system notifications
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.systemAlerts}
+                    onCheckedChange={(checked) =>
+                      setNotificationSettings((prev) => ({
+                        ...prev,
+                        systemAlerts: checked,
+                      }))
+                    }
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Marketing Emails</Label>
+                    <p className="text-sm text-gray-500">
+                      Promotional and marketing content
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationSettings.marketingEmails}
+                    onCheckedChange={(checked) =>
+                      setNotificationSettings((prev) => ({
+                        ...prev,
+                        marketingEmails: checked,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSaveNotificationSettings}
+                className="w-full"
+              >
+                <Save className="mr-2 h-4 w-4" />
+                Save Notification Settings
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* System Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Database className="h-5 w-5" />
+                <span>System Settings</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Select
+                    value={systemSettings.timezone}
+                    onValueChange={(value) =>
+                      setSystemSettings((prev) => ({
+                        ...prev,
+                        timezone: value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="America/New_York">
+                        Eastern Time
+                      </SelectItem>
+                      <SelectItem value="America/Chicago">
+                        Central Time
+                      </SelectItem>
+                      <SelectItem value="America/Denver">
+                        Mountain Time
+                      </SelectItem>
+                      <SelectItem value="America/Los_Angeles">
+                        Pacific Time
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="dateFormat">Date Format</Label>
+                    <Select
+                      value={systemSettings.dateFormat}
+                      onValueChange={(value) =>
+                        setSystemSettings((prev) => ({
+                          ...prev,
+                          dateFormat: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
+                        <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
+                        <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="currency">Currency</Label>
+                    <Select
+                      value={systemSettings.currency}
+                      onValueChange={(value) =>
+                        setSystemSettings((prev) => ({
+                          ...prev,
+                          currency: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD ($)</SelectItem>
+                        <SelectItem value="EUR">EUR (€)</SelectItem>
+                        <SelectItem value="GBP">GBP (£)</SelectItem>
+                        <SelectItem value="CAD">CAD ($)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="sessionTimeout">
+                    Session Timeout (minutes)
+                  </Label>
+                  <Input
+                    id="sessionTimeout"
+                    type="number"
+                    value={systemSettings.sessionTimeout}
+                    onChange={(e) =>
+                      setSystemSettings((prev) => ({
+                        ...prev,
+                        sessionTimeout: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Auto Backup</Label>
+                    <p className="text-sm text-gray-500">
+                      Automatically backup data daily
+                    </p>
+                  </div>
+                  <Switch
+                    checked={systemSettings.autoBackup}
+                    onCheckedChange={(checked) =>
+                      setSystemSettings((prev) => ({
+                        ...prev,
+                        autoBackup: checked,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <Button onClick={handleSaveSystemSettings} className="w-full">
+                <Save className="mr-2 h-4 w-4" />
+                Save System Settings
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Security Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Shield className="h-5 w-5" />
+                <span>Security & Privacy</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium mb-2">
+                    Password Requirements
+                  </h4>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <p>• Minimum 8 characters</p>
+                    <p>• Must contain uppercase and lowercase letters</p>
+                    <p>• Must contain at least one number</p>
+                    <p>• Must contain at least one special character</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Data Retention</h4>
+                  <p className="text-sm text-gray-600">
+                    Customer data is retained for 7 years as per regulatory
+                    requirements. Inactive accounts are archived after 2 years
+                    of inactivity.
+                  </p>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Privacy Policy</h4>
+                  <p className="text-sm text-gray-600">
+                    Last updated: January 2024. Customer data is encrypted and
+                    stored securely. No personal information is shared with
+                    third parties without consent.
+                  </p>
+                </div>
+              </div>
+
+              <Button variant="outline" className="w-full">
+                <Shield className="mr-2 h-4 w-4" />
+                Update Security Settings
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
