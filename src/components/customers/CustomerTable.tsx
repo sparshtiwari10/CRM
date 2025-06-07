@@ -166,9 +166,8 @@ export function CustomerTable({
                   <TableHead>Contact</TableHead>
                   <TableHead>VC Number</TableHead>
                   <TableHead>Package</TableHead>
-                  <TableHead>Collector</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Billing</TableHead>
+                  <TableHead>Collector Name</TableHead>
                   <TableHead>Last Payment</TableHead>
                   {isAdmin && <TableHead>Portal Bill</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
@@ -207,9 +206,6 @@ export function CustomerTable({
                       <Badge variant="outline">{customer.currentPackage}</Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">{customer.collectorName}</span>
-                    </TableCell>
-                    <TableCell>
                       <Badge
                         variant="outline"
                         className={cn(getActiveStatusColor(customer.isActive))}
@@ -218,17 +214,20 @@ export function CustomerTable({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          getBillingStatusColor(customer.billingStatus),
-                        )}
-                      >
-                        {customer.billingStatus}
-                      </Badge>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">
+                          {customer.collectorName}
+                        </span>
+                        <span className="text-xs text-gray-500">Collector</span>
+                      </div>
                     </TableCell>
                     <TableCell>
-                      {formatDate(customer.lastPaymentDate)}
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">
+                          {formatDate(customer.lastPaymentDate)}
+                        </span>
+                        <span className="text-xs text-gray-500">Last paid</span>
+                      </div>
                     </TableCell>
                     {isAdmin && (
                       <TableCell>
@@ -405,49 +404,71 @@ export function CustomerTable({
                   </div>
                 </div>
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">VC Number:</span>
-                    <span className="font-mono">{customer.vcNumber}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Phone:</span>
-                    <span>{customer.phoneNumber}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Package:</span>
-                    <Badge variant="outline">{customer.currentPackage}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Collector:</span>
-                    <span>{customer.collectorName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Billing:</span>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        getBillingStatusColor(customer.billingStatus),
-                      )}
-                    >
-                      {customer.billingStatus}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Last Payment:</span>
-                    <span>{formatDate(customer.lastPaymentDate)}</span>
-                  </div>
-                  {isAdmin && customer.portalBill && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Portal Bill:</span>
-                      <span className="font-medium">
-                        ${customer.portalBill.toFixed(2)}
-                      </span>
+                <div className="space-y-3 text-sm">
+                  {/* Key Info Section */}
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-lg border">
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500 font-medium">
+                        STATUS
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          getActiveStatusColor(customer.isActive),
+                          "mt-1",
+                        )}
+                      >
+                        {customer.isActive ? "Active" : "Inactive"}
+                      </Badge>
                     </div>
-                  )}
-                  <div className="pt-1">
-                    <span className="text-gray-500">Address:</span>
-                    <p className="text-sm mt-1">{customer.address}</p>
+                    <div className="text-center">
+                      <div className="text-xs text-gray-500 font-medium">
+                        COLLECTOR NAME
+                      </div>
+                      <div className="font-medium mt-1">
+                        {customer.collectorName}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Last Payment Highlight */}
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="text-center">
+                      <div className="text-xs text-blue-600 font-medium">
+                        LAST PAYMENT
+                      </div>
+                      <div className="font-medium text-blue-800 mt-1">
+                        {formatDate(customer.lastPaymentDate)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Other Details */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">VC Number:</span>
+                      <span className="font-mono">{customer.vcNumber}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Phone:</span>
+                      <span>{customer.phoneNumber}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Package:</span>
+                      <Badge variant="outline">{customer.currentPackage}</Badge>
+                    </div>
+                    {isAdmin && customer.portalBill && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Portal Bill:</span>
+                        <span className="font-medium">
+                          ${customer.portalBill.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="pt-1">
+                      <span className="text-gray-500">Address:</span>
+                      <p className="text-sm mt-1">{customer.address}</p>
+                    </div>
                   </div>
                 </div>
 
