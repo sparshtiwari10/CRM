@@ -254,6 +254,15 @@ export default function Customers() {
                 Import Data
               </Button>
               <Button
+                variant="outline"
+                onClick={() => setShowImportExport(true)}
+                disabled={isSaving}
+                className="text-sm"
+              >
+                <ChevronDown className="mr-2 h-4 w-4" />
+                Import/Export CSV
+              </Button>
+              <Button
                 onClick={handleAdd}
                 disabled={isSaving}
                 className="text-sm"
