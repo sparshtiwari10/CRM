@@ -34,9 +34,9 @@ export const mockCustomers: Customer[] = [
       },
     ],
     previousOutstanding: 150.0,
-    planBill: 599,
     currentOutstanding: 749.0,
     packageAmount: 599,
+    billDueDate: 5,
     invoiceHistory: [
       {
         id: "inv-1-1",
