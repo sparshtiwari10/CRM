@@ -42,6 +42,8 @@ export default function Billing() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
 
