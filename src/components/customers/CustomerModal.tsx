@@ -70,6 +70,7 @@ export function CustomerModal({
         customPlan: customer.customPlan || null,
         packageAmount: customer.packageAmount || 0,
         previousOutstanding: customer.previousOutstanding || 0,
+        planBill: customer.planBill || 0,
         currentOutstanding: customer.currentOutstanding || 0,
         isInitialized: true,
       };
