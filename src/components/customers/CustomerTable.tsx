@@ -803,6 +803,38 @@ export function CustomerTable({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem className="flex flex-col items-start p-3">
+                              <div className="font-medium text-sm">
+                                VC Numbers
+                              </div>
+                              <div className="space-y-1">
+                                {customer.connections &&
+                                customer.connections.length > 0 ? (
+                                  customer.connections.map((connection) => (
+                                    <div
+                                      key={connection.id}
+                                      className="font-mono text-xs"
+                                    >
+                                      <span className="text-blue-600">
+                                        {connection.vcNumber}
+                                      </span>
+                                      <span className="text-gray-500 ml-2">
+                                        (
+                                        {connection.isPrimary
+                                          ? "Primary"
+                                          : `Secondary ${connection.connectionIndex - 1}`}
+                                        )
+                                      </span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="font-mono text-blue-600 text-sm">
+                                    {customer.vcNumber}
+                                  </div>
+                                )}
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => onView(customer)}>
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
