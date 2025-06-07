@@ -233,20 +233,6 @@ export default function Packages() {
                   <PackageMetrics package={pkg} customers={customers} />
                 </div>
 
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-gray-900">
-                    Features:
-                  </h4>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    {pkg.features.map((feature, index) => (
-                      <li key={index} className="flex items-center">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
                 <div className="flex space-x-2 pt-4">
                   <Button
                     variant="outline"
