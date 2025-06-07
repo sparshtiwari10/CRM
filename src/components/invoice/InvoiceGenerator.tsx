@@ -605,7 +605,7 @@ export function InvoiceGenerator({
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Create Invoice - ${getInvoiceAmount().toFixed(2)}
+                  Create Invoice - ₹{getInvoiceAmount().toFixed(2)}
                 </>
               )}
             </Button>
