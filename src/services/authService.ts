@@ -84,30 +84,42 @@ export class AuthService {
   // Check Firebase availability
   private static async checkFirebaseAvailability(): Promise<boolean> {
     try {
-      // Try a simple Firebase operation
+      // Check if Firebase config has valid values
+      if (!auth ||
+          !auth.config ||
+          auth.config.apiKey === 'demo-api-key' ||
+          auth.config.projectId === 'demo-project') {
+        console.warn('Demo Firebase configuration detected, using mock authentication');
+        isFirebaseAvailable = false;
+        return false;
+      }
+
+      // Try a simple Firebase operation with shorter timeout
       await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("Timeout")), 5000);
-        const unsubscribe = onAuthStateChanged(
-          auth,
+        const timeout = setTimeout(() => reject(new Error('Timeout')), 2000);
+
+        // Try to get current auth state
+        const unsubscribe = onAuthStateChanged(auth,
           () => {
             clearTimeout(timeout);
             unsubscribe();
             resolve(true);
           },
-          () => {
+          (error) => {
             clearTimeout(timeout);
-            reject(new Error("Auth error"));
-          },
+            unsubscribe();
+            reject(error);
+          }
         );
       });
+
       return true;
-    } catch (error) {
-      console.warn(
-        "Firebase not available, falling back to mock authentication",
-      );
+    } catch (error: any) {
+      console.warn('Firebase not available, falling back to mock authentication:', error.message);
       isFirebaseAvailable = false;
       return false;
     }
+  }
   }
 
   // Mock authentication
