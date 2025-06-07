@@ -497,6 +497,7 @@ export function CustomerTable({
         onOpenChange={() => setActionRequestCustomer(null)}
         customer={actionRequestCustomer}
         onSubmit={handleActionRequest}
+        defaultActionType={actionType}
       />
 
       {/* Delete Confirmation Dialog */}
