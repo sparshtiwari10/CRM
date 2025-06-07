@@ -778,7 +778,7 @@ export function CustomerTable({
                         <p className="text-sm text-gray-600 mt-1">
                           VC:{" "}
                           <span className="font-mono text-blue-600">
-                            {customer.vcNumber}
+                            {formatVcNumbers(customer)}
                           </span>
                         </p>
                       </div>
