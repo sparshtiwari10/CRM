@@ -457,17 +457,6 @@ export function CustomerTable({
                       <span className="text-gray-500">Package:</span>
                       <Badge variant="outline">{customer.currentPackage}</Badge>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Billing Status:</span>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          getBillingStatusColor(customer.billingStatus),
-                        )}
-                      >
-                        {customer.billingStatus}
-                      </Badge>
-                    </div>
                     {isAdmin && customer.portalBill && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Portal Bill:</span>
