@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,11 +18,8 @@ import {
   ClipboardList,
   Calendar,
 } from "lucide-react";
-import {
-  mockDashboardStats,
-  mockCustomers,
-  mockPayments,
-} from "@/data/mockData";
+import { Customer } from "@/types";
+import { CustomerService } from "@/services/customerService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
