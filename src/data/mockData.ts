@@ -375,7 +375,6 @@ export const mockBillingRecords: BillingRecord[] = [
     packageName: "Basic + Family Bundle",
     amount: 798,
     dueDate: "2024-01-25",
-    status: "Pending",
     invoiceNumber: "INV-2024-006",
     generatedDate: "2024-01-01",
     generatedBy: "System Administrator",
@@ -383,6 +382,7 @@ export const mockBillingRecords: BillingRecord[] = [
     billingMonth: "January",
     billingYear: "2024",
     vcNumber: "VC001235",
+    allVcNumbers: ["VC001235", "VC001235-SEC"],
     savedInBillingRecords: true,
   },
   {
@@ -392,7 +392,6 @@ export const mockBillingRecords: BillingRecord[] = [
     packageName: "Custom: Enterprise Package",
     amount: 899,
     dueDate: "2024-01-10",
-    status: "Overdue",
     invoiceNumber: "INV-2024-007",
     generatedDate: "2023-12-15",
     generatedBy: "System Administrator",
@@ -400,6 +399,7 @@ export const mockBillingRecords: BillingRecord[] = [
     billingMonth: "December",
     billingYear: "2023",
     vcNumber: "VC001236",
+    allVcNumbers: ["VC001236"],
     customAmount: 899,
     savedInBillingRecords: true,
   },
@@ -410,7 +410,6 @@ export const mockBillingRecords: BillingRecord[] = [
     packageName: "Custom: Business Plan",
     amount: 1299,
     dueDate: "2024-01-30",
-    status: "Pending",
     invoiceNumber: "INV-2024-008",
     generatedDate: new Date().toISOString().split("T")[0], // Today
     generatedBy: "System Administrator",
@@ -418,7 +417,7 @@ export const mockBillingRecords: BillingRecord[] = [
     billingMonth: "January",
     billingYear: "2024",
     vcNumber: "VC001239",
-    customAmount: 1299,
+    allVcNumbers: ["VC001239"],
     savedInBillingRecords: true,
   },
   {
