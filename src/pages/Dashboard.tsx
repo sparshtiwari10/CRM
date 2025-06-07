@@ -507,7 +507,7 @@ export default function Dashboard() {
                   <TrendingUp className="h-5 w-5 text-green-500 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-medium text-green-800">
-                      {totalCustomers} New Customers This Month
+                      {newCustomersThisMonth} New Customers This Month
                     </p>
                     <p className="text-sm text-green-600">
                       Customer acquisition is up 12% compared to last month.
