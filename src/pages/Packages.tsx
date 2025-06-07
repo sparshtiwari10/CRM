@@ -219,7 +219,7 @@ export default function Packages() {
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-4">
+              <CardContent className="flex flex-col h-full space-y-4">
                 <p className="text-gray-600">{pkg.description}</p>
 
                 <div className="space-y-4">
@@ -233,7 +233,7 @@ export default function Packages() {
                   <PackageMetrics package={pkg} customers={customers} />
                 </div>
 
-                <div className="flex space-x-2 pt-4">
+                <div className="flex space-x-2 pt-4 mt-auto">
                   <Button
                     variant="outline"
                     size="sm"
