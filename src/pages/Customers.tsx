@@ -336,6 +336,16 @@ export default function Customers() {
           </CardContent>
         </Card>
 
+        {/* Import Data Section - Only for admins */}
+        {isAdmin && showImport && (
+          <CustomerDataImport
+            onImportComplete={() => {
+              loadCustomers(); // Refresh the customer list
+              setShowImport(false); // Hide the import section
+            }}
+          />
+        )}
+
         {/* Results Summary - Smaller and cleaner */}
         <div className="bg-gray-50 rounded-lg p-2 lg:p-3 border">
           <div className="text-xs lg:text-sm text-gray-600">
