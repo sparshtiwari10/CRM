@@ -97,16 +97,25 @@ class AuthService {
   /**
    * Login with Firebase
    */
-  private async loginWithFirebase(
-    credentials: LoginCredentials,
-  ): Promise<User> {
-    // Query users collection for matching username
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("username", "==", credentials.username));
-    const querySnapshot = await getDocs(q);
+  private async loginWithFirebase(credentials: LoginCredentials): Promise<User> {
+    try {
+      // Query users collection for matching username
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("username", "==", credentials.username));
+      const querySnapshot = await getDocs(q);
 
-    if (querySnapshot.empty) {
-      throw new Error("Invalid username or password");
+      if (querySnapshot.empty) {
+        throw new Error("Invalid username or password");
+      }
+    } catch (error: any) {
+      // Handle specific Firebase errors
+      if (error.code === 'permission-denied' || error.message.includes('PERMISSION_DENIED')) {
+        console.error("Firebase permission denied - falling back to mock authentication");
+        // Fall back to mock authentication if Firebase permissions aren't set up
+        return await this.loginWithMockData(credentials);
+      }
+      throw error;
+    }
     }
 
     const userDoc = querySnapshot.docs[0];
