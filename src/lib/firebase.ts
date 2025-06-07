@@ -1,5 +1,9 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import {
+  getFirestore,
+  connectFirestoreEmulator,
+  initializeFirestore,
+} from "firebase/firestore";
 
 // Firebase config - Replace with your actual Firebase configuration
 const firebaseConfig = {
