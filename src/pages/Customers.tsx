@@ -53,10 +53,8 @@ export default function Customers() {
 
   // Load once on mount and when user changes
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user]);
+    loadData();
+  }, [loadData]);
 
   // Enhanced search and filter
   const filteredCustomers = customers.filter((customer) => {
