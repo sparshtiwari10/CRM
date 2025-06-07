@@ -8,6 +8,12 @@ export interface Customer {
   lastPaymentDate: string;
   email?: string;
   joinDate: string;
+  vcNumber: string;
+  collectorName: string; // Employee assigned to this customer
+  portalBill?: number; // Admin-only field
+  isActive: boolean;
+  activationDate?: string;
+  deactivationDate?: string;
 }
 
 export interface Package {
