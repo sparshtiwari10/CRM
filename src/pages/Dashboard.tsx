@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +18,13 @@ import {
   mockCustomers,
   mockPayments,
 } from "@/data/mockData";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const { isAdmin } = useAuth();
+  const { toast } = useToast();
   const stats = mockDashboardStats;
   const recentCustomers = mockCustomers.slice(0, 5);
   const recentPayments = mockPayments.slice(0, 5);
@@ -61,6 +67,59 @@ export default function Dashboard() {
       </CardContent>
     </Card>
   );
+
+  // Quick action handlers
+  const handleAddCustomer = () => {
+    if (isAdmin) {
+      navigate("/customers");
+      // Small delay to ensure navigation completes, then trigger add customer
+      setTimeout(() => {
+        // This would trigger the add customer modal
+        toast({
+          title: "Add Customer",
+          description:
+            "Click the 'Add New Customer' button to create a new customer.",
+        });
+      }, 100);
+    } else {
+      toast({
+        title: "Access Denied",
+        description: "Only administrators can add new customers.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleProcessPayment = () => {
+    navigate("/payments");
+    toast({
+      title: "Process Payment",
+      description: "Navigate to payments section to process customer payments.",
+    });
+  };
+
+  const handleManagePackages = () => {
+    if (isAdmin) {
+      navigate("/packages");
+      toast({
+        title: "Manage Packages",
+        description: "Navigate to packages section to manage service packages.",
+      });
+    } else {
+      toast({
+        title: "Access Denied",
+        description: "Only administrators can manage packages.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleViewAlerts = () => {
+    toast({
+      title: "System Alerts",
+      description: `You have ${stats.overdueAccounts} overdue accounts and ${stats.pendingPayments} pending payments.`,
+    });
+  };
 
   return (
     <DashboardLayout title="Dashboard">
@@ -107,27 +166,33 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button className="h-16 flex flex-col space-y-2">
+              <Button
+                className="h-16 flex flex-col space-y-2 hover:bg-blue-600"
+                onClick={handleAddCustomer}
+              >
                 <UserPlus className="h-6 w-6" />
                 <span>Add Customer</span>
               </Button>
               <Button
                 variant="outline"
-                className="h-16 flex flex-col space-y-2"
+                className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
+                onClick={handleProcessPayment}
               >
                 <CreditCard className="h-6 w-6" />
                 <span>Process Payment</span>
               </Button>
               <Button
                 variant="outline"
-                className="h-16 flex flex-col space-y-2"
+                className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
+                onClick={handleManagePackages}
               >
                 <Package className="h-6 w-6" />
                 <span>Manage Packages</span>
               </Button>
               <Button
                 variant="outline"
-                className="h-16 flex flex-col space-y-2"
+                className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
+                onClick={handleViewAlerts}
               >
                 <AlertCircle className="h-6 w-6" />
                 <span>View Alerts</span>
@@ -169,6 +234,16 @@ export default function Dashboard() {
                     </Badge>
                   </div>
                 ))}
+
+                <div className="pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => navigate("/customers")}
+                  >
+                    View All Customers
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -203,6 +278,16 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
+
+                <div className="pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => navigate("/payments")}
+                  >
+                    View All Payments
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -220,7 +305,7 @@ export default function Dashboard() {
             <div className="space-y-3">
               <div className="flex items-start space-x-3 p-3 bg-red-50 rounded-lg">
                 <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <p className="font-medium text-red-800">
                     {stats.overdueAccounts} Overdue Accounts
                   </p>
@@ -229,10 +314,19 @@ export default function Dashboard() {
                     attention.
                   </p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/customers")}
+                  className="text-red-600 border-red-300 hover:bg-red-50"
+                >
+                  View
+                </Button>
               </div>
+
               <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
                 <Clock className="h-5 w-5 text-yellow-500 mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <p className="font-medium text-yellow-800">
                     {stats.pendingPayments} Pending Payments
                   </p>
@@ -240,10 +334,19 @@ export default function Dashboard() {
                     Payments due within the next 7 days.
                   </p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/billing")}
+                  className="text-yellow-600 border-yellow-300 hover:bg-yellow-50"
+                >
+                  Review
+                </Button>
               </div>
+
               <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-green-500 mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <p className="font-medium text-green-800">
                     {stats.newCustomersThisMonth} New Customers This Month
                   </p>
@@ -251,6 +354,14 @@ export default function Dashboard() {
                     Customer acquisition is up 12% compared to last month.
                   </p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/customers")}
+                  className="text-green-600 border-green-300 hover:bg-green-50"
+                >
+                  View
+                </Button>
               </div>
             </div>
           </CardContent>
