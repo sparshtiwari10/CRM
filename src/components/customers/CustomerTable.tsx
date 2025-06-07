@@ -92,16 +92,31 @@ export function CustomerTable({
   const { user, isAdmin, canAccessCustomer } = useAuth();
   const { toast } = useToast();
 
+  // Calculate current outstanding based on package amount + previous outstanding - paid invoices
+  const calculateCurrentOutstanding = (customer: Customer) => {
+    // Current O/S = Package Amount + Previous O/S - Paid Invoice Amounts
+    const paidInvoices =
+      customer.invoiceHistory?.filter((invoice) => invoice.status === "Paid") ||
+      [];
+    const totalPaidAmount = paidInvoices.reduce(
+      (sum, invoice) => sum + invoice.amount,
+      0,
+    );
+    return (
+      customer.packageAmount + customer.previousOutstanding - totalPaidAmount
+    );
+  };
+
   // Filter customers based on user role and permissions and ensure data integrity
   const accessibleCustomers = customers
     .filter((customer) => isAdmin || canAccessCustomer(customer.id))
     .map((customer) => ({
       ...customer,
-      // Ensure all billing fields have default values
+      // Ensure all billing fields have default values and calculate current outstanding
       packageAmount: customer.packageAmount ?? 0,
       previousOutstanding: customer.previousOutstanding ?? 0,
-      planBill: customer.planBill ?? 0,
-      currentOutstanding: customer.currentOutstanding ?? 0,
+      currentOutstanding: calculateCurrentOutstanding(customer),
+      billDueDate: customer.billDueDate ?? 1,
       portalBill: customer.portalBill ?? 0,
     }));
 
