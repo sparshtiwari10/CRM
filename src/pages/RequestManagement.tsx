@@ -42,7 +42,7 @@ import { cn } from "@/lib/utils";
 export default function RequestManagement() {
   const [requests, setRequests] = useState<ActionRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ActionRequest[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRequest, setSelectedRequest] = useState<ActionRequest | null>(
     null,
@@ -125,7 +125,7 @@ export default function RequestManagement() {
       );
     }
 
-    if (statusFilter) {
+    if (statusFilter && statusFilter !== "all") {
       filtered = filtered.filter((request) => request.status === statusFilter);
     }
 
@@ -354,7 +354,7 @@ export default function RequestManagement() {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
