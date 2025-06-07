@@ -49,5 +49,5 @@ try {
   db = null;
 }
 
-export { db };
+export { db, isFirebaseAvailable };
 export default app;
