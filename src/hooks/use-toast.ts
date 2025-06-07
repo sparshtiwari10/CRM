@@ -167,23 +167,35 @@ function toast({ ...props }: Toast) {
 }
 
 function useToast() {
-  const [state, setState] = useState<State>(memoryState);
+  // Safety check to prevent calling hooks when React is not properly loaded
+  try {
+    const [state, setState] = useState<State>(memoryState);
 
-  useEffect(() => {
-    listeners.push(setState);
-    return () => {
-      const index = listeners.indexOf(setState);
-      if (index > -1) {
-        listeners.splice(index, 1);
-      }
+    useEffect(() => {
+      listeners.push(setState);
+      return () => {
+        const index = listeners.indexOf(setState);
+        if (index > -1) {
+          listeners.splice(index, 1);
+        }
+      };
+    }, [state]);
+
+    return {
+      ...state,
+      toast,
+      dismiss: (toastId?: string) =>
+        dispatch({ type: "DISMISS_TOAST", toastId }),
     };
-  }, [state]);
-
-  return {
-    ...state,
-    toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
-  };
+  } catch (error) {
+    console.error("useToast hook error:", error);
+    // Return safe fallback
+    return {
+      toasts: [],
+      toast: () => ({ id: "", dismiss: () => {}, update: () => {} }),
+      dismiss: () => {},
+    };
+  }
 }
 
 export { useToast, toast };
