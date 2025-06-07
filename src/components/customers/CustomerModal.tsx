@@ -86,6 +86,9 @@ export function CustomerModal({
         numberOfConnections: "",
         connections: [] as Connection[],
         customPlan: null,
+        packageAmount: 0,
+        previousOutstanding: 0,
+        currentOutstanding: 0,
         isInitialized: false,
       };
 
