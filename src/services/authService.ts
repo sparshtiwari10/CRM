@@ -1,379 +1,350 @@
+import { db } from "@/lib/firebase";
 import {
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  User as FirebaseUser,
-  createUserWithEmailAndPassword,
-} from "firebase/auth";
-import {
-  doc,
-  getDoc,
-  setDoc,
   collection,
   query,
   where,
   getDocs,
+  doc,
+  getDoc,
+  addDoc,
+  updateDoc,
+  Timestamp,
 } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
-import { User, LoginCredentials } from "@/types/auth";
+import bcrypt from "bcryptjs";
 
-const USERS_COLLECTION = "users";
+export interface User {
+  id: string;
+  username: string;
+  name: string;
+  role: "admin" | "employee";
+  access_scope?: string[]; // For employees: list of customer IDs or collector names they can access
+  collector_name?: string; // For employees: their collector name
+  created_at: Date;
+  last_login?: Date;
+  is_active: boolean;
+}
 
-// Mock users for fallback when Firebase is not available
-const MOCK_USERS = [
-  {
-    id: "admin-1",
-    email: "admin@cabletv.com",
-    phone: "+1 (555) 000-0000",
-    name: "System Administrator",
-    role: "admin" as const,
-    isActive: true,
-    createdAt: "2024-01-01",
-    lastLogin: new Date().toISOString(),
-    assignedCustomers: [],
-  },
-  {
-    id: "emp-1",
-    email: "john.collector@cabletv.com",
-    phone: "+1 (555) 111-1111",
-    name: "John Collector",
-    role: "employee" as const,
-    isActive: true,
-    createdAt: "2024-01-01",
-    assignedCustomers: ["1", "2", "5"],
-  },
-  {
-    id: "emp-2",
-    email: "sarah.collector@cabletv.com",
-    phone: "+1 (555) 222-2222",
-    name: "Sarah Collector",
-    role: "employee" as const,
-    isActive: true,
-    createdAt: "2024-01-01",
-    assignedCustomers: ["3", "4", "6"],
-  },
-];
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
 
-// Mock credentials for fallback
-const MOCK_CREDENTIALS = [
-  { email: "admin@cabletv.com", password: "admin123" },
-  { email: "john.collector@cabletv.com", password: "employee123" },
-  { email: "sarah.collector@cabletv.com", password: "employee123" },
-];
+export interface CreateUserData {
+  username: string;
+  password: string;
+  name: string;
+  role: "admin" | "employee";
+  collector_name?: string;
+  access_scope?: string[];
+}
 
-// Check if Firebase is available - default to false for demo mode
-let isFirebaseAvailable = false;
-let mockCurrentUser: User | null = null;
+class AuthService {
+  private currentUser: User | null = null;
 
-// Convert Firebase user + Firestore data to our User type
-const convertToUser = (firebaseUser: FirebaseUser, userData: any): User => {
-  return {
-    id: firebaseUser.uid,
-    email: firebaseUser.email || "",
-    phone: userData.phone || "",
-    name: userData.name || firebaseUser.displayName || "",
-    role: userData.role || "employee",
-    isActive: userData.isActive !== false,
-    createdAt: userData.createdAt || new Date().toISOString(),
-    lastLogin: new Date().toISOString(),
-    assignedCustomers: userData.assignedCustomers || [],
-  };
-};
+  constructor() {
+    // Check for existing session on initialization
+    this.loadUserFromStorage();
+  }
 
-export class AuthService {
-  // Check if we should use Firebase or mock auth
-  private static shouldUseFirebase(): boolean {
+  /**
+   * Authenticate user with custom credentials
+   */
+  async login(credentials: LoginCredentials): Promise<User> {
     try {
-      // Check if Firebase config has demo values
-      if (
-        !auth ||
-        !auth.config ||
-        auth.config.apiKey === "demo-api-key" ||
-        auth.config.projectId === "demo-project"
-      ) {
-        return false;
+      // Query users collection for matching username
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("username", "==", credentials.username));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        throw new Error("Invalid username or password");
       }
-      return isFirebaseAvailable;
-    } catch (error) {
-      return false;
-    }
-  }
 
-  // Mock authentication
-  private static async mockSignIn(
-    credentials: LoginCredentials,
-  ): Promise<User> {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
 
-    const validCredential = MOCK_CREDENTIALS.find(
-      (cred) =>
-        cred.email === credentials.email &&
-        cred.password === credentials.password,
-    );
-
-    if (!validCredential) {
-      throw new Error("Invalid email or password");
-    }
-
-    const user = MOCK_USERS.find((u) => u.email === credentials.email);
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    mockCurrentUser = { ...user, lastLogin: new Date().toISOString() };
-    localStorage.setItem("cabletv_mock_user", JSON.stringify(mockCurrentUser));
-
-    return mockCurrentUser;
-  }
-
-  // Sign in with email and password
-  static async signIn(credentials: LoginCredentials): Promise<User> {
-    // Always use mock auth for demo configuration
-    if (!this.shouldUseFirebase()) {
-      console.log("Using mock authentication (demo mode)");
-      return await this.mockSignIn(credentials);
-    }
-
-    try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        credentials.email,
+      // Verify password
+      const isPasswordValid = await bcrypt.compare(
         credentials.password,
+        userData.password_hash,
       );
 
-      // Get additional user data from Firestore
-      const userDoc = await getDoc(
-        doc(db, USERS_COLLECTION, userCredential.user.uid),
-      );
-      const userData = userDoc.exists() ? userDoc.data() : {};
+      if (!isPasswordValid) {
+        throw new Error("Invalid username or password");
+      }
+
+      // Check if user is active
+      if (!userData.is_active) {
+        throw new Error(
+          "Account is deactivated. Please contact administrator.",
+        );
+      }
 
       // Update last login
-      await setDoc(
-        doc(db, USERS_COLLECTION, userCredential.user.uid),
-        { ...userData, lastLogin: new Date().toISOString() },
-        { merge: true },
-      );
+      await updateDoc(doc(db, "users", userDoc.id), {
+        last_login: Timestamp.now(),
+      });
 
-      return convertToUser(userCredential.user, userData);
-    } catch (error: any) {
-      console.error("Firebase sign in error:", error);
-
-      // Any Firebase error triggers fallback to mock
-      console.log(
-        "Firebase error detected, falling back to mock authentication",
-      );
-      isFirebaseAvailable = false;
-      return await this.mockSignIn(credentials);
-    }
-  }
-
-  // Sign out
-  static async signOut(): Promise<void> {
-    try {
-      if (this.shouldUseFirebase()) {
-        await signOut(auth);
-      }
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
-
-    // Always clear mock state
-    mockCurrentUser = null;
-    localStorage.removeItem("cabletv_mock_user");
-  }
-
-  // Listen to authentication state changes
-  static onAuthStateChanged(callback: (user: User | null) => void): () => void {
-    if (!this.shouldUseFirebase()) {
-      // Mock state listener
-      const storedUser = localStorage.getItem("cabletv_mock_user");
-      if (storedUser) {
-        try {
-          mockCurrentUser = JSON.parse(storedUser);
-          setTimeout(() => callback(mockCurrentUser), 0);
-        } catch (error) {
-          localStorage.removeItem("cabletv_mock_user");
-          setTimeout(() => callback(null), 0);
-        }
-      } else {
-        setTimeout(() => callback(null), 0);
-      }
-
-      // Return empty unsubscribe function
-      return () => {};
-    }
-
-    return onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(
-            doc(db, USERS_COLLECTION, firebaseUser.uid),
-          );
-          const userData = userDoc.exists() ? userDoc.data() : {};
-          const user = convertToUser(firebaseUser, userData);
-          callback(user);
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          callback(null);
-        }
-      } else {
-        callback(null);
-      }
-    });
-  }
-
-  // Get current user
-  static async getCurrentUser(): Promise<User | null> {
-    if (!this.shouldUseFirebase()) {
-      return mockCurrentUser;
-    }
-
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) return null;
-
-    try {
-      const userDoc = await getDoc(doc(db, USERS_COLLECTION, firebaseUser.uid));
-      const userData = userDoc.exists() ? userDoc.data() : {};
-      return convertToUser(firebaseUser, userData);
-    } catch (error) {
-      console.error("Error getting current user:", error);
-      return null;
-    }
-  }
-
-  // Create new user (admin only) - Only works with Firebase
-  static async createUser(
-    email: string,
-    password: string,
-    userData: Partial<User>,
-  ): Promise<User> {
-    if (!this.shouldUseFirebase()) {
-      throw new Error(
-        "User creation requires Firebase. Please set up Firebase configuration.",
-      );
-    }
-
-    try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password,
-      );
-
-      // Store additional user data in Firestore
-      const userDocData = {
-        email,
-        name: userData.name || "",
-        phone: userData.phone || "",
-        role: userData.role || "employee",
-        isActive: userData.isActive !== false,
-        createdAt: new Date().toISOString(),
-        assignedCustomers: userData.assignedCustomers || [],
+      // Create user object
+      const user: User = {
+        id: userDoc.id,
+        username: userData.username,
+        name: userData.name,
+        role: userData.role,
+        access_scope: userData.access_scope || [],
+        collector_name: userData.collector_name,
+        created_at: userData.created_at.toDate(),
+        last_login: new Date(),
+        is_active: userData.is_active,
       };
 
-      await setDoc(
-        doc(db, USERS_COLLECTION, userCredential.user.uid),
-        userDocData,
+      // Store user in session
+      this.currentUser = user;
+      this.saveUserToStorage(user);
+
+      console.log(
+        `✅ User ${user.name} logged in successfully as ${user.role}`,
       );
+      return user;
+    } catch (error) {
+      console.error("❌ Login failed:", error);
+      throw error;
+    }
+  }
 
-      return convertToUser(userCredential.user, userDocData);
-    } catch (error: any) {
-      console.error("Create user error:", error);
+  /**
+   * Logout current user
+   */
+  logout(): void {
+    this.currentUser = null;
+    this.clearUserFromStorage();
+    console.log("✅ User logged out successfully");
+  }
 
-      switch (error.code) {
-        case "auth/email-already-in-use":
-          throw new Error("Email address is already in use");
-        case "auth/weak-password":
-          throw new Error("Password should be at least 6 characters");
-        case "auth/invalid-email":
-          throw new Error("Invalid email address");
-        default:
-          throw new Error("Failed to create user");
+  /**
+   * Get current authenticated user
+   */
+  getCurrentUser(): User | null {
+    return this.currentUser;
+  }
+
+  /**
+   * Check if user is authenticated
+   */
+  isAuthenticated(): boolean {
+    return this.currentUser !== null;
+  }
+
+  /**
+   * Check if current user is admin
+   */
+  isAdmin(): boolean {
+    return this.currentUser?.role === "admin";
+  }
+
+  /**
+   * Check if current user can access specific customer
+   */
+  canAccessCustomer(
+    customerId: string,
+    customerCollectorName?: string,
+  ): boolean {
+    if (!this.currentUser) return false;
+
+    // Admins can access all customers
+    if (this.currentUser.role === "admin") return true;
+
+    // Employees can only access customers assigned to them
+    if (this.currentUser.role === "employee") {
+      // Check by collector name
+      if (customerCollectorName && this.currentUser.collector_name) {
+        return customerCollectorName === this.currentUser.collector_name;
+      }
+
+      // Check by access scope (customer IDs)
+      if (this.currentUser.access_scope?.includes(customerId)) {
+        return true;
       }
     }
+
+    return false;
   }
 
-  // Update user data - Only works with Firebase
-  static async updateUser(
-    userId: string,
-    updates: Partial<User>,
-  ): Promise<void> {
-    if (!this.shouldUseFirebase()) {
-      throw new Error(
-        "User updates require Firebase. Please set up Firebase configuration.",
-      );
+  /**
+   * Create new user (Admin only)
+   */
+  async createUser(userData: CreateUserData): Promise<User> {
+    if (!this.isAdmin()) {
+      throw new Error("Only administrators can create users");
     }
 
     try {
-      await setDoc(doc(db, USERS_COLLECTION, userId), updates, { merge: true });
+      // Check if username already exists
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("username", "==", userData.username));
+      const existingUser = await getDocs(q);
+
+      if (!existingUser.empty) {
+        throw new Error("Username already exists");
+      }
+
+      // Hash password
+      const saltRounds = 12;
+      const password_hash = await bcrypt.hash(userData.password, saltRounds);
+
+      // Create user document
+      const newUserData = {
+        username: userData.username,
+        password_hash,
+        name: userData.name,
+        role: userData.role,
+        collector_name: userData.collector_name || null,
+        access_scope: userData.access_scope || [],
+        created_at: Timestamp.now(),
+        is_active: true,
+      };
+
+      const docRef = await addDoc(usersRef, newUserData);
+
+      const user: User = {
+        id: docRef.id,
+        username: userData.username,
+        name: userData.name,
+        role: userData.role,
+        access_scope: userData.access_scope || [],
+        collector_name: userData.collector_name,
+        created_at: new Date(),
+        is_active: true,
+      };
+
+      console.log(`✅ User ${user.name} created successfully`);
+      return user;
     } catch (error) {
-      console.error("Update user error:", error);
-      throw new Error("Failed to update user");
+      console.error("❌ User creation failed:", error);
+      throw error;
     }
   }
 
-  // Get all users (admin only)
-  static async getAllUsers(): Promise<User[]> {
-    if (!this.shouldUseFirebase()) {
-      return MOCK_USERS;
+  /**
+   * Get all users (Admin only)
+   */
+  async getAllUsers(): Promise<User[]> {
+    if (!this.isAdmin()) {
+      throw new Error("Only administrators can view all users");
     }
 
     try {
-      const usersRef = collection(db, USERS_COLLECTION);
-      const snapshot = await getDocs(usersRef);
+      const usersRef = collection(db, "users");
+      const querySnapshot = await getDocs(usersRef);
 
-      return snapshot.docs.map((doc) => {
+      const users: User[] = [];
+      querySnapshot.forEach((doc) => {
         const data = doc.data();
-        return {
+        users.push({
           id: doc.id,
-          email: data.email,
-          phone: data.phone || "",
+          username: data.username,
           name: data.name,
           role: data.role,
-          isActive: data.isActive,
-          createdAt: data.createdAt,
-          lastLogin: data.lastLogin,
-          assignedCustomers: data.assignedCustomers || [],
-        } as User;
+          access_scope: data.access_scope || [],
+          collector_name: data.collector_name,
+          created_at: data.created_at.toDate(),
+          last_login: data.last_login?.toDate(),
+          is_active: data.is_active,
+        });
       });
+
+      return users;
     } catch (error) {
-      console.error("Get all users error:", error);
-      throw new Error("Failed to fetch users");
+      console.error("❌ Failed to get users:", error);
+      throw error;
     }
   }
 
-  // Check if Firebase is available
-  static getFirebaseStatus(): boolean {
-    return this.shouldUseFirebase();
+  /**
+   * Save user to local storage
+   */
+  private saveUserToStorage(user: User): void {
+    try {
+      localStorage.setItem(
+        "agv_user",
+        JSON.stringify({
+          ...user,
+          created_at: user.created_at.toISOString(),
+          last_login: user.last_login?.toISOString(),
+        }),
+      );
+    } catch (error) {
+      console.warn("Failed to save user to storage:", error);
+    }
   }
 
-  // Initialize service
-  static async initialize(): Promise<void> {
+  /**
+   * Load user from local storage
+   */
+  private loadUserFromStorage(): void {
     try {
-      // Check if we have valid Firebase config
-      if (
-        auth?.config?.apiKey !== "demo-api-key" &&
-        auth?.config?.projectId !== "demo-project"
-      ) {
-        // Try to check Firebase availability
-        isFirebaseAvailable = true;
-      }
-
-      // Load mock user from localStorage if not using Firebase
-      if (!this.shouldUseFirebase()) {
-        const storedUser = localStorage.getItem("cabletv_mock_user");
-        if (storedUser) {
-          try {
-            mockCurrentUser = JSON.parse(storedUser);
-          } catch (error) {
-            localStorage.removeItem("cabletv_mock_user");
-          }
-        }
+      const storedUser = localStorage.getItem("agv_user");
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        this.currentUser = {
+          ...userData,
+          created_at: new Date(userData.created_at),
+          last_login: userData.last_login
+            ? new Date(userData.last_login)
+            : undefined,
+        };
       }
     } catch (error) {
-      console.warn("Firebase initialization failed, using mock authentication");
-      isFirebaseAvailable = false;
+      console.warn("Failed to load user from storage:", error);
+      this.clearUserFromStorage();
+    }
+  }
+
+  /**
+   * Clear user from local storage
+   */
+  private clearUserFromStorage(): void {
+    try {
+      localStorage.removeItem("agv_user");
+    } catch (error) {
+      console.warn("Failed to clear user from storage:", error);
+    }
+  }
+
+  /**
+   * Seed default admin user (for initial setup)
+   */
+  async seedDefaultAdmin(): Promise<void> {
+    try {
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("role", "==", "admin"));
+      const adminUsers = await getDocs(q);
+
+      if (adminUsers.empty) {
+        console.log("🌱 Creating default admin user...");
+
+        const saltRounds = 12;
+        const password_hash = await bcrypt.hash("admin123", saltRounds);
+
+        await addDoc(usersRef, {
+          username: "admin",
+          password_hash,
+          name: "System Administrator",
+          role: "admin",
+          collector_name: null,
+          access_scope: [],
+          created_at: Timestamp.now(),
+          is_active: true,
+        });
+
+        console.log(
+          "✅ Default admin user created (username: admin, password: admin123)",
+        );
+      }
+    } catch (error) {
+      console.error("❌ Failed to seed default admin:", error);
     }
   }
 }
+
+export const authService = new AuthService();
