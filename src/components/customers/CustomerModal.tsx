@@ -27,8 +27,12 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Customer } from "@/types";
 import { mockPackages } from "@/data/mockData";
+import { useAuth } from "@/contexts/AuthContext";
 
 const customerFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -37,8 +41,17 @@ const customerFormSchema = z.object({
     .min(10, "Phone number must be at least 10 characters"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   address: z.string().min(5, "Address must be at least 5 characters"),
+  vcNumber: z.string().min(3, "VC Number must be at least 3 characters"),
   currentPackage: z.string().min(1, "Please select a package"),
+  collectorName: z
+    .string()
+    .min(2, "Collector name must be at least 2 characters"),
   billingStatus: z.enum(["Paid", "Pending", "Overdue"]),
+  isActive: z.boolean(),
+  portalBill: z
+    .number()
+    .min(0, "Portal bill must be a positive number")
+    .optional(),
 });
 
 type CustomerFormValues = z.infer<typeof customerFormSchema>;
@@ -50,6 +63,14 @@ interface CustomerModalProps {
   onSave: (customer: Omit<Customer, "id"> & { id?: string }) => void;
 }
 
+// Mock collectors for the dropdown - in real app this would come from employee data
+const mockCollectors = [
+  "John Collector",
+  "Sarah Collector",
+  "Mike Field",
+  "System Administrator",
+];
+
 export function CustomerModal({
   open,
   onOpenChange,
@@ -57,6 +78,7 @@ export function CustomerModal({
   onSave,
 }: CustomerModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { isAdmin } = useAuth();
   const isEditing = !!customer;
 
   const form = useForm<CustomerFormValues>({
@@ -66,8 +88,12 @@ export function CustomerModal({
       phoneNumber: "",
       email: "",
       address: "",
+      vcNumber: "",
       currentPackage: "",
+      collectorName: "",
       billingStatus: "Pending",
+      isActive: true,
+      portalBill: 0,
     },
   });
 
@@ -78,8 +104,12 @@ export function CustomerModal({
         phoneNumber: customer.phoneNumber,
         email: customer.email || "",
         address: customer.address,
+        vcNumber: customer.vcNumber,
         currentPackage: customer.currentPackage,
+        collectorName: customer.collectorName,
         billingStatus: customer.billingStatus,
+        isActive: customer.isActive,
+        portalBill: customer.portalBill || 0,
       });
     } else {
       form.reset({
@@ -87,8 +117,12 @@ export function CustomerModal({
         phoneNumber: "",
         email: "",
         address: "",
+        vcNumber: "",
         currentPackage: "",
+        collectorName: "",
         billingStatus: "Pending",
+        isActive: true,
+        portalBill: 0,
       });
     }
   }, [customer, form]);
@@ -105,12 +139,17 @@ export function CustomerModal({
       lastPaymentDate:
         customer?.lastPaymentDate || new Date().toISOString().split("T")[0],
       joinDate: customer?.joinDate || new Date().toISOString().split("T")[0],
+      activationDate: values.isActive
+        ? customer?.activationDate || new Date().toISOString().split("T")[0]
+        : customer?.activationDate,
+      deactivationDate:
+        !values.isActive && customer?.isActive
+          ? new Date().toISOString().split("T")[0]
+          : customer?.deactivationDate,
     };
 
     onSave(customerData);
     setIsLoading(false);
-    onOpenChange(false);
-    form.reset();
   };
 
   const handleClose = () => {
@@ -120,9 +159,15 @@ export function CustomerModal({
     onOpenChange(false);
   };
 
+  const generateVCNumber = () => {
+    const prefix = "VC";
+    const randomNum = Math.floor(Math.random() * 900000) + 100000; // 6 digit number
+    return `${prefix}${randomNum}`;
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Edit Customer" : "Add New Customer"}
@@ -135,8 +180,13 @@ export function CustomerModal({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Basic Information */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-gray-900">
+                Basic Information
+              </h4>
+
               <FormField
                 control={form.control}
                 name="name"
@@ -197,8 +247,46 @@ export function CustomerModal({
                   </FormItem>
                 )}
               />
+            </div>
+
+            <Separator />
+
+            {/* Service Information */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-gray-900">
+                Service Information
+              </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="vcNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>VC Number</FormLabel>
+                      <div className="flex space-x-2">
+                        <FormControl>
+                          <Input
+                            placeholder="VC123456"
+                            {...field}
+                            className="font-mono"
+                          />
+                        </FormControl>
+                        {!isEditing && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => field.onChange(generateVCNumber())}
+                          >
+                            Generate
+                          </Button>
+                        )}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="currentPackage"
@@ -218,6 +306,36 @@ export function CustomerModal({
                           {mockPackages.map((pkg) => (
                             <SelectItem key={pkg.id} value={pkg.name}>
                               {pkg.name} - ${pkg.price}/month
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="collectorName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assigned Collector</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select collector" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {mockCollectors.map((collector) => (
+                            <SelectItem key={collector} value={collector}>
+                              {collector}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -253,6 +371,69 @@ export function CustomerModal({
                   )}
                 />
               </div>
+            </div>
+
+            <Separator />
+
+            {/* Status and Admin Settings */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-gray-900">
+                Status & Settings
+              </h4>
+
+              <FormField
+                control={form.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Active Status</FormLabel>
+                      <div className="text-sm text-gray-500">
+                        Customer service is currently{" "}
+                        {field.value ? "active" : "inactive"}
+                      </div>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {/* Portal Bill - Admin Only */}
+              {isAdmin && (
+                <FormField
+                  control={form.control}
+                  name="portalBill"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Portal Bill Amount (Admin Only)</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseFloat(e.target.value) || 0)
+                            }
+                            className="pl-8"
+                          />
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                            $
+                          </span>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <DialogFooter>
