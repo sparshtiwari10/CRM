@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, LoginCredentials, AuthContextType } from "@/types/auth";
 import { AuthService } from "@/services/authService";
+import { CustomerService } from "@/services/customerService";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -8,14 +9,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Listen to authentication state changes
+  // Initialize services and listen to authentication state changes
   useEffect(() => {
-    const unsubscribe = AuthService.onAuthStateChanged((user) => {
-      setUser(user);
-      setIsLoading(false);
-    });
+    const initialize = async () => {
+      try {
+        // Initialize services
+        await AuthService.initialize();
+        CustomerService.initialize();
 
-    return unsubscribe;
+        // Set up auth state listener
+        const unsubscribe = AuthService.onAuthStateChanged((user) => {
+          setUser(user);
+          setIsLoading(false);
+        });
+
+        return unsubscribe;
+      } catch (error) {
+        console.error("Error initializing services:", error);
+        setIsLoading(false);
+        return () => {};
+      }
+    };
+
+    const unsubscribePromise = initialize();
+
+    return () => {
+      unsubscribePromise.then((unsubscribe) => {
+        if (unsubscribe) unsubscribe();
+      });
+    };
   }, []);
 
   const login = async (credentials: LoginCredentials): Promise<boolean> => {
