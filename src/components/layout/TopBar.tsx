@@ -18,6 +18,21 @@ interface TopBarProps {
 }
 
 export function TopBar({ title }: TopBarProps) {
+  const { user, logout, isAdmin } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  const getUserInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 lg:px-6">
       {/* Left side - Title and Search */}
