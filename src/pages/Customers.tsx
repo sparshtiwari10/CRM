@@ -1,22 +1,15 @@
 import { useState, useEffect, useContext } from "react";
-import { Plus, Edit, Trash2, Eye } from "lucide-react";
+import { Plus } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { CustomerModal } from "@/components/customers/CustomerModal";
+import { CustomerTable } from "@/components/customers/CustomerTable";
+import { CustomerSearch } from "@/components/customers/CustomerSearch";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
 import { Customer } from "@/types";
+import { ActionRequest } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Customers() {
@@ -26,6 +19,8 @@ export default function Customers() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [packageFilter, setPackageFilter] = useState("all");
 
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
@@ -61,14 +56,25 @@ export default function Customers() {
     loadData();
   }, []);
 
-  // Simple search filter
-  const filteredCustomers = customers.filter(
-    (customer) =>
+  // Enhanced search and filter
+  const filteredCustomers = customers.filter((customer) => {
+    const matchesSearch =
       !searchTerm ||
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.phoneNumber.includes(searchTerm) ||
-      customer.vcNumber.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+      customer.vcNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.collectorName.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && customer.isActive) ||
+      (statusFilter === "inactive" && !customer.isActive);
+
+    const matchesPackage =
+      packageFilter === "all" || customer.currentPackage === packageFilter;
+
+    return matchesSearch && matchesStatus && matchesPackage;
+  });
 
   const handleAdd = () => {
     console.log("Add customer clicked");
@@ -80,6 +86,29 @@ export default function Customers() {
     console.log("Edit customer clicked:", customer.id);
     setEditingCustomer(customer);
     setIsModalOpen(true);
+  };
+
+  const handleView = (customer: Customer) => {
+    console.log("View customer clicked:", customer.id);
+    // For now, just open edit modal in view mode
+    setEditingCustomer(customer);
+    setIsModalOpen(true);
+  };
+
+  const handleViewHistory = (customer: Customer) => {
+    console.log("View history clicked:", customer.id);
+    toast({
+      title: "History",
+      description: `Viewing history for ${customer.name}`,
+    });
+  };
+
+  const handleActionRequest = (request: Omit<ActionRequest, "id">) => {
+    console.log("Action request:", request);
+    toast({
+      title: "Request Submitted",
+      description: "Your action request has been submitted for admin approval.",
+    });
   };
 
   const handleSave = async (customer: Customer) => {
@@ -152,18 +181,9 @@ export default function Customers() {
     }
   };
 
-  const getBillingStatusColor = (status: string) => {
-    switch (status) {
-      case "Paid":
-        return "bg-green-100 text-green-800";
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "Overdue":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const uniquePackages = Array.from(
+    new Set(customers.map((c) => c.currentPackage)),
+  );
 
   console.log(
     "Render - customers:",
@@ -181,7 +201,10 @@ export default function Customers() {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold">Customer Management</h2>
-            <p className="text-gray-600">Manage your customers</p>
+            <p className="text-gray-600">
+              Manage your customers with enhanced Status, Collector Name, and
+              Last Payment details
+            </p>
           </div>
           <Button onClick={handleAdd} disabled={isSaving}>
             <Plus className="mr-2 h-4 w-4" />
@@ -189,101 +212,61 @@ export default function Customers() {
           </Button>
         </div>
 
-        {/* Debug Info */}
-        <div className="bg-yellow-50 p-3 rounded text-sm">
-          <p>
-            Debug: Total: {customers.length}, Filtered:{" "}
-            {filteredCustomers.length}, Loading: {isLoading ? "Yes" : "No"},
-            Saving: {isSaving ? "Yes" : "No"}
-          </p>
-        </div>
+        {/* Search and Filters */}
+        <CustomerSearch
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          packageFilter={packageFilter}
+          onPackageFilterChange={setPackageFilter}
+          packages={uniquePackages}
+        />
 
-        {/* Search */}
+        {/* Results Summary */}
         <Card>
           <CardContent className="pt-6">
-            <Input
-              placeholder="Search customers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              disabled={isSaving}
-            />
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <div>
+                Showing {filteredCustomers.length} of {customers.length}{" "}
+                customers
+              </div>
+              <div className="flex space-x-4">
+                <span>
+                  Active: {customers.filter((c) => c.isActive).length}
+                </span>
+                <span>
+                  Inactive: {customers.filter((c) => !c.isActive).length}
+                </span>
+                <span>
+                  Overdue:{" "}
+                  {
+                    customers.filter((c) => c.billingStatus === "Overdue")
+                      .length
+                  }
+                </span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Simple Customer Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Customers ({filteredCustomers.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="p-8 text-center">Loading customers...</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>VC Number</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Package</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCustomers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        No customers found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredCustomers.map((customer) => (
-                      <TableRow key={customer.id}>
-                        <TableCell className="font-medium">
-                          {customer.name}
-                        </TableCell>
-                        <TableCell>{customer.vcNumber}</TableCell>
-                        <TableCell>{customer.phoneNumber}</TableCell>
-                        <TableCell>{customer.currentPackage}</TableCell>
-                        <TableCell>
-                          <Badge
-                            className={getBillingStatusColor(
-                              customer.billingStatus,
-                            )}
-                          >
-                            {customer.billingStatus}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(customer)}
-                              disabled={isSaving}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(customer.id)}
-                              disabled={isSaving}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+        {/* Enhanced Customer Table */}
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="text-gray-500">Loading customers...</div>
+            </CardContent>
+          </Card>
+        ) : (
+          <CustomerTable
+            customers={filteredCustomers}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+            onActionRequest={handleActionRequest}
+            onViewHistory={handleViewHistory}
+          />
+        )}
 
         {/* Customer Modal */}
         <CustomerModal
