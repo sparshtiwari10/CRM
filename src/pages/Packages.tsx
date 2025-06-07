@@ -293,7 +293,7 @@ export default function Packages() {
                       Monthly Price
                     </label>
                     <p className="text-lg font-bold text-blue-600">
-                      ${viewingPackage.price}
+                      ₹{viewingPackage.price}
                     </p>
                   </div>
                   <div>
