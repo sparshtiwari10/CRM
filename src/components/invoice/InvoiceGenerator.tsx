@@ -557,7 +557,7 @@ export function InvoiceGenerator({
                   <div className="flex justify-between font-medium text-lg">
                     <span>Amount:</span>
                     <span className="text-green-700">
-                      ${getInvoiceAmount().toFixed(2)}
+                      ₹{getInvoiceAmount().toFixed(2)}
                       {isCustomAmount && (
                         <span className="text-xs text-orange-600 ml-1">
                           (Custom)
