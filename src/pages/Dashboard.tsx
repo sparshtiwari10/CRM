@@ -475,7 +475,7 @@ export default function Dashboard() {
                   <Clock className="h-5 w-5 text-yellow-500 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-medium text-yellow-800">
-                      {stats.pendingPayments} Pending Payments
+                      {pendingCustomers} Pending Payments
                     </p>
                     <p className="text-sm text-yellow-600">
                       Payments due within the next 7 days.
