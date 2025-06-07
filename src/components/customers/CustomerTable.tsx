@@ -132,6 +132,17 @@ export function CustomerTable({
     return `₹${Number(amount).toFixed(2)}`;
   };
 
+  const formatVcNumbers = (customer: Customer): string => {
+    if (customer.connections && customer.connections.length > 1) {
+      const primary =
+        customer.connections.find((conn) => conn.isPrimary)?.vcNumber ||
+        customer.vcNumber;
+      const secondaryCount = customer.connections.length - 1;
+      return `${primary} (+${secondaryCount} more)`;
+    }
+    return customer.vcNumber;
+  };
+
   const loadCustomerInvoices = async (customerId: string, vcNumber: string) => {
     if (customerInvoices[customerId] || loadingInvoices.has(customerId)) {
       return; // Already loaded or loading
