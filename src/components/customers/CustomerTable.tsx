@@ -262,7 +262,7 @@ export function CustomerTable({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-8"></TableHead> {/* Expand button */}
+                  <TableHead className="w-8"></TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>VC Number</TableHead>
                   <TableHead>Package</TableHead>
