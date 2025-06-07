@@ -47,30 +47,31 @@ export function CustomerDataImport({
         "collectorName",
         "billingStatus",
         "portalBill",
-        "isActive",
+        "isActive"
       ],
       [
         "John Smith",
         "+91 98765 43210",
         "123 Main Street, City",
-        "VC001001",
-        "Premium HD",
+        "",
+        "Gold",
         "Collector A",
         "Paid",
         "599",
-        "true",
+        "true"
       ],
       [
         "Sarah Johnson",
         "+91 98765 43211",
         "456 Oak Avenue, City",
-        "VC001002",
-        "Basic",
+        "",
+        "Silver",
         "Collector B",
         "Pending",
         "299",
-        "true",
-      ],
+        "true"
+      ]
+    ];
     ];
 
     const csvContent = sampleData.map((row) => row.join(",")).join("\n");
