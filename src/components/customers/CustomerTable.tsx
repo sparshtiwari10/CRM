@@ -376,7 +376,6 @@ export function CustomerTable({
                       ) : null}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-2">
-                          {/* Quick Action Buttons - Only for employees */}
                           {!isAdmin && (
                             <>
                               <Button
