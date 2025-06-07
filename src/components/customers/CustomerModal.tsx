@@ -409,6 +409,7 @@ export function CustomerModal({
       packageAmount: formData.packageAmount,
       previousOutstanding: formData.previousOutstanding,
       currentOutstanding: formData.currentOutstanding,
+      billDueDate: formData.billDueDate,
     };
 
     // Only add optional fields if they have valid values (avoid undefined)
