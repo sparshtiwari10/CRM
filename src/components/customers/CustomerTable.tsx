@@ -993,28 +993,35 @@ export function CustomerTable({
                                   key={invoice.id}
                                   className="bg-white rounded p-3 border"
                                 >
-                                  <div className="flex justify-between items-start">
-                                    <div>
-                                      <div className="font-mono text-xs font-medium">
-                                        {invoice.invoiceNumber}
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <div className="font-mono text-xs font-medium">
+                                          {invoice.invoiceNumber}
+                                        </div>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          {formatDate(invoice.generatedDate)}
+                                        </div>
                                       </div>
-                                      <div className="text-xs text-gray-500 mt-1">
-                                        {formatDate(invoice.generatedDate)}
+                                      <div className="text-right">
+                                        <div className="font-medium text-sm">
+                                          {formatCurrency(invoice.amount)}
+                                        </div>
                                       </div>
                                     </div>
-                                    <div className="text-right">
-                                      <div className="font-medium text-sm">
-                                        {formatCurrency(invoice.amount)}
+                                    <div className="text-xs text-blue-600">
+                                      <div className="font-mono">
+                                        VC:{" "}
+                                        {invoice.allVcNumbers
+                                          ? invoice.allVcNumbers.join(", ")
+                                          : invoice.vcNumber}
                                       </div>
-                                      <Badge
-                                        variant="outline"
-                                        className={cn(
-                                          "text-xs mt-1",
-                                          getBillingStatusColor(invoice.status),
-                                        )}
-                                      >
-                                        {invoice.status}
-                                      </Badge>
+                                      <div className="text-gray-500">
+                                        {invoice.allVcNumbers &&
+                                        invoice.allVcNumbers.length > 1
+                                          ? `${invoice.allVcNumbers.length} connections`
+                                          : "1 connection"}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
