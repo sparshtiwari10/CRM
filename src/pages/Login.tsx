@@ -58,8 +58,13 @@ export default function Login() {
       } else {
         setLoginError("Invalid email or password. Please try again.");
       }
-    } catch (error) {
-      setLoginError("An error occurred during login. Please try again.");
+    } catch (error: any) {
+      console.error("Login error:", error);
+      if (error.message) {
+        setLoginError(error.message);
+      } else {
+        setLoginError("An error occurred during login. Please try again.");
+      }
     }
   };
 
