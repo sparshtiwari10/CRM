@@ -32,9 +32,35 @@ const mockUsers = [
     username: "employee",
     password_hash:
       "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy", // employee123 (same hash for demo)
-    name: "Demo Employee",
+    name: "John Collector",
     role: "employee" as const,
     collector_name: "John Collector",
+    access_scope: [],
+    created_at: new Date("2024-01-01"),
+    last_login: new Date(),
+    is_active: true,
+  },
+  {
+    id: "employee-2",
+    username: "sarah",
+    password_hash:
+      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy",
+    name: "Sarah Collector",
+    role: "employee" as const,
+    collector_name: "Sarah Collector",
+    access_scope: [],
+    created_at: new Date("2024-01-01"),
+    last_login: new Date(),
+    is_active: true,
+  },
+  {
+    id: "employee-3",
+    username: "mike",
+    password_hash:
+      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy",
+    name: "Mike Field",
+    role: "employee" as const,
+    collector_name: "Mike Field",
     access_scope: [],
     created_at: new Date("2024-01-01"),
     last_login: new Date(),

@@ -111,19 +111,6 @@ export function CustomerTable({
       portalBill: customer.portalBill ?? 0,
     }));
 
-  const getBillingStatusColor = (status: Customer["billingStatus"]) => {
-    switch (status) {
-      case "Paid":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "Overdue":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
   const getActiveStatusColor = (isActive: boolean) => {
     return isActive
       ? "bg-green-100 text-green-800 border-green-200"
@@ -143,6 +130,17 @@ export function CustomerTable({
       return "₹0.00";
     }
     return `₹${Number(amount).toFixed(2)}`;
+  };
+
+  const formatVcNumbers = (customer: Customer): string => {
+    if (customer.connections && customer.connections.length > 1) {
+      const primary =
+        customer.connections.find((conn) => conn.isPrimary)?.vcNumber ||
+        customer.vcNumber;
+      const secondaryCount = customer.connections.length - 1;
+      return `${primary} (+${secondaryCount} more)`;
+    }
+    return customer.vcNumber;
   };
 
   const loadCustomerInvoices = async (customerId: string, vcNumber: string) => {
@@ -260,7 +258,7 @@ export function CustomerTable({
   }
 
   return (
-    <React.Fragment>
+    <>
       <Card>
         <CardContent className="p-0">
           {/* Desktop Table */}
@@ -447,10 +445,33 @@ export function CustomerTable({
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem className="flex flex-col items-start p-3">
                                 <div className="font-medium text-sm">
-                                  VC Number
+                                  VC Numbers
                                 </div>
-                                <div className="font-mono text-blue-600 text-sm">
-                                  {customer.vcNumber}
+                                <div className="space-y-1">
+                                  {customer.connections &&
+                                  customer.connections.length > 0 ? (
+                                    customer.connections.map((connection) => (
+                                      <div
+                                        key={connection.id}
+                                        className="font-mono text-xs"
+                                      >
+                                        <span className="text-blue-600">
+                                          {connection.vcNumber}
+                                        </span>
+                                        <span className="text-gray-500 ml-2">
+                                          (
+                                          {connection.isPrimary
+                                            ? "Primary"
+                                            : `Secondary ${connection.connectionIndex - 1}`}
+                                          )
+                                        </span>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <div className="font-mono text-blue-600 text-sm">
+                                      {customer.vcNumber}
+                                    </div>
+                                  )}
                                 </div>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
@@ -658,19 +679,18 @@ export function CustomerTable({
                                 ) : customerInvoices[customer.id] &&
                                   customerInvoices[customer.id].length > 0 ? (
                                   <div className="space-y-2">
-                                    <div className="grid grid-cols-5 gap-2 text-xs font-medium text-gray-500 border-b pb-2">
+                                    <div className="grid grid-cols-4 gap-2 text-xs font-medium text-gray-500 border-b pb-2">
                                       <div>Invoice #</div>
                                       <div>Date</div>
                                       <div>Amount</div>
-                                      <div>Status</div>
-                                      <div>Payment Mode</div>
+                                      <div>VC Numbers</div>
                                     </div>
                                     {customerInvoices[customer.id]
                                       .slice(0, 10)
                                       .map((invoice) => (
                                         <div
                                           key={invoice.id}
-                                          className="grid grid-cols-5 gap-2 text-sm py-2 border-b border-gray-100 hover:bg-gray-50 rounded"
+                                          className="grid grid-cols-4 gap-2 text-sm py-2 border-b border-gray-100 hover:bg-gray-50 rounded"
                                         >
                                           <div className="font-mono text-xs">
                                             {invoice.invoiceNumber}
@@ -681,21 +701,20 @@ export function CustomerTable({
                                           <div className="font-medium">
                                             {formatCurrency(invoice.amount)}
                                           </div>
-                                          <div>
-                                            <Badge
-                                              variant="outline"
-                                              className={cn(
-                                                "text-xs",
-                                                getBillingStatusColor(
-                                                  invoice.status,
-                                                ),
-                                              )}
-                                            >
-                                              {invoice.status}
-                                            </Badge>
-                                          </div>
-                                          <div className="text-xs text-gray-500">
-                                            {invoice.paymentMethod || "N/A"}
+                                          <div className="text-xs text-blue-600">
+                                            <div className="font-mono">
+                                              {invoice.allVcNumbers
+                                                ? invoice.allVcNumbers.join(
+                                                    ", ",
+                                                  )
+                                                : invoice.vcNumber}
+                                            </div>
+                                            <div className="text-gray-500 text-xs">
+                                              {invoice.allVcNumbers &&
+                                              invoice.allVcNumbers.length > 1
+                                                ? `${invoice.allVcNumbers.length} connections`
+                                                : "1 connection"}
+                                            </div>
                                           </div>
                                         </div>
                                       ))}
@@ -741,211 +760,294 @@ export function CustomerTable({
             </Table>
           </div>
 
-          {/* Enhanced Mobile Cards */}
-          <div className="lg:hidden space-y-4 p-4">
+          {/* Mobile-Friendly Customer Cards */}
+          <div className="lg:hidden space-y-3 p-3">
             {accessibleCustomers.map((customer) => (
-              <Card key={customer.id} className="p-4">
+              <Card
+                key={customer.id}
+                className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
+              >
                 <Collapsible>
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-lg">{customer.name}</h3>
-                      <p className="text-sm text-gray-500">
-                        {customer.address}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge
-                        variant="outline"
-                        className={cn(getActiveStatusColor(customer.isActive))}
-                      >
-                        {customer.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() =>
-                            toggleRowExpansion(customer.id, customer.vcNumber)
-                          }
-                        >
-                          {expandedRows.has(customer.id) ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
+                  {/* Card Header - Always Visible */}
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-lg text-gray-900 truncate">
+                          {customer.name}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          VC:{" "}
+                          <span className="font-mono text-blue-600">
+                            {formatVcNumbers(customer)}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-3 ml-3">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs font-medium",
+                            getActiveStatusColor(customer.isActive),
                           )}
-                        </Button>
-                      </CollapsibleTrigger>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem className="flex flex-col items-start p-3">
-                            <div className="font-medium text-sm">VC Number</div>
-                            <div className="font-mono text-blue-600 text-sm">
-                              {customer.vcNumber}
-                            </div>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => onView(customer)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onViewHistory(customer)}
-                          >
-                            <History className="mr-2 h-4 w-4" />
-                            Full Billing History
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {isAdmin ? (
-                            <DropdownMenuItem onClick={() => onEdit(customer)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit Customer
-                            </DropdownMenuItem>
-                          ) : null}
-                          {!isAdmin && canAccessCustomer(customer.id) ? (
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleGenericActionRequest(customer)
-                              }
+                        >
+                          {customer.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
                             >
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Request Action
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem className="flex flex-col items-start p-3">
+                              <div className="font-medium text-sm">
+                                VC Numbers
+                              </div>
+                              <div className="space-y-1">
+                                {customer.connections &&
+                                customer.connections.length > 0 ? (
+                                  customer.connections.map((connection) => (
+                                    <div
+                                      key={connection.id}
+                                      className="font-mono text-xs"
+                                    >
+                                      <span className="text-blue-600">
+                                        {connection.vcNumber}
+                                      </span>
+                                      <span className="text-gray-500 ml-2">
+                                        (
+                                        {connection.isPrimary
+                                          ? "Primary"
+                                          : `Secondary ${connection.connectionIndex - 1}`}
+                                        )
+                                      </span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="font-mono text-blue-600 text-sm">
+                                    {customer.vcNumber}
+                                  </div>
+                                )}
+                              </div>
                             </DropdownMenuItem>
-                          ) : null}
-                          {isAdmin ? (
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => onView(customer)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => setDeleteCustomer(customer)}
-                              className="text-red-600"
+                              onClick={() => onViewHistory(customer)}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete Customer
+                              <History className="mr-2 h-4 w-4" />
+                              Billing History
                             </DropdownMenuItem>
-                          ) : null}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            <DropdownMenuSeparator />
+                            {isAdmin ? (
+                              <DropdownMenuItem
+                                onClick={() => onEdit(customer)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Customer
+                              </DropdownMenuItem>
+                            ) : null}
+                            {!isAdmin && canAccessCustomer(customer.id) ? (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleGenericActionRequest(customer)
+                                }
+                              >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Request Action
+                              </DropdownMenuItem>
+                            ) : null}
+                            {isAdmin ? (
+                              <DropdownMenuItem
+                                onClick={() => setDeleteCustomer(customer)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Customer
+                              </DropdownMenuItem>
+                            ) : null}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-3 text-sm">
-                    {/* Financial Info Grid */}
-                    <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-lg border">
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500 font-medium">
-                          PACKAGE AMT
+                    {/* Key Information - Always Visible */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white/70 rounded-lg p-3 text-center">
+                        <div className="text-xs text-gray-600 font-medium">
+                          Package Amount
                         </div>
-                        <div className="font-medium text-green-600 mt-1">
+                        <div className="text-lg font-bold text-green-600 mt-1">
                           {formatCurrency(customer.packageAmount)}
                         </div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500 font-medium">
-                          PREV O/S
+                      <div className="bg-white/70 rounded-lg p-3 text-center">
+                        <div className="text-xs text-gray-600 font-medium">
+                          Current O/S
                         </div>
                         <div
-                          className={`font-medium mt-1 ${customer.previousOutstanding < 0 ? "text-green-600" : "text-orange-600"}`}
-                        >
-                          {formatCurrency(customer.previousOutstanding)}
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500 font-medium">
-                          CURRENT O/S
-                        </div>
-                        <div
-                          className={`font-medium mt-1 ${customer.currentOutstanding < 0 ? "text-green-600" : "text-red-600"}`}
+                          className={`text-lg font-bold mt-1 ${
+                            customer.currentOutstanding < 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
                         >
                           {formatCurrency(customer.currentOutstanding)}
                         </div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500 font-medium">
-                          BILL DUE DATE
-                        </div>
-                        <div className="font-medium text-blue-600 mt-1">
-                          {customer.billDueDate}{" "}
-                          <span className="text-xs text-gray-500">
-                            of month
-                          </span>
-                        </div>
-                      </div>
                     </div>
 
-                    {/* Other Details */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">VC Number:</span>
-                        <span className="font-mono text-blue-600">
-                          {customer.vcNumber}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Package:</span>
-                        <Badge variant="outline">
-                          {customer.currentPackage}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Collector:</span>
-                        <span>{customer.collectorName}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Last Payment:</span>
-                        <span>{formatDate(customer.lastPaymentDate)}</span>
-                      </div>
-                      {isAdmin && customer.portalBill && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Portal Bill:</span>
-                          <span className="font-medium">
-                            {formatCurrency(customer.portalBill)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    {/* Expand Button */}
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full mt-3 text-sm hover:bg-white/50 transition-colors duration-200"
+                        onClick={() =>
+                          toggleRowExpansion(customer.id, customer.vcNumber)
+                        }
+                        aria-label={
+                          expandedRows.has(customer.id)
+                            ? "Show less details"
+                            : "Show more details"
+                        }
+                      >
+                        {expandedRows.has(customer.id) ? (
+                          <>
+                            <ChevronDown className="mr-2 h-4 w-4 transition-transform duration-200" />
+                            Show Less
+                          </>
+                        ) : (
+                          <>
+                            <ChevronRight className="mr-2 h-4 w-4 transition-transform duration-200" />
+                            Show More Details
+                          </>
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
                   </div>
 
-                  {/* Expandable Content for Mobile */}
+                  {/* Expandable Content */}
                   <CollapsibleContent>
-                    <div className="mt-4 pt-4 border-t space-y-4">
-                      {/* Contact Details */}
-                      <div>
-                        <h4 className="font-medium text-sm mb-2 flex items-center">
+                    <div className="p-4 space-y-4 bg-white">
+                      {/* Contact Information */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="font-medium text-sm mb-3 flex items-center text-gray-900">
                           <Phone className="h-4 w-4 mr-2 text-blue-600" />
                           Contact Information
                         </h4>
-                        <div className="text-sm space-y-1">
-                          <div>
-                            <span className="text-gray-500">Phone:</span>{" "}
-                            {customer.phoneNumber}
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Phone:</span>
+                            <span className="font-medium">
+                              {customer.phoneNumber}
+                            </span>
                           </div>
-                          <div>
-                            <span className="text-gray-500">Email:</span>{" "}
-                            {customer.email || "Not provided"}
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Email:</span>
+                            <span className="font-medium">
+                              {customer.email || "Not provided"}
+                            </span>
                           </div>
-                          <div>
-                            <span className="text-gray-500">Address:</span>{" "}
-                            {customer.address}
+                          <div className="flex flex-col">
+                            <span className="text-gray-600 mb-1">Address:</span>
+                            <span className="font-medium text-sm leading-relaxed">
+                              {customer.address}
+                            </span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Recent Invoices for Mobile */}
-                      <div>
-                        <h4 className="font-medium text-sm mb-2 flex items-center">
+                      {/* Financial Details */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="font-medium text-sm mb-3 flex items-center text-gray-900">
+                          <IndianRupee className="h-4 w-4 mr-2 text-green-600" />
+                          Financial Summary
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="text-center p-3 bg-orange-50 rounded">
+                            <div className="text-xs text-orange-600 font-medium">
+                              Previous O/S
+                            </div>
+                            <div
+                              className={`text-sm font-bold mt-1 ${
+                                customer.previousOutstanding < 0
+                                  ? "text-green-600"
+                                  : "text-orange-600"
+                              }`}
+                            >
+                              {formatCurrency(customer.previousOutstanding)}
+                            </div>
+                          </div>
+                          <div className="text-center p-3 bg-blue-50 rounded">
+                            <div className="text-xs text-blue-600 font-medium">
+                              Bill Due Date
+                            </div>
+                            <div className="text-sm font-bold text-blue-600 mt-1">
+                              {customer.billDueDate}{" "}
+                              <span className="text-xs font-normal">
+                                of month
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Service Details */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="font-medium text-sm mb-3 flex items-center text-gray-900">
+                          <Package className="h-4 w-4 mr-2 text-purple-600" />
+                          Service Details
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Package:</span>
+                            <Badge variant="outline" className="text-xs">
+                              {customer.currentPackage}
+                            </Badge>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Collector:</span>
+                            <span className="font-medium">
+                              {customer.collectorName}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Last Payment:</span>
+                            <span className="font-medium">
+                              {formatDate(customer.lastPaymentDate)}
+                            </span>
+                          </div>
+                          {isAdmin && customer.portalBill ? (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">
+                                Portal Bill:
+                              </span>
+                              <span className="font-medium">
+                                {formatCurrency(customer.portalBill)}
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {/* Recent Invoices */}
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="font-medium text-sm mb-3 flex items-center text-gray-900">
                           <FileText className="h-4 w-4 mr-2 text-orange-600" />
                           Recent Invoices
                         </h4>
                         {loadingInvoices.has(customer.id) ? (
-                          <div className="text-sm text-gray-500">
-                            Loading...
+                          <div className="text-center py-4">
+                            <div className="text-sm text-gray-500">
+                              Loading invoices...
+                            </div>
                           </div>
                         ) : customerInvoices[customer.id] &&
                           customerInvoices[customer.id].length > 0 ? (
@@ -955,38 +1057,47 @@ export function CustomerTable({
                               .map((invoice) => (
                                 <div
                                   key={invoice.id}
-                                  className="flex justify-between items-center text-xs p-2 bg-gray-50 rounded"
+                                  className="bg-white rounded p-3 border"
                                 >
-                                  <div>
-                                    <div className="font-mono">
-                                      {invoice.invoiceNumber}
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <div className="font-mono text-xs font-medium">
+                                          {invoice.invoiceNumber}
+                                        </div>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          {formatDate(invoice.generatedDate)}
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="font-medium text-sm">
+                                          {formatCurrency(invoice.amount)}
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="text-gray-500">
-                                      {formatDate(invoice.generatedDate)}
+                                    <div className="text-xs text-blue-600">
+                                      <div className="font-mono">
+                                        VC:{" "}
+                                        {invoice.allVcNumbers
+                                          ? invoice.allVcNumbers.join(", ")
+                                          : invoice.vcNumber}
+                                      </div>
+                                      <div className="text-gray-500">
+                                        {invoice.allVcNumbers &&
+                                        invoice.allVcNumbers.length > 1
+                                          ? `${invoice.allVcNumbers.length} connections`
+                                          : "1 connection"}
+                                      </div>
                                     </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="font-medium">
-                                      {formatCurrency(invoice.amount)}
-                                    </div>
-                                    <Badge
-                                      variant="outline"
-                                      className={cn(
-                                        "text-xs",
-                                        getBillingStatusColor(invoice.status),
-                                      )}
-                                    >
-                                      {invoice.status}
-                                    </Badge>
                                   </div>
                                 </div>
                               ))}
                             {customerInvoices[customer.id].length > 3 && (
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 onClick={() => onViewHistory(customer)}
-                                className="w-full text-xs"
+                                className="w-full mt-2"
                               >
                                 View All {customerInvoices[customer.id].length}{" "}
                                 Invoices
@@ -994,48 +1105,49 @@ export function CustomerTable({
                             )}
                           </div>
                         ) : (
-                          <div className="text-sm text-gray-500">
-                            No invoices found
+                          <div className="text-center py-4 text-gray-500">
+                            <FileText className="h-6 w-6 mx-auto mb-2 text-gray-300" />
+                            <div className="text-sm">No invoices found</div>
                           </div>
                         )}
                       </div>
+
+                      {/* Action Buttons for Employees */}
+                      {!isAdmin ? (
+                        <div className="grid grid-cols-3 gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleActivationRequest(customer)}
+                            disabled={customer.isActive}
+                            className="text-xs"
+                          >
+                            <Power className="mr-1 h-3 w-3" />
+                            Activate
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeactivationRequest(customer)}
+                            disabled={!customer.isActive}
+                            className="text-xs"
+                          >
+                            <PowerOff className="mr-1 h-3 w-3" />
+                            Deactivate
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePlanChangeRequest(customer)}
+                            className="text-xs"
+                          >
+                            <RefreshCw className="mr-1 h-3 w-3" />
+                            Plan
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
                   </CollapsibleContent>
-
-                  {/* Mobile Action Buttons */}
-                  {!isAdmin && (
-                    <div className="flex space-x-2 mt-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleActivationRequest(customer)}
-                        className="flex-1"
-                        disabled={customer.isActive}
-                      >
-                        <Power className="mr-2 h-4 w-4" />
-                        Activate
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeactivationRequest(customer)}
-                        className="flex-1"
-                        disabled={!customer.isActive}
-                      >
-                        <PowerOff className="mr-2 h-4 w-4" />
-                        Deactivate
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePlanChangeRequest(customer)}
-                        className="flex-1"
-                      >
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Change Plan
-                      </Button>
-                    </div>
-                  )}
                 </Collapsible>
               </Card>
             ))}
@@ -1049,7 +1161,7 @@ export function CustomerTable({
         onOpenChange={(open) => {
           if (!open) {
             setActionRequestCustomer(null);
-            setActionType("activation"); // Reset action type
+            setActionType("activation");
           }
         }}
         customer={actionRequestCustomer}
@@ -1081,6 +1193,6 @@ export function CustomerTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </React.Fragment>
+    </>
   );
 }

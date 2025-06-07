@@ -4,6 +4,8 @@ export interface Connection {
   planName: string;
   planPrice: number;
   isCustomPlan: boolean;
+  isPrimary: boolean; // true for primary VC, false for secondary
+  connectionIndex: number; // 1, 2, 3, etc. for ordering
 }
 
 export interface Customer {
@@ -12,7 +14,6 @@ export interface Customer {
   phoneNumber: string;
   address: string;
   currentPackage: string;
-  billingStatus: "Paid" | "Pending" | "Overdue";
   lastPaymentDate: string;
   email?: string;
   joinDate: string;
@@ -68,14 +69,14 @@ export interface BillingRecord {
   packageName: string;
   amount: number;
   dueDate: string;
-  status: "Paid" | "Pending" | "Overdue";
   invoiceNumber: string;
   generatedDate: string;
   generatedBy: string; // Employee who generated the invoice
   employeeId: string; // Employee ID who generated the invoice
   billingMonth: string; // e.g., "January 2024"
   billingYear: string;
-  vcNumber: string; // Customer VC Number
+  vcNumber: string; // Primary VC Number (handles billing for all connections)
+  allVcNumbers: string[]; // All VC numbers for this customer (primary + secondary)
   customAmount?: number; // For custom invoice amounts
   paymentDate?: string; // Date when payment was received
   paymentMethod?: string; // Payment method used

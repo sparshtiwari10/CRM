@@ -210,6 +210,14 @@ export function InvoiceGenerator({
         isCustomAmount,
       };
 
+      // Get all VC numbers for this customer (primary + secondary)
+      const primaryVc =
+        selectedCustomer.connections.find((conn) => conn.isPrimary)?.vcNumber ||
+        selectedCustomer.vcNumber;
+      const allVcNumbers = selectedCustomer.connections.map(
+        (conn) => conn.vcNumber,
+      );
+
       // Create billing record
       const billingRecord = {
         customerId: selectedCustomer.id,
@@ -219,14 +227,14 @@ export function InvoiceGenerator({
           : selectedCustomer.currentPackage,
         amount: invoiceData.amount,
         dueDate: invoiceData.dueDate,
-        status: "Pending" as const,
         invoiceNumber: invoiceData.invoiceNumber,
         generatedDate: new Date().toISOString().split("T")[0],
         generatedBy: user.name,
         employeeId: user.id,
         billingMonth: selectedMonth,
         billingYear: selectedYear,
-        vcNumber: selectedCustomer.vcNumber,
+        vcNumber: primaryVc, // Primary VC number handles billing
+        allVcNumbers: allVcNumbers, // All VC numbers for this customer
         customAmount: isCustomAmount ? customAmount : undefined,
         savedInBillingRecords: true, // Ensure this is marked as saved
       };
@@ -389,7 +397,7 @@ export function InvoiceGenerator({
                         {selectedCustomer.address}
                       </div>
                       <div className="text-sm font-medium text-green-600 mt-1">
-                        Default Rate: ₹{defaultAmount.toFixed(2)}/month
+                        Default Rate: ��{defaultAmount.toFixed(2)}/month
                         {selectedCustomer.numberOfConnections > 1 && (
                           <span className="text-blue-600">
                             {" "}

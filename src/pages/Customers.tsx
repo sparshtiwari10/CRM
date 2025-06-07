@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CustomerModal } from "@/components/customers/CustomerModal";
 import { CustomerTable } from "@/components/customers/CustomerTable";
-import { CustomerDataImport } from "@/components/admin/CustomerDataImport";
+import { CustomerImportExport } from "@/components/customers/CustomerImportExport";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
 import { Customer } from "@/types";
@@ -40,7 +40,7 @@ export default function Customers() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [showImport, setShowImport] = useState(false);
+  const [showImportExport, setShowImportExport] = useState(false);
 
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
@@ -223,6 +223,34 @@ export default function Customers() {
     loadCustomers();
   };
 
+  const handleCsvImport = async (importedCustomers: Customer[]) => {
+    try {
+      setIsSaving(true);
+
+      // Save imported customers
+      for (const customer of importedCustomers) {
+        await CustomerService.addCustomer(customer);
+      }
+
+      // Reload customer list
+      await handleImportSuccess();
+
+      toast({
+        title: "Import Successful",
+        description: `Successfully imported ${importedCustomers.length} customers.`,
+      });
+    } catch (error) {
+      console.error("Error importing customers:", error);
+      toast({
+        title: "Import Failed",
+        description: "An error occurred while importing customers.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <DashboardLayout title="Customer Management">
       <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
@@ -244,12 +272,12 @@ export default function Customers() {
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
               <Button
                 variant="outline"
-                onClick={() => setShowImport(!showImport)}
+                onClick={() => setShowImportExport(true)}
                 disabled={isSaving}
                 className="text-sm"
               >
                 <Upload className="mr-2 h-4 w-4" />
-                Import Data
+                Import/Export CSV
               </Button>
               <Button
                 onClick={handleAdd}
@@ -262,18 +290,6 @@ export default function Customers() {
             </div>
           )}
         </div>
-
-        {/* Import Data Panel */}
-        {isAdmin && showImport && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Import Customer Data</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CustomerDataImport onSuccess={handleImportSuccess} />
-            </CardContent>
-          </Card>
-        )}
 
         {/* Search and Filters */}
         <Card>
@@ -402,6 +418,16 @@ export default function Customers() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+        )}
+
+        {/* CSV Import/Export Modal */}
+        {isAdmin && (
+          <CustomerImportExport
+            open={showImportExport}
+            onOpenChange={setShowImportExport}
+            customers={customers}
+            onImport={handleCsvImport}
+          />
         )}
       </div>
     </DashboardLayout>

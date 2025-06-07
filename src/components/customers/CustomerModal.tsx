@@ -55,34 +55,47 @@ export function CustomerModal({
     if (open) {
       const loadCollectors = async () => {
         try {
+          console.log("Loading collectors...");
           const users = await authService.getAllUsers();
+          console.log("All users:", users);
+
           const employees = users
-            .filter((user) => user.role === "employee" && user.isActive)
+            .filter((user) => {
+              console.log(
+                `User ${user.name}: role=${user.role}, isActive=${user.is_active}`,
+              );
+              return user.role === "employee" && user.is_active;
+            })
             .map((user) => user.name);
 
-          // Add System Administrator if no employees exist
-          if (employees.length === 0) {
-            setAvailableCollectors(["System Administrator"]);
-          } else {
-            // Add System Administrator as an option along with employees
-            setAvailableCollectors(["System Administrator", ...employees]);
+          console.log("Filtered employees:", employees);
+
+          // Always include System Administrator as first option
+          const collectors = ["System Administrator"];
+
+          // Add active employees
+          if (employees.length > 0) {
+            collectors.push(...employees);
           }
 
-          console.log(
-            "Loaded collectors:",
-            employees.length > 0
-              ? ["System Administrator", ...employees]
-              : ["System Administrator"],
-          );
+          setAvailableCollectors(collectors);
+          console.log("Final collectors list:", collectors);
         } catch (error) {
           console.error("Failed to load collectors:", error);
           // Fallback to default admin
           setAvailableCollectors(["System Administrator"]);
+          toast({
+            title: "Warning",
+            description:
+              "Could not load employee list. Using default collectors.",
+            variant: "destructive",
+          });
         }
       };
+
       loadCollectors();
     }
-  }, [open]);
+  }, [open, toast]);
 
   // Initialize with either customer data or empty form
   const getInitialData = () => {
@@ -95,7 +108,6 @@ export function CustomerModal({
         vcNumber: customer.vcNumber || "",
         currentPackage: customer.currentPackage || "",
         collectorName: customer.collectorName || "",
-        billingStatus: customer.billingStatus || "Pending",
         isActive: customer.isActive !== undefined ? customer.isActive : true,
         portalBill: customer.portalBill || 0,
         numberOfConnections: customer.numberOfConnections || 1,
@@ -116,7 +128,6 @@ export function CustomerModal({
         vcNumber: "", // Start blank as requested
         currentPackage: "",
         collectorName: "",
-        billingStatus: "Pending" as const,
         isActive: true,
         portalBill: 0,
         numberOfConnections: 1,
@@ -147,7 +158,6 @@ export function CustomerModal({
       vcNumber: customer.vcNumber || "",
       currentPackage: customer.currentPackage || "",
       collectorName: customer.collectorName || "",
-      billingStatus: customer.billingStatus || "Pending",
       isActive: customer.isActive !== undefined ? customer.isActive : true,
       portalBill: customer.portalBill || 0,
       numberOfConnections: customer.numberOfConnections || "",
@@ -196,7 +206,6 @@ export function CustomerModal({
       vcNumber: "",
       currentPackage: "",
       collectorName: "",
-      billingStatus: "Pending",
       isActive: true,
       portalBill: 0,
       numberOfConnections: "",
@@ -249,20 +258,31 @@ export function CustomerModal({
     const connections: Connection[] = [];
     for (let i = 0; i < newCount; i++) {
       const existingConnection = formData.connections[i];
+      const isPrimary = i === 0; // First connection is always primary
+
+      // Generate VC number based on primary/secondary structure
+      let vcNumber;
+      if (isPrimary) {
+        vcNumber = existingConnection?.vcNumber || formData.vcNumber;
+      } else {
+        // Secondary connections get -SEC, -SEC1, -SEC2, etc.
+        const suffix = i === 1 ? "SEC" : `SEC${i - 1}`;
+        const baseVc =
+          formData.vcNumber || existingConnection?.vcNumber || "VC000000";
+        vcNumber = existingConnection?.vcNumber || `${baseVc}-${suffix}`;
+      }
+
       connections.push({
         id: existingConnection?.id || `conn-${i + 1}`,
-        vcNumber:
-          existingConnection?.vcNumber ||
-          (i === 0 ? formData.vcNumber : `${formData.vcNumber}-${i + 1}`),
+        vcNumber: vcNumber,
         planName: existingConnection?.planName || formData.currentPackage || "",
         planPrice:
           existingConnection?.planPrice ||
           mockPackages.find((p) => p.name === formData.currentPackage)?.price ||
           0,
         isCustomPlan: existingConnection?.isCustomPlan || false,
-        customPlanName: existingConnection?.customPlanName || "",
-        customPlanPrice: existingConnection?.customPlanPrice || 0,
-        customPlanDescription: existingConnection?.customPlanDescription || "",
+        isPrimary: isPrimary,
+        connectionIndex: i + 1,
       });
     }
 
@@ -391,7 +411,6 @@ export function CustomerModal({
         ? formData.customPlan?.name || "Custom"
         : formData.currentPackage,
       collectorName: formData.collectorName,
-      billingStatus: formData.billingStatus,
       isActive: formData.isActive,
       portalBill: formData.portalBill,
       lastPaymentDate:
@@ -716,26 +735,6 @@ export function CustomerModal({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="billingStatus">Billing Status</Label>
-                  <Select
-                    value={formData.billingStatus}
-                    onValueChange={(value) =>
-                      handleInputChange("billingStatus", value)
-                    }
-                    disabled={isSaving}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Paid">Paid</SelectItem>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Overdue">Overdue</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 {isAdmin && (
                   <div>
                     <Label htmlFor="portalBill">
