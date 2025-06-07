@@ -1,0 +1,548 @@
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  Timestamp,
+  writeBatch,
+} from "firebase/firestore";
+import { Customer, BillingRecord, Connection } from "@/types";
+import { authService } from "./authService";
+
+export interface FirestoreCustomer {
+  name: string;
+  phone: string;
+  address: string;
+  package: string;
+  vc_no: string;
+  collector_name: string;
+  prev_os: number;
+  date: Timestamp;
+  bill_amount: number;
+  collected_cash: number;
+  collected_online: number;
+  discount: number;
+  current_os: number;
+  remark: string;
+  status: "active" | "inactive";
+  // Additional fields for the app
+  email?: string;
+  billing_status: "Paid" | "Pending" | "Overdue";
+  last_payment_date: Timestamp;
+  join_date: Timestamp;
+  activation_date?: Timestamp;
+  deactivation_date?: Timestamp;
+  number_of_connections: number;
+  connections: Connection[];
+  custom_plan?: {
+    name: string;
+    price: number;
+    description: string;
+  };
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface FirestoreBillingRecord {
+  customer_id: string;
+  customer_name: string;
+  package_name: string;
+  amount: number;
+  due_date: Timestamp;
+  status: "Paid" | "Pending" | "Overdue";
+  invoice_number: string;
+  generated_date: Timestamp;
+  generated_by: string;
+  employee_id: string;
+  billing_month: string;
+  billing_year: string;
+  vc_number: string;
+  custom_amount?: number;
+  created_at: Timestamp;
+}
+
+export interface FirestoreRequest {
+  customer_id: string;
+  customer_name: string;
+  employee_id: string;
+  employee_name: string;
+  action_type: "activation" | "deactivation" | "plan_change";
+  current_plan?: string;
+  requested_plan?: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  request_date: Timestamp;
+  review_date?: Timestamp;
+  reviewed_by?: string;
+  admin_notes?: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+class FirestoreService {
+  // ================== CUSTOMERS ==================
+
+  async getAllCustomers(): Promise<Customer[]> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      const customersRef = collection(db, "customers");
+      let q;
+
+      if (currentUser.role === "admin") {
+        // Admins can see all customers
+        q = query(customersRef, orderBy("name"));
+      } else {
+        // Employees can only see customers assigned to them
+        q = query(
+          customersRef,
+          where("collector_name", "==", currentUser.collector_name),
+          orderBy("name"),
+        );
+      }
+
+      const querySnapshot = await getDocs(q);
+      const customers: Customer[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as FirestoreCustomer;
+        customers.push(this.convertFirestoreCustomerToCustomer(doc.id, data));
+      });
+
+      console.log(`✅ Loaded ${customers.length} customers`);
+      return customers;
+    } catch (error) {
+      console.error("❌ Failed to load customers:", error);
+      throw error;
+    }
+  }
+
+  async getCustomersByCollector(collectorName: string): Promise<Customer[]> {
+    try {
+      const customersRef = collection(db, "customers");
+      const q = query(
+        customersRef,
+        where("collector_name", "==", collectorName),
+        orderBy("name"),
+      );
+
+      const querySnapshot = await getDocs(q);
+      const customers: Customer[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as FirestoreCustomer;
+        customers.push(this.convertFirestoreCustomerToCustomer(doc.id, data));
+      });
+
+      return customers;
+    } catch (error) {
+      console.error("❌ Failed to load customers by collector:", error);
+      throw error;
+    }
+  }
+
+  async getCustomer(customerId: string): Promise<Customer> {
+    try {
+      const docRef = doc(db, "customers", customerId);
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        throw new Error("Customer not found");
+      }
+
+      const data = docSnap.data() as FirestoreCustomer;
+      return this.convertFirestoreCustomerToCustomer(docSnap.id, data);
+    } catch (error) {
+      console.error("❌ Failed to get customer:", error);
+      throw error;
+    }
+  }
+
+  async addCustomer(customer: Customer): Promise<string> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser || currentUser.role !== "admin") {
+        throw new Error("Only administrators can add customers");
+      }
+
+      const customersRef = collection(db, "customers");
+      const customerData: FirestoreCustomer =
+        this.convertCustomerToFirestoreCustomer(customer);
+
+      const docRef = await addDoc(customersRef, customerData);
+      console.log(`✅ Customer ${customer.name} added successfully`);
+      return docRef.id;
+    } catch (error) {
+      console.error("❌ Failed to add customer:", error);
+      throw error;
+    }
+  }
+
+  async updateCustomer(customerId: string, customer: Customer): Promise<void> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser || currentUser.role !== "admin") {
+        throw new Error("Only administrators can update customers");
+      }
+
+      const docRef = doc(db, "customers", customerId);
+      const customerData = this.convertCustomerToFirestoreCustomer(customer);
+      customerData.updated_at = Timestamp.now();
+
+      await updateDoc(docRef, customerData);
+      console.log(`✅ Customer ${customer.name} updated successfully`);
+    } catch (error) {
+      console.error("❌ Failed to update customer:", error);
+      throw error;
+    }
+  }
+
+  async deleteCustomer(customerId: string): Promise<void> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser || currentUser.role !== "admin") {
+        throw new Error("Only administrators can delete customers");
+      }
+
+      const docRef = doc(db, "customers", customerId);
+      await deleteDoc(docRef);
+      console.log(`✅ Customer deleted successfully`);
+    } catch (error) {
+      console.error("❌ Failed to delete customer:", error);
+      throw error;
+    }
+  }
+
+  // ================== BILLING ==================
+
+  async getAllBillingRecords(): Promise<BillingRecord[]> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      const billingRef = collection(db, "billing");
+      let q;
+
+      if (currentUser.role === "admin") {
+        q = query(billingRef, orderBy("generated_date", "desc"));
+      } else {
+        q = query(
+          billingRef,
+          where("employee_id", "==", currentUser.id),
+          orderBy("generated_date", "desc"),
+        );
+      }
+
+      const querySnapshot = await getDocs(q);
+      const records: BillingRecord[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as FirestoreBillingRecord;
+        records.push(this.convertFirestoreBillingToBillingRecord(doc.id, data));
+      });
+
+      return records;
+    } catch (error) {
+      console.error("❌ Failed to load billing records:", error);
+      throw error;
+    }
+  }
+
+  async addBillingRecord(record: Omit<BillingRecord, "id">): Promise<string> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      const billingRef = collection(db, "billing");
+      const recordData: FirestoreBillingRecord = {
+        customer_id: record.customerId,
+        customer_name: record.customerName,
+        package_name: record.packageName,
+        amount: record.amount,
+        due_date: Timestamp.fromDate(new Date(record.dueDate)),
+        status: record.status,
+        invoice_number: record.invoiceNumber,
+        generated_date: Timestamp.fromDate(new Date(record.generatedDate)),
+        generated_by: record.generatedBy,
+        employee_id: record.employeeId,
+        billing_month: record.billingMonth,
+        billing_year: record.billingYear,
+        vc_number: record.vcNumber,
+        custom_amount: record.customAmount,
+        created_at: Timestamp.now(),
+      };
+
+      const docRef = await addDoc(billingRef, recordData);
+      console.log(
+        `✅ Billing record ${record.invoiceNumber} added successfully`,
+      );
+      return docRef.id;
+    } catch (error) {
+      console.error("❌ Failed to add billing record:", error);
+      throw error;
+    }
+  }
+
+  // ================== REQUESTS ==================
+
+  async getAllRequests(): Promise<any[]> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      const requestsRef = collection(db, "requests");
+      let q;
+
+      if (currentUser.role === "admin") {
+        q = query(requestsRef, orderBy("request_date", "desc"));
+      } else {
+        q = query(
+          requestsRef,
+          where("employee_id", "==", currentUser.id),
+          orderBy("request_date", "desc"),
+        );
+      }
+
+      const querySnapshot = await getDocs(q);
+      const requests: any[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as FirestoreRequest;
+        requests.push({
+          id: doc.id,
+          customerId: data.customer_id,
+          customerName: data.customer_name,
+          employeeId: data.employee_id,
+          employeeName: data.employee_name,
+          actionType: data.action_type,
+          currentPlan: data.current_plan,
+          requestedPlan: data.requested_plan,
+          reason: data.reason,
+          status: data.status,
+          requestDate: data.request_date.toDate().toISOString().split("T")[0],
+          reviewDate: data.review_date?.toDate().toISOString().split("T")[0],
+          reviewedBy: data.reviewed_by,
+          adminNotes: data.admin_notes,
+        });
+      });
+
+      return requests;
+    } catch (error) {
+      console.error("❌ Failed to load requests:", error);
+      throw error;
+    }
+  }
+
+  async addRequest(request: any): Promise<string> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      const requestsRef = collection(db, "requests");
+      const requestData: FirestoreRequest = {
+        customer_id: request.customerId,
+        customer_name: request.customerName,
+        employee_id: currentUser.id,
+        employee_name: currentUser.name,
+        action_type: request.actionType,
+        current_plan: request.currentPlan,
+        requested_plan: request.requestedPlan,
+        reason: request.reason,
+        status: "pending",
+        request_date: Timestamp.now(),
+        created_at: Timestamp.now(),
+        updated_at: Timestamp.now(),
+      };
+
+      const docRef = await addDoc(requestsRef, requestData);
+      console.log(`✅ Request submitted successfully`);
+      return docRef.id;
+    } catch (error) {
+      console.error("❌ Failed to add request:", error);
+      throw error;
+    }
+  }
+
+  // ================== DATA IMPORT ==================
+
+  async importCustomersFromJson(customers: any[]): Promise<void> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser || currentUser.role !== "admin") {
+        throw new Error("Only administrators can import data");
+      }
+
+      const batch = writeBatch(db);
+      const customersRef = collection(db, "customers");
+
+      for (const customerData of customers) {
+        const docRef = doc(customersRef);
+        const firestoreCustomer: FirestoreCustomer = {
+          name: customerData.name,
+          phone: customerData.phone,
+          address: customerData.address,
+          package: customerData.package,
+          vc_no: customerData.vc_no,
+          collector_name: customerData.collector_name,
+          prev_os: customerData.prev_os || 0,
+          date: customerData.date
+            ? Timestamp.fromDate(new Date(customerData.date))
+            : Timestamp.now(),
+          bill_amount: customerData.bill_amount || 0,
+          collected_cash: customerData.collected_cash || 0,
+          collected_online: customerData.collected_online || 0,
+          discount: customerData.discount || 0,
+          current_os: customerData.current_os || 0,
+          remark: customerData.remark || "",
+          status: customerData.status === "active" ? "active" : "inactive",
+          email: customerData.email,
+          billing_status: customerData.billing_status || "Pending",
+          last_payment_date: customerData.last_payment_date
+            ? Timestamp.fromDate(new Date(customerData.last_payment_date))
+            : Timestamp.now(),
+          join_date: customerData.join_date
+            ? Timestamp.fromDate(new Date(customerData.join_date))
+            : Timestamp.now(),
+          activation_date: customerData.activation_date
+            ? Timestamp.fromDate(new Date(customerData.activation_date))
+            : undefined,
+          deactivation_date: customerData.deactivation_date
+            ? Timestamp.fromDate(new Date(customerData.deactivation_date))
+            : undefined,
+          number_of_connections: customerData.number_of_connections || 1,
+          connections: customerData.connections || [],
+          custom_plan: customerData.custom_plan,
+          created_at: Timestamp.now(),
+          updated_at: Timestamp.now(),
+        };
+
+        batch.set(docRef, firestoreCustomer);
+      }
+
+      await batch.commit();
+      console.log(`✅ Successfully imported ${customers.length} customers`);
+    } catch (error) {
+      console.error("❌ Failed to import customers:", error);
+      throw error;
+    }
+  }
+
+  // ================== HELPER METHODS ==================
+
+  private convertFirestoreCustomerToCustomer(
+    id: string,
+    data: FirestoreCustomer,
+  ): Customer {
+    return {
+      id,
+      name: data.name,
+      phoneNumber: data.phone,
+      address: data.address,
+      currentPackage: data.package,
+      vcNumber: data.vc_no,
+      collectorName: data.collector_name,
+      email: data.email,
+      billingStatus: data.billing_status,
+      lastPaymentDate: data.last_payment_date
+        .toDate()
+        .toISOString()
+        .split("T")[0],
+      joinDate: data.join_date.toDate().toISOString().split("T")[0],
+      activationDate: data.activation_date
+        ?.toDate()
+        .toISOString()
+        .split("T")[0],
+      deactivationDate: data.deactivation_date
+        ?.toDate()
+        .toISOString()
+        .split("T")[0],
+      isActive: data.status === "active",
+      portalBill: data.bill_amount,
+      numberOfConnections: data.number_of_connections,
+      connections: data.connections,
+      customPlan: data.custom_plan,
+    };
+  }
+
+  private convertCustomerToFirestoreCustomer(
+    customer: Customer,
+  ): FirestoreCustomer {
+    return {
+      name: customer.name,
+      phone: customer.phoneNumber,
+      address: customer.address,
+      package: customer.currentPackage,
+      vc_no: customer.vcNumber,
+      collector_name: customer.collectorName,
+      email: customer.email,
+      billing_status: customer.billingStatus,
+      last_payment_date: Timestamp.fromDate(new Date(customer.lastPaymentDate)),
+      join_date: Timestamp.fromDate(new Date(customer.joinDate)),
+      activation_date: customer.activationDate
+        ? Timestamp.fromDate(new Date(customer.activationDate))
+        : undefined,
+      deactivation_date: customer.deactivationDate
+        ? Timestamp.fromDate(new Date(customer.deactivationDate))
+        : undefined,
+      status: customer.isActive ? "active" : "inactive",
+      bill_amount: customer.portalBill || 0,
+      number_of_connections: customer.numberOfConnections,
+      connections: customer.connections,
+      custom_plan: customer.customPlan,
+      // Fields from original Excel/CSV structure
+      prev_os: 0,
+      date: Timestamp.now(),
+      collected_cash: 0,
+      collected_online: 0,
+      discount: 0,
+      current_os: 0,
+      remark: "",
+      created_at: Timestamp.now(),
+      updated_at: Timestamp.now(),
+    };
+  }
+
+  private convertFirestoreBillingToBillingRecord(
+    id: string,
+    data: FirestoreBillingRecord,
+  ): BillingRecord {
+    return {
+      id,
+      customerId: data.customer_id,
+      customerName: data.customer_name,
+      packageName: data.package_name,
+      amount: data.amount,
+      dueDate: data.due_date.toDate().toISOString().split("T")[0],
+      status: data.status,
+      invoiceNumber: data.invoice_number,
+      generatedDate: data.generated_date.toDate().toISOString().split("T")[0],
+      generatedBy: data.generated_by,
+      employeeId: data.employee_id,
+      billingMonth: data.billing_month,
+      billingYear: data.billing_year,
+      vcNumber: data.vc_number,
+      customAmount: data.custom_amount,
+    };
+  }
+}
+
+export const firestoreService = new FirestoreService();

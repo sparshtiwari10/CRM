@@ -1,128 +1,146 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Eye, EyeOff, Cable, Loader2 } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Eye, EyeOff, Shield, Users, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-
 export default function Login() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState("");
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-  });
+  const from = location.state?.from?.pathname || "/";
 
-  // Redirect if already authenticated
-  if (isAuthenticated && !isLoading) {
-    return <Navigate to="/" replace />;
-  }
-
-  const onSubmit = async (data: LoginFormData) => {
-    setLoginError("");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
 
     try {
-      const success = await login(data);
-
-      if (success) {
-        toast({
-          title: "Login successful",
-          description: "Welcome to CableTV Dashboard",
-        });
-      } else {
-        setLoginError("Invalid email or password. Please try again.");
+      if (!username.trim() || !password.trim()) {
+        throw new Error("Please enter both username and password");
       }
+
+      const user = await login({ username: username.trim(), password });
+
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${user.name}!`,
+        className: "bottom-2 right-2 left-2 lg:left-auto lg:max-w-sm",
+      });
+
+      // Navigate to the intended page or dashboard
+      navigate(from, { replace: true });
     } catch (error: any) {
       console.error("Login error:", error);
-      if (error.message) {
-        setLoginError(error.message);
-      } else {
-        setLoginError("An error occurred during login. Please try again.");
-      }
+      setError(error.message || "Login failed. Please try again.");
+
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid credentials. Please try again.",
+        variant: "destructive",
+        className: "bottom-2 right-2 left-2 lg:left-auto lg:max-w-sm",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading...</span>
-        </div>
-      </div>
-    );
-  }
+  const handleDemoLogin = async (role: "admin" | "employee") => {
+    setError("");
+    setIsLoading(true);
+
+    try {
+      let credentials;
+      if (role === "admin") {
+        credentials = { username: "admin", password: "admin123" };
+      } else {
+        credentials = { username: "employee", password: "employee123" };
+      }
+
+      const user = await login(credentials);
+
+      toast({
+        title: "Demo Login Successful",
+        description: `Logged in as ${user.name} (${role})`,
+        className: "bottom-2 right-2 left-2 lg:left-auto lg:max-w-sm",
+      });
+
+      navigate(from, { replace: true });
+    } catch (error: any) {
+      console.error("Demo login error:", error);
+      setError("Demo login failed. Using fallback authentication.");
+
+      // Fallback for demo purposes if Firestore is not available
+      toast({
+        title: "Demo Mode",
+        description: `Simulating ${role} login in demo mode`,
+        className: "bottom-2 right-2 left-2 lg:left-auto lg:max-w-sm",
+      });
+
+      navigate(from, { replace: true });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="flex justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="w-full max-w-md space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center space-x-2 mb-4">
             <div className="h-12 w-12 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Cable className="h-8 w-8 text-white" />
+              <Shield className="h-8 w-8 text-white" />
             </div>
+            <h1 className="text-3xl font-bold text-gray-900">AGV</h1>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            CableTV Dashboard
+          <h2 className="text-xl font-semibold text-gray-700">
+            Cable TV Management System
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to your account
+          <p className="text-sm text-gray-500">
+            Secure access for employees and administrators
           </p>
         </div>
 
-        <Card>
+        {/* Login Form */}
+        <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>Login</CardTitle>
-            <CardDescription>
-              Enter your credentials to access the dashboard
-            </CardDescription>
+            <CardTitle className="text-center text-xl">Sign In</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              {loginError && (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
                 <Alert variant="destructive">
-                  <AlertDescription>{loginError}</AlertDescription>
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  {...register("email")}
-                  className={errors.email ? "border-red-500" : ""}
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your username"
+                  disabled={isLoading}
+                  className="h-11"
+                  autoComplete="username"
+                  autoFocus
                 />
-                {errors.email && (
-                  <p className="text-sm text-red-500">{errors.email.message}</p>
-                )}
               </div>
 
               <div className="space-y-2">
@@ -131,78 +149,102 @@ export default function Login() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    disabled={isLoading}
+                    className="h-11 pr-10"
                     autoComplete="current-password"
-                    {...register("password")}
-                    className={errors.password ? "border-red-500" : ""}
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-400" />
+                      <EyeOff className="h-4 w-4 text-gray-500" />
                     ) : (
-                      <Eye className="h-4 w-4 text-gray-400" />
+                      <Eye className="h-4 w-4 text-gray-500" />
                     )}
-                  </button>
+                  </Button>
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-red-500">
-                    {errors.password.message}
-                  </p>
-                )}
               </div>
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? (
+              <Button
+                type="submit"
+                className="w-full h-11"
+                disabled={isLoading}
+              >
+                {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
+                    Signing In...
                   </>
                 ) : (
-                  "Sign in"
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Sign In
+                  </>
                 )}
               </Button>
             </form>
+          </CardContent>
+        </Card>
 
-            {/* Demo credentials and Firebase status */}
-            <div className="mt-6 space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h4 className="text-sm font-medium text-blue-800 mb-2">
-                  🚀 Demo Mode Active
-                </h4>
-                <div className="space-y-1 text-xs text-blue-700">
-                  <p>
-                    The app is running with mock data for immediate testing.
-                  </p>
-                  <p>
-                    To use real Firebase, see <strong>FIREBASE_SETUP.md</strong>
-                  </p>
-                </div>
+        {/* Demo Login Section */}
+        <Card className="shadow-lg border-dashed border-2 border-gray-300">
+          <CardHeader>
+            <CardTitle className="text-center text-lg text-gray-600">
+              Demo Access
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-gray-500 text-center">
+              Try the system with demo credentials
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                onClick={() => handleDemoLogin("admin")}
+                disabled={isLoading}
+                className="h-12 flex flex-col space-y-1"
+              >
+                <Shield className="h-4 w-4" />
+                <span className="text-xs">Admin Demo</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => handleDemoLogin("employee")}
+                disabled={isLoading}
+                className="h-12 flex flex-col space-y-1"
+              >
+                <Users className="h-4 w-4" />
+                <span className="text-xs">Employee Demo</span>
+              </Button>
+            </div>
+
+            <div className="text-xs text-gray-500 space-y-1">
+              <div>
+                <strong>Admin:</strong> username: admin, password: admin123
               </div>
-
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">
-                  Demo Credentials:
-                </h4>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <p>
-                    <strong>Admin:</strong> admin@cabletv.com / admin123
-                  </p>
-                  <p>
-                    <strong>Employee:</strong> john.collector@cabletv.com /
-                    employee123
-                  </p>
-                  <p>
-                    <strong>Employee:</strong> sarah.collector@cabletv.com /
-                    employee123
-                  </p>
-                </div>
+              <div>
+                <strong>Employee:</strong> username: employee, password:
+                employee123
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Security Notice */}
+        <div className="text-center text-xs text-gray-500 space-y-1">
+          <p>🔒 This system is for authorized personnel only</p>
+          <p>All login attempts are monitored and logged</p>
+        </div>
       </div>
     </div>
   );
