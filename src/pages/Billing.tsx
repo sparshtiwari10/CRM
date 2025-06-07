@@ -122,7 +122,6 @@ export default function Billing() {
       setIsLoading(true);
       try {
         const records = await CustomerService.getAllBillingRecords();
-        console.log("Loaded billing records:", records);
         setBillingRecords(records);
       } catch (error) {
         console.error("Error loading billing records:", error);
