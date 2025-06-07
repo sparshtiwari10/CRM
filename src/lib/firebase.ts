@@ -3,15 +3,15 @@ import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 // Firebase config - Replace with your actual Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY || "demo-api-key",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-api-key",
   authDomain:
-    process.env.VITE_FIREBASE_AUTH_DOMAIN || "agv-cabletv.firebaseapp.com",
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID || "agv-cabletv",
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "agv-cabletv.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "agv-cabletv",
   storageBucket:
-    process.env.VITE_FIREBASE_STORAGE_BUCKET || "agv-cabletv.appspot.com",
+    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "agv-cabletv.appspot.com",
   messagingSenderId:
-    process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: process.env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef123456",
+    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef123456",
 };
 
 // Initialize Firebase
