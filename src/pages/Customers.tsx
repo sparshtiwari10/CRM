@@ -225,6 +225,34 @@ export default function Customers() {
     loadCustomers();
   };
 
+  const handleCsvImport = async (importedCustomers: Customer[]) => {
+    try {
+      setIsSaving(true);
+
+      // Save imported customers
+      for (const customer of importedCustomers) {
+        await CustomerService.addCustomer(customer);
+      }
+
+      // Reload customer list
+      await handleImportSuccess();
+
+      toast({
+        title: "Import Successful",
+        description: `Successfully imported ${importedCustomers.length} customers.`,
+      });
+    } catch (error) {
+      console.error("Error importing customers:", error);
+      toast({
+        title: "Import Failed",
+        description: "An error occurred while importing customers.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <DashboardLayout title="Customer Management">
       <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
@@ -413,6 +441,16 @@ export default function Customers() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+        )}
+
+        {/* CSV Import/Export Modal */}
+        {isAdmin && (
+          <CustomerImportExport
+            open={showImportExport}
+            onOpenChange={setShowImportExport}
+            customers={customers}
+            onImport={handleCsvImport}
+          />
         )}
       </div>
     </DashboardLayout>
