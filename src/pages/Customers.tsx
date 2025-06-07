@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { CustomerModal } from "@/components/customers/CustomerModal";
+import { CustomerTable } from "@/components/customers/CustomerTable";
 import { CustomerDataImport } from "@/components/admin/CustomerDataImport";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
