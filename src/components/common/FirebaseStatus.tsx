@@ -73,8 +73,8 @@ export function FirebaseStatus() {
         variant="default"
         className="text-xs bg-green-100 text-green-800 border-green-300"
       >
-        <Cloud className="w-3 h-3 mr-1" />
-        Firebase Connected
+        <Cloud className="w-3 h-3 lg:mr-1" />
+        <span className="hidden lg:inline">Firebase Connected</span>
       </Badge>
     );
   }
