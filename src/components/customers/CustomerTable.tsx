@@ -273,7 +273,7 @@ export function CustomerTable({
                   <TableHead>Status</TableHead>
                   <TableHead>Collector</TableHead>
                   <TableHead>Last Payment</TableHead>
-                  {isAdmin && <TableHead>Portal Bill</TableHead>}
+                  {isAdmin ? <TableHead>Portal Bill</TableHead> : null}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -367,13 +367,13 @@ export function CustomerTable({
                           </span>
                         </div>
                       </TableCell>
-                      {isAdmin && (
+                      {isAdmin ? (
                         <TableCell>
                           <span className="font-medium">
                             {formatCurrency(customer.portalBill || 0)}
                           </span>
                         </TableCell>
-                      )}
+                      ) : null}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-2">
                           {/* Quick Action Buttons - Only for employees */}
