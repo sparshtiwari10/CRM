@@ -216,7 +216,7 @@ export default function Payments() {
               </Select>
               <Select value={methodFilter} onValueChange={setMethodFilter}>
                 <SelectTrigger className="w-full lg:w-[150px]">
-                  <SelectValue placeholder="Method" />
+                  <SelectValue placeholder="Filter by method" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Card">Card</SelectItem>
