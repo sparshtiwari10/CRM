@@ -41,16 +41,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(currentUser);
         }
 
-        // Seed default admin user if no admin exists
-        await authService.seedDefaultAdmin();
+        // Try to seed default admin user, but don't block the UI if it fails
+        try {
+          await authService.seedDefaultAdmin();
+        } catch (seedError) {
+          console.warn(
+            "Could not seed admin user (Firebase may not be configured yet):",
+            seedError,
+          );
+        }
       } catch (error) {
         console.error("Failed to initialize auth:", error);
       } finally {
+        // Always set loading to false to unblock the UI
         setIsLoading(false);
       }
     };
 
-    initializeAuth();
+    // Add a timeout to ensure we don't get stuck loading forever
+    const timeoutId = setTimeout(() => {
+      console.warn("Auth initialization timeout - continuing without seeding");
+      setIsLoading(false);
+    }, 5000); // 5 second timeout
+
+    initializeAuth().finally(() => {
+      clearTimeout(timeoutId);
+    });
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const login = async (credentials: LoginCredentials): Promise<User> => {
