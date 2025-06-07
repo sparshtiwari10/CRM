@@ -440,7 +440,6 @@ export function CustomerTable({
                                 Full Billing History
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {/* Edit Customer - Admin Only */}
                               {isAdmin && (
                                 <DropdownMenuItem
                                   onClick={() => onEdit(customer)}
@@ -449,7 +448,6 @@ export function CustomerTable({
                                   Edit Customer
                                 </DropdownMenuItem>
                               )}
-                              {/* Request Action - Employees Only */}
                               {!isAdmin && canAccessCustomer(customer.id) && (
                                 <DropdownMenuItem
                                   onClick={() =>
@@ -460,7 +458,6 @@ export function CustomerTable({
                                   Request Action
                                 </DropdownMenuItem>
                               )}
-                              {/* Delete Customer - Admin Only */}
                               {isAdmin && (
                                 <DropdownMenuItem
                                   onClick={() => setDeleteCustomer(customer)}
