@@ -59,29 +59,30 @@ export default function Customers() {
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
 
+  // Load customers function
+  const loadCustomers = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      const data = isAdmin
+        ? await CustomerService.getAllCustomers()
+        : await CustomerService.getCustomersByCollector(user.name);
+      setCustomers(data);
+    } catch (error) {
+      console.error("Load error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load customers",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load data once on mount
   useEffect(() => {
-    async function loadCustomers() {
-      if (!user) return;
-
-      setIsLoading(true);
-      try {
-        const data = isAdmin
-          ? await CustomerService.getAllCustomers()
-          : await CustomerService.getCustomersByCollector(user.name);
-        setCustomers(data);
-      } catch (error) {
-        console.error("Load error:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load customers",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     loadCustomers();
   }, []);
 
