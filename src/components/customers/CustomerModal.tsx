@@ -778,7 +778,7 @@ export function CustomerModal({
                     <h4 className="font-medium text-gray-900">
                       Billing Calculations
                     </h4>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="packageAmount">
                           Package Amount (₹)
@@ -820,14 +820,53 @@ export function CustomerModal({
                       </div>
 
                       <div>
+                        <Label htmlFor="billDueDate">Bill Due Date</Label>
+                        <Select
+                          value={formData.billDueDate?.toString() || "1"}
+                          onValueChange={(value) =>
+                            handleInputChange("billDueDate", parseInt(value))
+                          }
+                          disabled={isSaving}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select due date" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map(
+                              (day) => (
+                                <SelectItem key={day} value={day.toString()}>
+                                  {day}{" "}
+                                  {day === 1
+                                    ? "st"
+                                    : day === 2
+                                      ? "nd"
+                                      : day === 3
+                                        ? "rd"
+                                        : "th"}{" "}
+                                  of every month
+                                </SelectItem>
+                              ),
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Monthly billing cycle date
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
                         <Label htmlFor="previousOutstanding">
-                          Previous O/S (₹)
+                          Previous O/S (₹){" "}
+                          <span className="text-xs text-gray-500">
+                            (can be negative)
+                          </span>
                         </Label>
                         <Input
                           id="previousOutstanding"
                           type="number"
                           step="0.01"
-                          min="0"
                           value={formData.previousOutstanding}
                           onChange={(e) =>
                             handleInputChange(
@@ -844,13 +883,15 @@ export function CustomerModal({
 
                       <div>
                         <Label htmlFor="currentOutstanding">
-                          Current O/S (₹)
+                          Current O/S (₹){" "}
+                          <span className="text-xs text-gray-500">
+                            (can be negative)
+                          </span>
                         </Label>
                         <Input
                           id="currentOutstanding"
                           type="number"
                           step="0.01"
-                          min="0"
                           value={formData.currentOutstanding}
                           onChange={(e) =>
                             handleInputChange(
@@ -862,7 +903,8 @@ export function CustomerModal({
                           className="font-medium"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Current outstanding: Prev O/S + Bill
+                          Auto-calculated: Package Amount + Previous O/S - Paid
+                          Invoices
                         </p>
                       </div>
                     </div>
