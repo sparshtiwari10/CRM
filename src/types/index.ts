@@ -30,10 +30,13 @@ export interface Customer {
     price: number;
     description: string;
   };
-  // Billing calculation fields
+  // Enhanced billing calculation fields
   packageAmount?: number; // Monthly package amount
-  previousOutstanding?: number; // Previous outstanding amount
-  currentOutstanding?: number; // Current outstanding amount
+  previousOutstanding: number; // Previous outstanding amount (required)
+  planBill: number; // Plan bill amount (required)
+  currentOutstanding: number; // Current outstanding amount (calculated: previous + plan - paid)
+  // Invoice history for expanded row
+  invoiceHistory?: BillingRecord[];
 }
 
 export interface Package {
@@ -44,6 +47,7 @@ export interface Package {
   channels: number;
   features: string[];
   isActive: boolean;
+  portalAmount: number; // New field for portal billing amount
 }
 
 export interface Payment {
@@ -73,6 +77,11 @@ export interface BillingRecord {
   billingYear: string;
   vcNumber: string; // Customer VC Number
   customAmount?: number; // For custom invoice amounts
+  paymentDate?: string; // Date when payment was received
+  paymentMethod?: string; // Payment method used
+  notes?: string; // Additional notes
+  // Fields to ensure proper saving in both admin and employee views
+  savedInBillingRecords: boolean; // Ensures record is saved in billing section
 }
 
 export interface DashboardStats {

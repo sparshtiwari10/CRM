@@ -184,7 +184,7 @@ export function InvoiceGenerator({
     if (finalAmount <= 0) {
       toast({
         title: "Invalid Amount",
-        description: "Invoice amount must be greater than $0.",
+        description: "Invoice amount must be greater than ₹0.",
         variant: "destructive",
       });
       return;
@@ -228,6 +228,7 @@ export function InvoiceGenerator({
         billingYear: selectedYear,
         vcNumber: selectedCustomer.vcNumber,
         customAmount: isCustomAmount ? customAmount : undefined,
+        savedInBillingRecords: true, // Ensure this is marked as saved
       };
 
       // Save the billing record
@@ -486,7 +487,9 @@ export function InvoiceGenerator({
                         Enter Custom Amount
                       </Label>
                       <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                          ₹
+                        </span>
                         <Input
                           id="amount-input"
                           type="number"
@@ -496,7 +499,7 @@ export function InvoiceGenerator({
                           onChange={(e) =>
                             setCustomAmount(parseFloat(e.target.value) || 0)
                           }
-                          className="pl-10"
+                          className="pl-7"
                           placeholder="0.00"
                         />
                       </div>

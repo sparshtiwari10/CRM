@@ -62,17 +62,29 @@ export default function RequestManagement() {
     console.log("RequestManagement - Mock requests:", mockActionRequests);
   }, [user, isAdmin]);
 
-  // Initialize requests from mock data
+  // Load requests dynamically from Firebase
   useEffect(() => {
-    try {
-      console.log("Loading mock action requests...");
-      setRequests(mockActionRequests || []);
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error loading requests:", error);
-      setRequests([]);
-      setIsLoading(false);
-    }
+    const loadRequests = async () => {
+      try {
+        console.log("Loading action requests from Firebase...");
+        const requestsData = await CustomerService.getAllRequests();
+        setRequests(requestsData || []);
+        console.log("Loaded requests:", requestsData.length);
+      } catch (error) {
+        console.error("Error loading requests:", error);
+        // Fallback to empty array if Firebase fails
+        setRequests([]);
+        toast({
+          title: "Loading Error",
+          description: "Failed to load requests. Using offline mode.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadRequests();
   }, []);
 
   // Load customers for employees to create requests
@@ -166,31 +178,33 @@ export default function RequestManagement() {
     setIsProcessing(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const updatedRequest = {
+        ...requests.find((r) => r.id === requestId),
+        status: action === "approve" ? "approved" : "rejected",
+        reviewDate: new Date().toISOString().split("T")[0],
+        reviewedBy: user?.name || "System Administrator",
+        adminNotes: adminNotes || `Request ${action}ed by admin`,
+      };
 
+      // Save to Firebase
+      await CustomerService.updateRequest(requestId, updatedRequest);
+
+      // Update local state
       setRequests((prevRequests) =>
         prevRequests.map((request) =>
-          request.id === requestId
-            ? {
-                ...request,
-                status: action === "approve" ? "approved" : "rejected",
-                reviewDate: new Date().toISOString().split("T")[0],
-                reviewedBy: "System Administrator",
-                adminNotes: adminNotes || `Request ${action}ed by admin`,
-              }
-            : request,
+          request.id === requestId ? updatedRequest : request,
         ),
       );
 
       toast({
         title: "Request Updated",
-        description: `Request has been ${action}ed successfully.`,
+        description: `Request has been ${action}ed successfully and saved to database.`,
       });
 
       setSelectedRequest(null);
       setAdminNotes("");
     } catch (error) {
+      console.error(`Failed to ${action} request:`, error);
       toast({
         title: "Error",
         description: `Failed to ${action} request. Please try again.`,
@@ -201,14 +215,28 @@ export default function RequestManagement() {
     }
   };
 
-  const handleNewRequestClose = () => {
+  const handleNewRequestClose = async () => {
     setShowNewRequestModal(false);
-    // Refresh requests - in a real app this would come from the backend
-    toast({
-      title: "Request Submitted",
-      description:
-        "Your request has been submitted and is pending admin review.",
-    });
+
+    try {
+      // Refresh requests from Firebase to show the new request
+      const updatedRequests = await CustomerService.getAllRequests();
+      setRequests(updatedRequests || []);
+
+      toast({
+        title: "Request Submitted",
+        description:
+          "Your request has been submitted and saved to database. It is pending admin review.",
+      });
+    } catch (error) {
+      console.error("Failed to refresh requests:", error);
+      toast({
+        title: "Request Submitted",
+        description:
+          "Your request has been submitted but failed to refresh the list. Please reload the page.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {

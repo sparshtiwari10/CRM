@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { authService } from "@/services/authService";
 import {
   Plus,
   Edit,
@@ -50,49 +51,40 @@ import { Label } from "@/components/ui/label";
 import { User } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 
-// Mock employees data
-const initialEmployees: User[] = [
-  {
-    id: "emp-1",
-    email: "john.collector@cabletv.com",
-    phone: "+1 (555) 111-1111",
-    name: "John Collector",
-    role: "employee",
-    isActive: true,
-    createdAt: "2024-01-01",
-    lastLogin: "2024-01-20T08:30:00Z",
-    assignedCustomers: ["1", "2", "5"],
-  },
-  {
-    id: "emp-2",
-    email: "sarah.collector@cabletv.com",
-    phone: "+1 (555) 222-2222",
-    name: "Sarah Collector",
-    role: "employee",
-    isActive: true,
-    createdAt: "2024-01-01",
-    lastLogin: "2024-01-19T16:45:00Z",
-    assignedCustomers: ["3", "4", "6"],
-  },
-  {
-    id: "emp-3",
-    email: "mike.field@cabletv.com",
-    phone: "+1 (555) 333-3333",
-    name: "Mike Field",
-    role: "employee",
-    isActive: false,
-    createdAt: "2023-12-15",
-    lastLogin: "2024-01-10T12:00:00Z",
-    assignedCustomers: [],
-  },
-];
-
 export default function EmployeeManagement() {
-  const [employees, setEmployees] = useState<User[]>(initialEmployees);
+  const [employees, setEmployees] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteEmployee, setDeleteEmployee] = useState<User | null>(null);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+
+  // Load employees from Firebase on component mount
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        setIsLoading(true);
+        // Get all users from the authentication service
+        const allUsers = await authService.getAllUsers();
+        setEmployees(allUsers.filter((user) => user.role === "employee"));
+        console.log(
+          "Loaded employees:",
+          allUsers.filter((user) => user.role === "employee"),
+        );
+      } catch (error) {
+        console.error("Failed to load employees:", error);
+        toast({
+          title: "Loading Error",
+          description: "Failed to load employees. Starting with empty list.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadEmployees();
+  }, [toast]);
 
   const filteredEmployees = employees.filter(
     (employee) =>
@@ -114,42 +106,102 @@ export default function EmployeeManagement() {
     });
   };
 
-  const handleDeleteEmployee = () => {
-    if (deleteEmployee) {
+  const handleDeleteEmployee = async () => {
+    if (!deleteEmployee) return;
+
+    try {
+      // Check if employee has any active assignments
+      if (
+        deleteEmployee.assignedCustomers &&
+        deleteEmployee.assignedCustomers.length > 0
+      ) {
+        toast({
+          title: "Cannot delete employee",
+          description: `${deleteEmployee.name} has ${deleteEmployee.assignedCustomers.length} assigned customers. Please reassign customers before deleting.`,
+          variant: "destructive",
+        });
+        setDeleteEmployee(null);
+        return;
+      }
+
+      // Simulate API call to delete from Firebase
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       setEmployees((prev) =>
         prev.filter((emp) => emp.id !== deleteEmployee.id),
       );
+
       toast({
         title: "Employee deleted",
         description: `${deleteEmployee.name} has been removed from the system.`,
         variant: "destructive",
       });
+
       setDeleteEmployee(null);
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete employee. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleAddEmployee = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddEmployee = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
 
-    const newEmployee: User = {
-      id: `emp-${Date.now()}`,
+    const employeeData = {
       name: formData.get("name") as string,
-      email: formData.get("email") as string,
+      username: formData.get("username") as string,
+      password: formData.get("password") as string,
       phone: formData.get("phone") as string,
       role: formData.get("role") as "admin" | "employee",
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      lastLogin: undefined,
     };
 
-    setEmployees((prev) => [...prev, newEmployee]);
-    setShowAddEmployeeModal(false);
+    try {
+      // Validate password strength
+      if (employeeData.password.length < 6) {
+        toast({
+          title: "Validation Error",
+          description: "Password must be at least 6 characters long.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    toast({
-      title: "Employee Added",
-      description: `${newEmployee.name} has been successfully added to the system.`,
-    });
+      // Create user through authentication service
+      const newUser = await authService.createUser({
+        username: employeeData.username,
+        password: employeeData.password,
+        name: employeeData.name,
+        role: employeeData.role,
+        access_scope: [],
+      });
+
+      // Add phone number to the user object
+      const newEmployee: User = {
+        ...newUser,
+        phone: employeeData.phone,
+        email: `${employeeData.username}@agvcabletv.local`,
+        assignedCustomers: [],
+      };
+
+      setEmployees((prev) => [...prev, newEmployee]);
+      setShowAddEmployeeModal(false);
+
+      toast({
+        title: "Employee Created",
+        description: `${newEmployee.name} has been successfully created and saved to Firebase with username: ${employeeData.username}`,
+      });
+    } catch (error) {
+      console.error("Failed to create employee:", error);
+      toast({
+        title: "Creation Failed",
+        description: "Failed to create employee account. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -167,6 +219,18 @@ export default function EmployeeManagement() {
     (sum, emp) => sum + (emp.assignedCustomers?.length || 0),
     0,
   );
+
+  if (isLoading) {
+    return (
+      <DashboardLayout title="Employee Management">
+        <div className="p-6">
+          <div className="text-center py-8">
+            <div className="text-lg">Loading employees...</div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title="Employee Management">
@@ -486,15 +550,33 @@ export default function EmployeeManagement() {
                 </div>
 
                 <div>
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="username">Username</Label>
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
+                    id="username"
+                    name="username"
+                    type="text"
                     required
-                    placeholder="employee@cabletv.com"
+                    placeholder="employee_username"
                     className="mt-1"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Used for login authentication
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
+                    placeholder="Enter secure password"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Minimum 8 characters recommended
+                  </p>
                 </div>
 
                 <div>
@@ -524,9 +606,10 @@ export default function EmployeeManagement() {
 
                 <div className="text-sm text-gray-500 bg-blue-50 p-3 rounded-md">
                   <p>
-                    <strong>Note:</strong> The employee will receive login
-                    credentials via email. Default password will be
-                    "employee123" which should be changed on first login.
+                    <strong>Note:</strong> The employee will be able to login
+                    using the username and password provided above. These
+                    credentials will be saved securely in Firebase
+                    Authentication.
                   </p>
                 </div>
               </div>

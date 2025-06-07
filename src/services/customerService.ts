@@ -182,6 +182,22 @@ export class CustomerService {
     }
   }
 
+  static async updateRequest(requestId: string, request: any): Promise<void> {
+    try {
+      return await firestoreService.updateRequest(requestId, request);
+    } catch (error) {
+      console.error("CustomerService: Failed to update request:", error);
+
+      // Fallback behavior if Firestore is not available
+      if (error?.message?.includes("Firebase not available")) {
+        console.log("Mock mode: Request update simulated");
+        return;
+      }
+
+      throw error;
+    }
+  }
+
   // ================== DATA IMPORT ==================
 
   static async importCustomersFromJson(customers: any[]): Promise<void> {

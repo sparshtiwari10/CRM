@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { authService } from "@/services/authService";
 import {
   Dialog,
   DialogContent,
@@ -33,12 +34,7 @@ interface CustomerModalProps {
   isSaving?: boolean;
 }
 
-const mockCollectors = [
-  "John Collector",
-  "Sarah Collector",
-  "Mike Field",
-  "System Administrator",
-];
+// Dynamic collectors will be loaded from active employees
 
 export function CustomerModal({
   open,
@@ -50,6 +46,42 @@ export function CustomerModal({
   const { isAdmin } = useAuth();
   const { toast } = useToast();
   const isEditing = !!customer;
+  const [availableCollectors, setAvailableCollectors] = useState<string[]>([
+    "System Administrator",
+  ]);
+
+  // Load available collectors when modal opens
+  useEffect(() => {
+    if (open) {
+      const loadCollectors = async () => {
+        try {
+          const users = await authService.getAllUsers();
+          const collectors = users
+            .filter(
+              (user) =>
+                user.isActive &&
+                (user.role === "employee" || user.role === "admin"),
+            )
+            .map((user) => user.name);
+
+          // Always ensure at least System Administrator is available
+          if (
+            collectors.length === 0 ||
+            !collectors.includes("System Administrator")
+          ) {
+            collectors.unshift("System Administrator");
+          }
+
+          setAvailableCollectors(collectors);
+        } catch (error) {
+          console.error("Failed to load collectors:", error);
+          // Fallback to default admin
+          setAvailableCollectors(["System Administrator"]);
+        }
+      };
+      loadCollectors();
+    }
+  }, [open]);
 
   // Initialize with either customer data or empty form
   const getInitialData = () => {
@@ -70,6 +102,7 @@ export function CustomerModal({
         customPlan: customer.customPlan || null,
         packageAmount: customer.packageAmount || 0,
         previousOutstanding: customer.previousOutstanding || 0,
+        planBill: customer.planBill || 0,
         currentOutstanding: customer.currentOutstanding || 0,
         isInitialized: true,
       };
@@ -127,6 +160,30 @@ export function CustomerModal({
     setErrors({});
   }
 
+  // Load available collectors when modal opens
+  useState(() => {
+    if (open) {
+      const loadCollectors = async () => {
+        try {
+          const users = await authService.getAllUsers();
+          const collectors = users
+            .filter(
+              (user) =>
+                user.isActive &&
+                (user.role === "employee" || user.role === "admin"),
+            )
+            .map((user) => user.name);
+          setAvailableCollectors(collectors);
+        } catch (error) {
+          console.error("Failed to load collectors:", error);
+          // Fallback to default admin
+          setAvailableCollectors(["System Administrator"]);
+        }
+      };
+      loadCollectors();
+    }
+  }, [open]);
+
   // Reset form when switching from edit to add mode
   if (open && !customer && !formData.isInitialized) {
     setFormData({
@@ -155,7 +212,7 @@ export function CustomerModal({
   function handleInputChange(field: string, value: any) {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Auto-populate package amount when selecting a package
+    // Auto-populate package amount and portal bill when selecting a package
     if (field === "currentPackage" && value && !showCustomPlan) {
       const selectedPackage = mockPackages.find((pkg) => pkg.name === value);
       if (selectedPackage) {
@@ -163,7 +220,8 @@ export function CustomerModal({
           ...prev,
           [field]: value,
           packageAmount: selectedPackage.price,
-          portalBill: selectedPackage.price, // Also update portal bill for consistency
+          portalBill: selectedPackage.portalAmount || selectedPackage.price, // Use portal amount if available
+          planBill: selectedPackage.price, // Set plan bill
         }));
       }
     }
@@ -493,7 +551,7 @@ export function CustomerModal({
                       <SelectValue placeholder="Select collector" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockCollectors.map((collector) => (
+                      {availableCollectors.map((collector) => (
                         <SelectItem key={collector} value={collector}>
                           {collector}
                         </SelectItem>

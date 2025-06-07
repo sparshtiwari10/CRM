@@ -397,6 +397,7 @@ class FirestoreService {
 
       const docRef = await addDoc(requestsRef, requestData);
       console.log(`✅ Request submitted successfully`);
+
       return docRef.id;
     } catch (error) {
       console.error("❌ Failed to add request:", error);
@@ -404,6 +405,35 @@ class FirestoreService {
     }
   }
 
+  async updateRequest(requestId: string, request: any): Promise<void> {
+    try {
+      if (!db) {
+        throw new Error("Firebase not available");
+      }
+
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser || currentUser.role !== "admin") {
+        throw new Error("Only administrators can update requests");
+      }
+
+      const requestRef = doc(db, "requests", requestId);
+      const updateData = {
+        status: request.status,
+        review_date: request.reviewDate
+          ? Timestamp.fromDate(new Date(request.reviewDate))
+          : undefined,
+        reviewed_by: request.reviewedBy,
+        admin_notes: request.adminNotes,
+        updated_at: Timestamp.now(),
+      };
+
+      await updateDoc(requestRef, updateData);
+      console.log(`✅ Request ${requestId} updated successfully`);
+    } catch (error) {
+      console.error("❌ Failed to update request:", error);
+      throw error;
+    }
+  }
   // ================== DATA IMPORT ==================
 
   async importCustomersFromJson(customers: any[]): Promise<void> {
