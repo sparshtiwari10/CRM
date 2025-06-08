@@ -44,7 +44,7 @@ interface FormData {
   collectorName: string;
   isActive: boolean;
   portalBill: number;
-  numberOfConnections: number | string;
+  numberOfConnections: number;
   connections: Connection[];
   customPlan: {
     name: string;
@@ -76,7 +76,7 @@ const initialFormData: FormData = {
   billDueDate: 1,
 };
 
-export function CustomerModal({
+function CustomerModal({
   open,
   onOpenChange,
   customer,
@@ -85,56 +85,59 @@ export function CustomerModal({
 }: CustomerModalProps) {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-  const isEditing = !!customer;
 
-  // Simple state management
+  // Core state
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [showCustomPlan, setShowCustomPlan] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [availableCollectors, setAvailableCollectors] = useState<string[]>([
     "System Administrator",
   ]);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize form data based on customer prop
-  const initializeFormData = useCallback(() => {
-    if (customer) {
-      return {
-        name: customer.name || "",
-        phoneNumber: customer.phoneNumber || "",
-        email: customer.email || "",
-        address: customer.address || "",
-        vcNumber: customer.vcNumber || "",
-        currentPackage: customer.currentPackage || "",
-        collectorName: customer.collectorName || "",
-        isActive: customer.isActive !== undefined ? customer.isActive : true,
-        portalBill: customer.portalBill || 0,
-        numberOfConnections: customer.numberOfConnections || 1,
-        connections: customer.connections || [],
-        customPlan: customer.customPlan || null,
-        packageAmount: customer.packageAmount || 0,
-        previousOutstanding: customer.previousOutstanding || 0,
-        currentOutstanding: customer.currentOutstanding || 0,
-        billDueDate: customer.billDueDate || 1,
-      };
-    }
-    return initialFormData;
-  }, [customer]);
-
-  // Reset form when modal opens or customer changes
+  // Initialize form data only once when customer or open state changes
   useEffect(() => {
     if (open) {
-      const newFormData = initializeFormData();
+      const newFormData = customer
+        ? {
+            name: customer.name || "",
+            phoneNumber: customer.phoneNumber || "",
+            email: customer.email || "",
+            address: customer.address || "",
+            vcNumber: customer.vcNumber || "",
+            currentPackage: customer.currentPackage || "",
+            collectorName: customer.collectorName || "",
+            isActive:
+              customer.isActive !== undefined ? customer.isActive : true,
+            portalBill: customer.portalBill || 0,
+            numberOfConnections: customer.numberOfConnections || 1,
+            connections: customer.connections || [],
+            customPlan: customer.customPlan || null,
+            packageAmount: customer.packageAmount || 0,
+            previousOutstanding: customer.previousOutstanding || 0,
+            currentOutstanding: customer.currentOutstanding || 0,
+            billDueDate: customer.billDueDate || 1,
+          }
+        : initialFormData;
+
       setFormData(newFormData);
       setShowCustomPlan(!!customer?.customPlan);
       setErrors({});
+      setIsInitialized(true);
+    } else {
+      // Reset when modal closes
+      setFormData(initialFormData);
+      setShowCustomPlan(false);
+      setErrors({});
+      setIsInitialized(false);
     }
-  }, [open, customer?.id, initializeFormData]);
+  }, [open, customer?.id]);
 
-  // Load collectors only once when modal opens
+  // Load collectors once when modal opens
   useEffect(() => {
-    if (open) {
-      let mounted = true;
+    let mounted = true;
 
+    if (open && !isInitialized) {
       const loadCollectors = async () => {
         try {
           const users = await authService.getAllUsers();
@@ -159,124 +162,117 @@ export function CustomerModal({
       };
 
       loadCollectors();
-
-      return () => {
-        mounted = false;
-      };
     }
-  }, [open]);
 
-  // Clear form when modal closes
-  useEffect(() => {
-    if (!open) {
-      setFormData(initialFormData);
-      setShowCustomPlan(false);
-      setErrors({});
-    }
-  }, [open]);
+    return () => {
+      mounted = false;
+    };
+  }, [open, isInitialized]);
 
-  const handleInputChange = useCallback(
-    (field: string, value: any) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
-
-      // Clear error for this field
-      if (errors[field]) {
-        setErrors((prev) => {
-          const newErrors = { ...prev };
-          delete newErrors[field];
-          return newErrors;
-        });
+  // Stable input change handler without dependencies
+  const handleInputChange = useCallback((field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear error for this field
+    setErrors((prev) => {
+      if (prev[field]) {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
       }
-    },
-    [errors],
-  );
+      return prev;
+    });
+  }, []);
 
-  const handleConnectionsChange = useCallback(
-    (newCountStr: string) => {
-      const newCount = newCountStr === "" ? 1 : parseInt(newCountStr) || 1;
-
-      if (newCount < 1) {
-        setFormData((prev) => ({
-          ...prev,
-          numberOfConnections: 1,
-          connections: [],
-        }));
-        return;
-      }
-
+  // Stable connections change handler
+  const handleConnectionsChange = useCallback((newCount: number) => {
+    setFormData((prev) => {
       const connections: Connection[] = [];
       for (let i = 0; i < newCount; i++) {
-        const existingConnection = formData.connections[i];
+        const existingConnection = prev.connections[i];
         const isPrimary = i === 0;
 
         let vcNumber;
         if (isPrimary) {
-          vcNumber = existingConnection?.vcNumber || formData.vcNumber;
+          vcNumber =
+            existingConnection?.vcNumber || prev.vcNumber || "VC000000";
         } else {
           const suffix = i === 1 ? "SEC" : `SEC${i - 1}`;
-          const baseVc = formData.vcNumber || "VC000000";
+          const baseVc = prev.vcNumber || "VC000000";
           vcNumber = existingConnection?.vcNumber || `${baseVc}-${suffix}`;
         }
 
         connections.push({
           id: existingConnection?.id || `conn-${i + 1}`,
           vcNumber: vcNumber,
-          planName:
-            existingConnection?.planName || formData.currentPackage || "",
-          planPrice:
-            existingConnection?.planPrice ||
-            mockPackages.find((p) => p.name === formData.currentPackage)
-              ?.price ||
-            0,
+          planName: existingConnection?.planName || prev.currentPackage || "",
+          planPrice: existingConnection?.planPrice || 0,
           isCustomPlan: existingConnection?.isCustomPlan || false,
           isPrimary: isPrimary,
           connectionIndex: i + 1,
         });
       }
 
-      setFormData((prev) => ({
+      return {
         ...prev,
         numberOfConnections: newCount,
         connections,
-      }));
-    },
-    [formData.connections, formData.currentPackage, formData.vcNumber],
-  );
+      };
+    });
+  }, []);
 
+  // Package change handler
+  const handlePackageChange = useCallback((packageName: string) => {
+    const selectedPackage = mockPackages.find(
+      (pkg) => pkg.name === packageName,
+    );
+    if (selectedPackage) {
+      setFormData((prev) => ({
+        ...prev,
+        currentPackage: packageName,
+        packageAmount: selectedPackage.price,
+        portalBill: selectedPackage.portalAmount || selectedPackage.price,
+      }));
+    }
+  }, []);
+
+  // Custom plan change handler
+  const handleCustomPlanChange = useCallback((field: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      customPlan: {
+        name: prev.customPlan?.name || "",
+        price: prev.customPlan?.price || 0,
+        description: prev.customPlan?.description || "",
+        [field]: value,
+      },
+      ...(field === "price"
+        ? {
+            packageAmount: value || 0,
+            portalBill: value || 0,
+          }
+        : {}),
+    }));
+  }, []);
+
+  // Form validation
   const validateForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Customer name is required";
-    }
-
-    if (!formData.phoneNumber.trim()) {
+    if (!formData.name.trim()) newErrors.name = "Customer name is required";
+    if (!formData.phoneNumber.trim())
       newErrors.phoneNumber = "Phone number is required";
-    }
-
-    if (!formData.address.trim()) {
-      newErrors.address = "Address is required";
-    }
-
-    if (!formData.vcNumber.trim()) {
-      newErrors.vcNumber = "VC Number is required";
-    }
-
-    if (!formData.collectorName) {
+    if (!formData.address.trim()) newErrors.address = "Address is required";
+    if (!formData.vcNumber.trim()) newErrors.vcNumber = "VC Number is required";
+    if (!formData.collectorName)
       newErrors.collectorName = "Collector selection is required";
-    }
-
-    if (!formData.currentPackage && !showCustomPlan) {
+    if (!formData.currentPackage && !showCustomPlan)
       newErrors.currentPackage = "Package selection is required";
-    }
-
     if (
       showCustomPlan &&
       (!formData.customPlan?.name || !formData.customPlan?.price)
     ) {
       newErrors.customPlan = "Custom plan details are required";
     }
-
     if (formData.billDueDate < 1 || formData.billDueDate > 31) {
       newErrors.billDueDate = "Bill due date must be between 1 and 31";
     }
@@ -285,16 +281,12 @@ export function CustomerModal({
     return Object.keys(newErrors).length === 0;
   }, [formData, showCustomPlan]);
 
+  // Form submission
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
 
       if (!validateForm()) return;
-
-      const finalNumberOfConnections =
-        typeof formData.numberOfConnections === "number"
-          ? formData.numberOfConnections
-          : parseInt(formData.numberOfConnections as string) || 1;
 
       const customerData: Customer = {
         id: customer?.id || Date.now().toString(),
@@ -318,8 +310,11 @@ export function CustomerModal({
           !formData.isActive && customer?.isActive
             ? new Date().toISOString().split("T")[0]
             : customer?.deactivationDate || undefined,
-        numberOfConnections: finalNumberOfConnections,
-        connections: formData.connections.slice(0, finalNumberOfConnections),
+        numberOfConnections: formData.numberOfConnections,
+        connections: formData.connections.slice(
+          0,
+          formData.numberOfConnections,
+        ),
         packageAmount: formData.packageAmount,
         previousOutstanding: formData.previousOutstanding,
         currentOutstanding: formData.currentOutstanding,
@@ -340,40 +335,16 @@ export function CustomerModal({
     [formData, showCustomPlan, customer, validateForm, onSave],
   );
 
-  const handlePackageChange = useCallback((packageName: string) => {
-    const selectedPackage = mockPackages.find(
-      (pkg) => pkg.name === packageName,
-    );
-    if (selectedPackage) {
-      setFormData((prev) => ({
-        ...prev,
-        currentPackage: packageName,
-        packageAmount: selectedPackage.price,
-        portalBill: selectedPackage.portalAmount || selectedPackage.price,
-      }));
-    }
-  }, []);
+  // Memoized options to prevent recreation
+  const connectionOptions = useMemo(
+    () => Array.from({ length: 10 }, (_, i) => i + 1),
+    [],
+  );
 
-  const handleCustomPlanChange = useCallback((field: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      customPlan: {
-        ...prev.customPlan,
-        [field]: value,
-      } as any,
-      packageAmount: field === "price" ? value || 0 : prev.packageAmount,
-      portalBill: field === "price" ? value || 0 : prev.portalBill,
-    }));
-  }, []);
-
-  // Memoize expensive computations
-  const connectionOptions = useMemo(() => {
-    return Array.from({ length: 10 }, (_, i) => i + 1);
-  }, []);
-
-  const billDueDateOptions = useMemo(() => {
-    return Array.from({ length: 31 }, (_, i) => i + 1);
-  }, []);
+  const billDueDateOptions = useMemo(
+    () => Array.from({ length: 31 }, (_, i) => i + 1),
+    [],
+  );
 
   if (!open) return null;
 
@@ -382,9 +353,7 @@ export function CustomerModal({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEditing
-              ? `Edit Customer - ${customer?.name}`
-              : "Add New Customer"}
+            {customer ? `Edit Customer - ${customer.name}` : "Add New Customer"}
           </DialogTitle>
         </DialogHeader>
 
@@ -511,7 +480,9 @@ export function CustomerModal({
                   </Label>
                   <Select
                     value={formData.numberOfConnections.toString()}
-                    onValueChange={(value) => handleConnectionsChange(value)}
+                    onValueChange={(value) =>
+                      handleConnectionsChange(parseInt(value))
+                    }
                     disabled={isSaving}
                   >
                     <SelectTrigger>
@@ -769,7 +740,7 @@ export function CustomerModal({
             <Button type="submit" disabled={isSaving}>
               {isSaving
                 ? "Saving..."
-                : isEditing
+                : customer
                   ? "Update Customer"
                   : "Add Customer"}
             </Button>
@@ -779,3 +750,5 @@ export function CustomerModal({
     </Dialog>
   );
 }
+
+export default CustomerModal;
