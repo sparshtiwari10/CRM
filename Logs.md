@@ -8,6 +8,44 @@
 
 ### **🐛 Critical Bug Fixes**
 
+#### **Request Form and VC Status Management ENHANCED**
+
+- **Date**: Current Session
+- **Type**: Feature Enhancement & Clarification
+- **Changes Implemented**:
+
+  1. **Request Form Search Functionality**: Added customer search in ActionRequestModal similar to invoice generator
+  2. **VC Number Selection**: Added VC number selection for both primary and secondary connections
+  3. **Request Type Clarification**: Activation/deactivation requests now specifically refer to VC status changes
+  4. **VC Status Management**: Enhanced VC status handling for secondary connections
+  5. **Admin Dashboard VC Counts**: Added Active/Inactive VC number statistics for admins
+  6. **Dashboard Cleanup**: Removed system overview and quick actions from admin dashboard
+
+- **Technical Details**:
+
+  - **ActionRequestModal**: Complete rewrite with search functionality
+    - Customer search with filtering by name, VC number, phone, address
+    - VC number selection dropdown showing primary/secondary connections
+    - Clear action type descriptions (VC activation/deactivation vs plan change)
+    - Enhanced customer information display with current VC status
+  - **Request Management**: Updated to show VC number and current status columns
+  - **Dashboard Enhancements**:
+    - Admin view: VC number statistics (Total, Active, Inactive VCs)
+    - Employee view: Personal collection data only
+    - Removed system overview and quick actions from admin view
+  - **Data Structure**: Enhanced ActionRequest interface with VC number and status fields
+
+- **Request Type Clarification**:
+
+  - **Activation Request**: Employee requests admin to change VC status to "Active"
+  - **Deactivation Request**: Employee requests admin to change VC status to "Inactive"
+  - **Plan Change Request**: Employee requests admin to change package plan for VC
+
+- **VC Status Features**:
+  - VC status available for both primary and secondary connections
+  - VC status determines Current O/S calculation on bill due date
+  - Proper status management for multi-connection customers
+
 #### **Firestore Undefined Field Error RESOLVED**
 
 - **Date**: Current Session
