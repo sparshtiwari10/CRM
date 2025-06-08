@@ -38,19 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Customer, Invoice } from "@/types";
-import {
-  cn,
-  formatCurrency,
-  formatAddress,
-  formatDate,
-  formatDueDate,
-  isOverdue,
-} from "@/lib/utils";
-import {
-  getCustomerStatus,
-  getFinancialSummary,
-  calculateNextBillingDate,
-} from "@/lib/customerUtils";
+import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { ActionRequest } from "@/types/auth";
