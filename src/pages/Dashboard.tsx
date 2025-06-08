@@ -435,7 +435,6 @@ export default function Dashboard() {
                         Add your first customer to get started
                       </p>
                     </div>
-                    </Button>
                   </div>
                 </div>
               </CardContent>
