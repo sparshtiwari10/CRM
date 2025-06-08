@@ -171,7 +171,7 @@ export default function Customers() {
     }
   };
 
-  const handleSave = async (customer: Customer) => {
+  const handleSave = async (customer: Omit<Customer, "id">) => {
     console.log("Save started for:", customer.name);
 
     if (isSaving) {
