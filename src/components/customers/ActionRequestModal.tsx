@@ -117,8 +117,12 @@ export function ActionRequestModal({
 
   // Reset form when modal opens or action type changes - using useEffect to avoid setState during render
   useEffect(() => {
-    if (open && form.getValues("actionType") !== defaultActionType) {
-      resetForm();
+    if (open) {
+      form.reset({
+        actionType: defaultActionType,
+        requestedPlan: "",
+        reason: "",
+      });
     }
   }, [open, defaultActionType, form]);
 
