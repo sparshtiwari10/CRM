@@ -1,4 +1,4 @@
-import { Bell, Search, Settings, User, LogOut } from "lucide-react";
+import { Bell, Search, Settings, User, LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
