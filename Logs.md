@@ -42,6 +42,11 @@
   - **Status Audit Trail**: Comprehensive logging for all VC status changes
     - Primary VC changes logged with admin details and timestamps
     - Secondary VC changes tracked separately with VC number identification
+  - **Customer History Integration**: Complete customer timeline in expanded view
+    - Invoice History: Shows last 10 invoices with amounts, due dates, and payment status
+    - Request History: Displays VC activation/deactivation requests with timestamps and approval status
+    - Lazy Loading: Histories loaded only when customer row is expanded for performance
+    - Visual Timeline: Clear chronological view of customer's VC status changes and billing history
 - **Request Type Clarification**:
 
   - **Activation Request**: Employee requests admin to change VC status to "Active"
