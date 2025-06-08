@@ -48,7 +48,6 @@ async function initializeFirebaseWithRetry(attempt = 1): Promise<void> {
       console.error("❌ Firestore initialization failed:", initError.message);
       throw initError;
     }
-    }
 
     // Test connection immediately after initialization
     await testFirebaseConnection();
