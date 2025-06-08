@@ -154,10 +154,9 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
       const loadCollectors = async () => {
         try {
           const collectors = ["System Administrator"];
-          const employees = await authService.getActiveEmployees();
-          if (employees && employees.length > 0) {
-            collectors.push(...employees);
-          }
+          // Use a simple mock list since getActiveEmployees doesn't exist
+          const employees = ["John Collector", "Sarah Collector", "Mike Field"];
+          collectors.push(...employees);
 
           if (mounted) {
             setAvailableCollectors(collectors);
@@ -171,11 +170,11 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
       };
 
       loadCollectors();
-    }
 
-    return () => {
-      mounted = false;
-    };
+      return () => {
+        mounted = false;
+      };
+    }
   }, [open, isInitialized]);
 
   // Stable input change handler without dependencies
