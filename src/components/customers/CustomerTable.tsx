@@ -120,10 +120,12 @@ export default function CustomerTable({
               customerId,
               error,
             );
-            // Set empty array on error to prevent repeated attempts
+            // Fallback to customer's existing invoice history
+            const customer = customers.find((c) => c.id === customerId);
+            const fallbackInvoices = customer?.invoiceHistory || [];
             setCustomerInvoices((prev) => ({
               ...prev,
-              [customerId]: [],
+              [customerId]: fallbackInvoices,
             }));
           }
         }
@@ -133,7 +135,7 @@ export default function CustomerTable({
     if (expandedRows.size > 0) {
       fetchInvoicesForExpandedCustomers();
     }
-  }, [expandedRows, customerInvoices]);
+  }, [expandedRows, customers]);
 
   const toggleRowExpansion = useCallback((customerId: string) => {
     setExpandedRows((prev) => {
@@ -154,10 +156,10 @@ export default function CustomerTable({
     }
 
     const activeVCs = customer.connections.filter(
-      (conn) => conn.isPrimary || customer.isActive,
+      (conn) => (conn.status || customer.status) === "active",
     );
     const inactiveVCs = customer.connections.filter(
-      (conn) => !conn.isPrimary && !customer.isActive,
+      (conn) => (conn.status || customer.status) !== "active",
     );
 
     if (activeVCs.length === customer.connections.length) return "active";
@@ -173,14 +175,19 @@ export default function CustomerTable({
 
     // Only calculate outstanding for active VCs
     const activeConnections = customer.connections.filter(
-      (conn) => customer.status === "active" || customer.status === "demo",
+      (conn) =>
+        (conn.status || customer.status) === "active" ||
+        (conn.status || customer.status) === "demo",
     );
 
     if (activeConnections.length === 0) return 0;
 
-    // For now, return the customer's current outstanding
-    // In a full implementation, this would sum up outstanding amounts per VC
-    return customer.currentOutstanding || 0;
+    // Sum up outstanding amounts from active connections
+    return activeConnections.reduce((total, conn) => {
+      return (
+        total + (conn.currentOutstanding || customer.currentOutstanding || 0)
+      );
+    }, 0);
   }, []);
 
   // Handle status change (now affects VC status)
@@ -310,7 +317,7 @@ export default function CustomerTable({
     }
 
     const activeCount = customer.connections.filter(
-      (conn: any) => customer.status === "active",
+      (conn: any) => (conn.status || customer.status) === "active",
     ).length;
     const inactiveCount = customer.connections.length - activeCount;
 
@@ -388,7 +395,9 @@ export default function CustomerTable({
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      <div className="font-medium">{customer.name}</div>
+                      <div className="font-medium text-foreground">
+                        {customer.name}
+                      </div>
                       <div className="text-sm text-muted-foreground">
                         {customer.phoneNumber}
                       </div>
@@ -400,15 +409,17 @@ export default function CustomerTable({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">
+                    <div className="text-sm text-foreground">
                       {formatAddress(customer.address)}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">{customer.currentPackage}</div>
+                    <div className="text-sm text-foreground">
+                      {customer.currentPackage}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="font-medium">
+                    <div className="font-medium text-foreground">
                       {formatCurrency(customer.packageAmount)}
                     </div>
                   </TableCell>
@@ -441,12 +452,14 @@ export default function CustomerTable({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">
+                    <div className="text-sm text-foreground">
                       {formatDueDate(customer.billDueDate)}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">{customer.collectorName}</div>
+                    <div className="text-sm text-foreground">
+                      {customer.collectorName}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {isAdmin ? (
@@ -556,7 +569,7 @@ export default function CustomerTable({
                 {expandedRows.has(customer.id) && (
                   <TableRow>
                     <TableCell colSpan={11} className="p-0">
-                      <div className="p-3 bg-muted/30 dark:bg-muted/20">
+                      <div className="p-3 bg-muted/30">
                         <div className="space-y-3">
                           {/* Service Details - Moved to top */}
                           <div>
@@ -564,7 +577,7 @@ export default function CustomerTable({
                               <Package className="h-4 w-4 mr-2" />
                               Service Details
                             </h4>
-                            <div className="bg-card dark:bg-card/50 p-2 rounded-lg space-y-2 border border-border">
+                            <div className="bg-card p-2 rounded-lg space-y-2 border border-border">
                               <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">
@@ -613,7 +626,7 @@ export default function CustomerTable({
                               <IndianRupee className="h-4 w-4 mr-2" />
                               Financial Summary
                             </h4>
-                            <div className="bg-card dark:bg-card/50 p-2 rounded-lg border border-border">
+                            <div className="bg-card p-2 rounded-lg border border-border">
                               <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div className="text-center">
                                   <div className="text-xs text-muted-foreground">
@@ -682,7 +695,7 @@ export default function CustomerTable({
                                   {invoices.slice(0, 3).map((invoice) => (
                                     <div
                                       key={invoice.id}
-                                      className="bg-card dark:bg-card/50 p-2 rounded border border-border"
+                                      className="bg-card p-2 rounded border border-border"
                                     >
                                       <div className="flex justify-between items-center">
                                         <div className="flex-1">
@@ -692,8 +705,7 @@ export default function CustomerTable({
                                             </span>
                                             <span className="text-xs text-muted-foreground">
                                               {formatDate(
-                                                invoice.generatedDate ||
-                                                  (invoice as any).issueDate,
+                                                invoice.generatedDate,
                                               )}
                                             </span>
                                           </div>
@@ -717,7 +729,7 @@ export default function CustomerTable({
                                   ))}
                                 </div>
                               ) : (
-                                <div className="bg-card dark:bg-card/50 p-2 rounded text-center text-muted-foreground text-sm border border-border">
+                                <div className="bg-card p-2 rounded text-center text-muted-foreground text-sm border border-border">
                                   No recent invoices
                                 </div>
                               );
@@ -733,7 +745,7 @@ export default function CustomerTable({
                                   <Clock className="h-4 w-4 mr-2" />
                                   VC Status Changes
                                 </h4>
-                                <div className="bg-card dark:bg-card/50 p-2 rounded border border-border">
+                                <div className="bg-card p-2 rounded border border-border">
                                   <div className="space-y-1 max-h-24 overflow-y-auto">
                                     {customer.statusLogs
                                       .slice()
@@ -742,7 +754,7 @@ export default function CustomerTable({
                                       .map((log) => (
                                         <div
                                           key={log.id}
-                                          className="flex justify-between items-center p-1 bg-muted/50 dark:bg-muted/30 rounded text-xs"
+                                          className="flex justify-between items-center p-1 bg-muted/50 rounded text-xs"
                                         >
                                           <span className="font-medium text-foreground">
                                             {log.previousStatus} →{" "}
@@ -774,7 +786,7 @@ export default function CustomerTable({
         {filteredCustomers.map((customer) => (
           <div
             key={customer.id}
-            className="bg-card dark:bg-card/80 rounded-lg border border-border shadow-sm"
+            className="bg-card rounded-lg border border-border shadow-sm"
           >
             {/* Card Header - Compact */}
             <div className="p-3 border-b border-border">
@@ -898,7 +910,7 @@ export default function CustomerTable({
                           {invoices.slice(0, 2).map((invoice) => (
                             <div
                               key={invoice.id}
-                              className="bg-muted/50 dark:bg-muted/30 p-2 rounded"
+                              className="bg-muted/50 p-2 rounded"
                             >
                               <div className="flex justify-between items-center">
                                 <div>
@@ -906,10 +918,7 @@ export default function CustomerTable({
                                     #{invoice.invoiceNumber}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {formatDate(
-                                      invoice.generatedDate ||
-                                        (invoice as any).issueDate,
-                                    )}
+                                    {formatDate(invoice.generatedDate)}
                                   </div>
                                 </div>
                                 <div className="text-right">
@@ -922,7 +931,7 @@ export default function CustomerTable({
                           ))}
                         </div>
                       ) : (
-                        <div className="bg-muted/50 dark:bg-muted/30 p-2 rounded text-center text-muted-foreground text-sm">
+                        <div className="bg-muted/50 p-2 rounded text-center text-muted-foreground text-sm">
                           No recent invoices
                         </div>
                       );

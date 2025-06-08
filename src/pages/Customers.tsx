@@ -103,8 +103,9 @@ export default function Customers() {
 
     const matchesStatus =
       statusFilter === "all" ||
-      (statusFilter === "active" && customer.isActive) ||
-      (statusFilter === "inactive" && !customer.isActive);
+      (statusFilter === "active" && customer.status === "active") ||
+      (statusFilter === "inactive" && customer.status === "inactive") ||
+      (statusFilter === "demo" && customer.status === "demo");
 
     const matchesCollector =
       collectorFilter === "all" || customer.collectorName === collectorFilter;
@@ -292,6 +293,7 @@ export default function Customers() {
       setIsSaving(false);
     }
   };
+
   const handleActionRequest = async (request: Omit<ActionRequest, "id">) => {
     try {
       // Submit action request for admin approval
@@ -401,7 +403,7 @@ export default function Customers() {
               {/* Search */}
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="Search by name, phone, VC number, or address..."
                     value={searchTerm}
@@ -420,6 +422,7 @@ export default function Customers() {
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="demo">Demo</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -445,8 +448,8 @@ export default function Customers() {
         </Card>
 
         {/* Results Summary */}
-        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-          <div className="text-sm text-blue-800">
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+          <div className="text-sm text-blue-800 dark:text-blue-200">
             <span className="font-medium">
               Showing {filteredCustomers.length} of {customers.length} customers
             </span>
@@ -466,7 +469,7 @@ export default function Customers() {
         {isLoading ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <div className="text-gray-500">Loading customers...</div>
+              <div className="text-muted-foreground">Loading customers...</div>
             </CardContent>
           </Card>
         ) : (
