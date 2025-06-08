@@ -429,13 +429,11 @@ class FirestoreService {
       let q;
 
       if (currentUser.role === "admin") {
+        // Admins can see all requests
         q = query(requestsRef, orderBy("request_date", "desc"));
       } else {
-        q = query(
-          requestsRef,
-          where("employee_id", "==", currentUser.id),
-          orderBy("request_date", "desc"),
-        );
+        // Employees can only see their requests (no orderBy to avoid composite index)
+        q = query(requestsRef, where("employee_id", "==", currentUser.id));
       }
 
       const querySnapshot = await getDocs(q);
@@ -461,6 +459,18 @@ class FirestoreService {
         });
       });
 
+      // Sort in memory for employees since we can't use orderBy with where clause
+      if (currentUser.role !== "admin") {
+        requests.sort(
+          (a, b) =>
+            new Date(b.requestDate).getTime() -
+            new Date(a.requestDate).getTime(),
+        );
+      }
+
+      console.log(
+        `✅ Loaded ${requests.length} requests for ${currentUser.role === "admin" ? "admin" : `employee: ${currentUser.name}`}`,
+      );
       return requests;
     } catch (error) {
       console.error("❌ Failed to load requests:", error);
