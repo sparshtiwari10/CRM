@@ -131,6 +131,27 @@ export class CustomerService {
     }
   }
 
+  static async getBillingRecordsByCustomer(
+    customerId: string,
+  ): Promise<BillingRecord[]> {
+    try {
+      return await firestoreService.getBillingRecordsByCustomer(customerId);
+    } catch (error) {
+      console.error(
+        "CustomerService: Failed to get billing records by customer:",
+        error,
+      );
+
+      // Fallback to mock data if Firestore is not available
+      if (error?.message?.includes("Firebase not available")) {
+        const allRecords = this.getMockBillingRecords();
+        return allRecords.filter((record) => record.customerId === customerId);
+      }
+
+      throw error;
+    }
+  }
+
   static async addBillingRecord(
     record: Omit<BillingRecord, "id">,
   ): Promise<string> {
