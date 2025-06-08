@@ -563,6 +563,42 @@ export default function CustomerTable({
                             <h4 className="font-medium text-foreground mb-2 flex items-center">
                               <Package className="h-4 w-4 mr-2" />
                               Service Details
+                            </h4>
+                            <div className="bg-card dark:bg-card/50 p-2 rounded-lg space-y-2 border border-border">
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Package:</span>
+                                  <span className="font-medium text-foreground">
+                                    {customer.currentPackage}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Collector:</span>
+                                  <span className="text-foreground">{customer.collectorName}</span>
+                                </div>
+                              </div>
+                              {customer.connections &&
+                                customer.connections.length > 0 && (
+                                  <div className="border-t border-border pt-2">
+                                    <div className="text-sm text-muted-foreground mb-1">
+                                      VC Numbers:
+                                    </div>
+                                    <div className="flex flex-wrap gap-1">
+                                      {customer.connections.map((connection) => (
+                                        <Badge
+                                          key={connection.id}
+                                          variant="outline"
+                                          className="text-sm font-mono"
+                                        >
+                                          {connection.vcNumber}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                          </div>
+
                           {/* Recent Invoices - Enhanced with Firestore data */}
                           <div>
                             <h4 className="font-medium text-foreground mb-2 flex items-center">
