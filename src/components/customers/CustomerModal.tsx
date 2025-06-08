@@ -187,9 +187,14 @@ function CustomerModal({
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
 
-      // If VC number is changed and we have multiple connections, update the secondary VC numbers
-      if (
-        field === "vcNumber" &&
+      // If VC number is changed and we have connections, update the primary connection
+      if (field === 'vcNumber' && prev.connections.length > 0) {
+        const newConnections = [...prev.connections];
+        if (newConnections[0]) {
+          newConnections[0] = { ...newConnections[0], vcNumber: value };
+          updated.connections = newConnections;
+        }
+      }
         prev.numberOfConnections > 1 &&
         prev.connections.length > 1
       ) {
