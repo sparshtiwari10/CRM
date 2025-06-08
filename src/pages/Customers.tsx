@@ -162,44 +162,53 @@ export default function Customers() {
   };
 
   const handleSave = async (customer: Customer) => {
+    if (isSaving) return; // Prevent double submission
+
     setIsSaving(true);
+
     try {
       if (editingCustomer) {
         await CustomerService.updateCustomer(customer.id, customer);
-        // Use functional update to ensure we have the latest state
-        setCustomers((prev) =>
-          prev.map((c) => (c.id === customer.id ? { ...customer } : c)),
-        );
+
+        // Use functional update with proper error handling
+        setCustomers((prevCustomers) => {
+          const updatedCustomers = prevCustomers.map((c) =>
+            c.id === customer.id ? { ...customer } : c,
+          );
+          return updatedCustomers;
+        });
+
         toast({
           title: "Customer Updated",
           description: `${customer.name} has been successfully updated.`,
         });
       } else {
         const newId = await CustomerService.addCustomer(customer);
-        setCustomers((prev) => [...prev, { ...customer, id: newId }]);
+        const newCustomer = { ...customer, id: newId };
+
+        setCustomers((prevCustomers) => [...prevCustomers, newCustomer]);
+
         toast({
           title: "Customer Added",
           description: `${customer.name} has been successfully added.`,
         });
       }
 
-      // Close modal and reset state in the next tick to prevent state conflicts
-      setTimeout(() => {
-        setIsModalOpen(false);
-        setEditingCustomer(null);
-      }, 0);
+      // Close modal immediately after successful save
+      setIsModalOpen(false);
+      setEditingCustomer(null);
     } catch (error) {
       console.error("Save error:", error);
       toast({
         title: "Error",
-        description: "Failed to save customer",
+        description: "Failed to save customer. Please try again.",
         variant: "destructive",
       });
     } finally {
+      // Always reset saving state
       setIsSaving(false);
     }
   };
-
   const handleActionRequest = async (request: Omit<ActionRequest, "id">) => {
     try {
       // Submit action request for admin approval
