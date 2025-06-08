@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Customer, Invoice } from "@/types";
 import { cn } from "@/lib/utils";
-import { useCurrentUser } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { ActionRequest } from "@/types/auth";
 import { ActionRequestModal } from "./ActionRequestModal";
