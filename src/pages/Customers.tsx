@@ -26,6 +26,7 @@ import CustomerTable from "@/components/customers/CustomerTable";
 import { CustomerImportExport } from "@/components/customers/CustomerImportExport";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
+import { authService } from "@/services/authService";
 import { Customer } from "@/types";
 import { ActionRequest } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -123,7 +124,7 @@ export default function Customers() {
     const loadCollectors = async () => {
       if (isAdmin) {
         try {
-          const users = await CustomerService.getAllEmployees();
+          const users = await authService.getAllEmployees();
           setAllCollectors(users);
         } catch (error) {
           console.error("Failed to load collectors:", error);
