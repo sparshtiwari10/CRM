@@ -595,7 +595,7 @@ export default function CustomerModal({
                   <div className="space-y-2">
                     <Label>Plan Name *</Label>
                     <Select
-                      value={connection.planName}
+                      value={connection.planName || ""}
                       onValueChange={(value) =>
                         handleConnectionChange(index, "planName", value)
                       }
@@ -624,25 +624,17 @@ export default function CustomerModal({
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Plan Price *</Label>
+                    <Label>VC Number *</Label>
                     <Input
-                      type="number"
-                      value={connection.planPrice}
+                      value={connection.vcNumber || ""}
                       onChange={(e) =>
-                        handleConnectionChange(
-                          index,
-                          "planPrice",
-                          parseFloat(e.target.value) || 0,
-                        )
+                        handleConnectionChange(index, "vcNumber", e.target.value)
                       }
-                      placeholder="Enter price"
-                      min="0"
-                      step="0.01"
+                      placeholder="Enter VC number"
                       className={
-                        errors[`planPrice_${index}`] ? "border-red-500" : ""
+                        errors[`vcNumber_${index}`] ? "border-red-500" : ""
                       }
                     />
-                    {errors[`planPrice_${index}`] && (
                       <p className="text-sm text-red-500">
                         {errors[`planPrice_${index}`]}
                       </p>
@@ -652,17 +644,16 @@ export default function CustomerModal({
 
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={connection.isPrimary}
+                    <Input
+                      type="number"
+                      value={connection.planPrice || 0}
                       onChange={(e) =>
                         handleConnectionChange(
                           index,
-                          "isPrimary",
-                          e.target.checked,
+                          "planPrice",
+                          parseFloat(e.target.value) || 0,
                         )
                       }
-                      className="rounded"
                     />
                     <span className="text-sm">Primary Connection</span>
                   </label>
@@ -670,7 +661,7 @@ export default function CustomerModal({
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={connection.isCustomPlan}
+                      checked={connection.isCustomPlan || false}
                       onChange={(e) =>
                         handleConnectionChange(
                           index,
@@ -678,8 +669,6 @@ export default function CustomerModal({
                           e.target.checked,
                         )
                       }
-                      className="rounded"
-                    />
                     <span className="text-sm">Custom Plan</span>
                   </label>
                 </div>
