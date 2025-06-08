@@ -405,181 +405,58 @@ export default function CustomerTable({
                     <TableCell colSpan={11} className="p-0">
                       <div className="p-6 bg-muted/30 dark:bg-muted/20">
                         <div className="space-y-6">
-                          {/* Contact Information */}
-                          <div>
-                            <h4 className="font-medium text-foreground mb-3 flex items-center">
-                              <Phone className="h-4 w-4 mr-2" />
-                              Contact Information
-                            </h4>
-                            <div className="bg-card dark:bg-card/50 p-4 rounded-lg space-y-3 border border-border">
-                              <div className="flex items-center text-sm">
-                                <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                                <span className="text-foreground">
-                                  {customer.address}
-                                </span>
-                              </div>
-                              {customer.email && (
-                                <div className="flex items-center text-sm">
-                                  <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
-                                  <span className="text-foreground">
-                                    {customer.email}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Financial Summary */}
-                          <div>
-                            <h4 className="font-medium text-foreground mb-3 flex items-center">
-                              <IndianRupee className="h-4 w-4 mr-2" />
-                              Financial Summary
-                            </h4>
-                            <div className="bg-card dark:bg-card/50 p-4 rounded-lg space-y-3 border border-border">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  Package Amount:
-                                </span>
-                                <span className="font-medium text-foreground">
-                                  {formatCurrency(customer.packageAmount)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  Previous Outstanding:
-                                </span>
-                                <span
-                                  className={cn(
-                                    "font-medium",
-                                    customer.previousOutstanding > 0
-                                      ? "text-red-600 dark:text-red-400"
-                                      : customer.previousOutstanding < 0
-                                        ? "text-green-600 dark:text-green-400"
-                                        : "text-muted-foreground",
-                                  )}
-                                >
-                                  {formatCurrency(customer.previousOutstanding)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm border-t border-border pt-3">
-                                <span className="font-medium text-foreground">
-                                  Current Outstanding:
-                                </span>
-                                <span
-                                  className={cn(
-                                    "font-medium",
-                                    customer.currentOutstanding > 0
-                                      ? "text-red-600 dark:text-red-400"
-                                      : customer.currentOutstanding < 0
-                                        ? "text-green-600 dark:text-green-400"
-                                        : "text-muted-foreground",
-                                  )}
-                                >
-                                  {formatCurrency(customer.currentOutstanding)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Service Details */}
+                          {/* Service Details - Moved to top */}
                           <div>
                             <h4 className="font-medium text-foreground mb-3 flex items-center">
                               <Package className="h-4 w-4 mr-2" />
                               Service Details
+                          {/* Recent Invoices */}
+                          <div>
+                            <h4 className="font-medium text-foreground mb-3 flex items-center">
+                              <FileText className="h-4 w-4 mr-2" />
+                              Recent Invoices
                             </h4>
-                            <div className="bg-card dark:bg-card/50 p-4 rounded-lg space-y-3 border border-border">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  Package:
-                                </span>
-                                <span className="font-medium text-foreground">
-                                  {customer.currentPackage}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  Collector:
-                                </span>
-                                <span className="text-foreground">
-                                  {customer.collectorName}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  Bill Due Date:
-                                </span>
-                                <span className="text-foreground">
-                                  {formatDueDate(customer.billDueDate)}
-                                </span>
-                              </div>
-                              {customer.connections &&
-                                customer.connections.length > 0 && (
-                                  <div className="border-t border-border pt-3">
-                                    <div className="text-xs text-muted-foreground mb-2">
-                                      VC Numbers:
-                                    </div>
-                                    {customer.connections.map((connection) => (
-                                      <div
-                                        key={connection.id}
-                                        className="text-xs font-mono text-blue-600 dark:text-blue-400"
-                                      >
-                                        {connection.vcNumber} (
-                                        {connection.isPrimary
-                                          ? "Primary"
-                                          : "Secondary"}
-                                        )
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                            </div>
-                          </div>
-
-                          {/* Status Change Log - Admin Only */}
-                          {isAdmin &&
-                            customer.statusLogs &&
-                            customer.statusLogs.length > 0 && (
-                              <div>
-                                <h4 className="font-medium text-foreground mb-3 flex items-center">
-                                  <Clock className="h-4 w-4 mr-2" />
-                                  Status Change Log
-                                </h4>
-                                <div className="bg-card dark:bg-card/50 p-4 rounded-lg border border-border">
-                                  <div className="space-y-3 max-h-40 overflow-y-auto">
-                                    {customer.statusLogs
-                                      .slice()
-                                      .reverse()
-                                      .map((log) => (
-                                        <div
-                                          key={log.id}
-                                          className="flex items-start justify-between p-3 bg-muted/50 dark:bg-muted/30 rounded-md"
-                                        >
-                                          <div className="flex-1">
-                                            <div className="text-sm font-medium text-foreground">
-                                              {log.previousStatus} →{" "}
-                                              {log.newStatus}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground mt-1 flex items-center">
-                                              <User className="h-3 w-3 mr-1" />
-                                              Changed by {log.changedBy}
-                                            </div>
-                                            {log.reason && (
-                                              <div className="text-xs text-muted-foreground mt-1">
-                                                {log.reason}
+                            {customer.invoiceHistory &&
+                            customer.invoiceHistory.length > 0 ? (
+                              <div className="space-y-3">
+                                {customer.invoiceHistory
+                                  .slice(-3)
+                                  .reverse()
+                                  .map((invoice) => (
+                                    <div
+                                      key={invoice.id}
+                                      className="bg-card dark:bg-card/50 p-4 rounded-lg border border-border"
+                                    >
+                                      <div className="flex justify-between items-start">
+                                        <div>
+                                          <div className="font-medium text-sm text-foreground">
+                                            #{invoice.invoiceNumber}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {formatDate(invoice.issueDate)}
+                                          </div>
+                                          {invoice.vcNumbers &&
+                                            invoice.vcNumbers.length > 0 && (
+                                              <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                                VC: {invoice.vcNumbers.join(", ")}
                                               </div>
                                             )}
-                                          </div>
-                                          <div className="text-xs text-muted-foreground ml-4">
-                                            {formatDate(log.changedDate)}
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="font-medium text-sm text-foreground">
+                                            {formatCurrency(invoice.amount)}
                                           </div>
                                         </div>
-                                      ))}
-                                  </div>
-                                </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            ) : (
+                              <div className="bg-card dark:bg-card/50 p-4 rounded-lg text-center text-muted-foreground text-sm border border-border">
+                                No recent invoices
                               </div>
                             )}
-
-                          {/* Recent Invoices */}
+                          </div>
                           <div>
                             <h4 className="font-medium text-foreground mb-3 flex items-center">
                               <FileText className="h-4 w-4 mr-2" />
