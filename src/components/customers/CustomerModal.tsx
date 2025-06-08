@@ -230,22 +230,26 @@ function CustomerModal({
 
         let vcNumber;
         if (isPrimary) {
-          vcNumber =
-            existingConnection?.vcNumber || prev.vcNumber || "VC000000";
+          vcNumber = existingConnection?.vcNumber || prev.vcNumber || "";
         } else {
-          const suffix = i === 1 ? "SEC" : `SEC${i - 1}`;
-          const baseVc = prev.vcNumber || "VC000000";
-          vcNumber = existingConnection?.vcNumber || `${baseVc}-${suffix}`;
+          // For secondary connections, use existing VC number or empty string (user will enter manually)
+          vcNumber = existingConnection?.vcNumber || "";
         }
 
         connections.push({
           id: existingConnection?.id || `conn-${i + 1}`,
           vcNumber: vcNumber,
-          planName: existingConnection?.planName || prev.currentPackage || "",
-          planPrice: existingConnection?.planPrice || 0,
+          planName:
+            existingConnection?.planName ||
+            (isPrimary ? prev.currentPackage : "") ||
+            "",
+          planPrice:
+            existingConnection?.planPrice ||
+            (isPrimary ? prev.packageAmount : 0),
           isCustomPlan: existingConnection?.isCustomPlan || false,
           isPrimary: isPrimary,
           connectionIndex: i + 1,
+          description: existingConnection?.description || "",
         });
       }
 
