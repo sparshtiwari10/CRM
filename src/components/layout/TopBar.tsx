@@ -55,7 +55,7 @@ export function TopBar({ title }: TopBarProps) {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
               placeholder="Search customers, invoices..."
-              className="pl-10 bg-gray-50 border-gray-200 focus:bg-white"
+              className="pl-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
             />
           </div>
         </div>
