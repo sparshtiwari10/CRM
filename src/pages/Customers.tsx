@@ -113,7 +113,27 @@ export default function Customers() {
     return matchesSearch && matchesStatus && matchesCollector;
   });
 
-  // Get unique collectors for filter dropdown
+  // Get unique collectors for filter dropdown - using same source as billing
+  const [allCollectors, setAllCollectors] = useState<
+    Array<{ id: string; name: string; role: string }>
+  >([]);
+
+  // Load collectors from Firebase (same as billing)
+  useEffect(() => {
+    const loadCollectors = async () => {
+      if (isAdmin) {
+        try {
+          const users = await CustomerService.getAllEmployees();
+          setAllCollectors(users);
+        } catch (error) {
+          console.error("Failed to load collectors:", error);
+        }
+      }
+    };
+    loadCollectors();
+  }, [isAdmin]);
+
+  // Also get unique collectors from existing customer data as fallback
   const uniqueCollectors = Array.from(
     new Set(customers.map((customer) => customer.collectorName)),
   ).filter(Boolean);
@@ -436,11 +456,18 @@ export default function Customers() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Collectors</SelectItem>
-                  {uniqueCollectors.map((collector) => (
-                    <SelectItem key={collector} value={collector}>
-                      {collector}
-                    </SelectItem>
-                  ))}
+                  {/* Use Firebase collector data first, fallback to customer data */}
+                  {allCollectors.length > 0
+                    ? allCollectors.map((collector) => (
+                        <SelectItem key={collector.id} value={collector.name}>
+                          {collector.name} ({collector.role})
+                        </SelectItem>
+                      ))
+                    : uniqueCollectors.map((collector) => (
+                        <SelectItem key={collector} value={collector}>
+                          {collector}
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
             </div>

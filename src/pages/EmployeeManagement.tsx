@@ -50,69 +50,59 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
-// Define the employee type based on what authService.getAllUsers() returns
-type Employee = {
+// Define the user type based on what authService.getAllUsers() returns
+type User = {
   id: string;
   name: string;
   role: string;
 };
 
 export default function EmployeeManagement() {
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [deleteEmployee, setDeleteEmployee] = useState<Employee | null>(null);
-  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [deleteUser, setDeleteUser] = useState<User | null>(null);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Load employees from Firebase on component mount
+  // Load all users from Firebase on component mount
   useEffect(() => {
-    const loadEmployees = async () => {
+    const loadUsers = async () => {
       try {
         setIsLoading(true);
-        console.log("🔄 Loading employees for Employee Management...");
+        console.log("🔄 Loading all users for User Management...");
 
-        // Get all users from the authentication service
+        // Get all users from the authentication service (both admins and employees)
         const allUsers = await authService.getAllUsers();
 
-        // Show ALL users (both admins and employees) since admins can also collect payments
-        setEmployees(allUsers);
+        setUsers(allUsers);
 
         if (allUsers.length === 0) {
           console.warn("⚠️ No users found in Firebase");
           toast({
             title: "No Users Found",
-            description: "No user accounts found. You can create new users below.",
-            variant: "destructive",
-          });
-        } else {
-          console.log(`✅ Loaded ${allUsers.length} users (admins + employees):`, allUsers);
-        }
-          (user) => user.role === "employee",
-        );
-
-        setEmployees(employeeUsers);
-
-        if (employeeUsers.length === 0) {
-          console.warn("⚠️ No employees found in Firebase");
-          toast({
-            title: "No Employees Found",
             description:
-              "No employee accounts found. You can create new employees below.",
+              "No user accounts found. You can create new users below.",
             variant: "destructive",
           });
         } else {
           console.log(
-            `✅ Loaded ${employeeUsers.length} employees:`,
-            employeeUsers,
+            `✅ Loaded ${allUsers.length} users (admins + employees/collectors):`,
+            allUsers,
           );
+          const adminCount = allUsers.filter((u) => u.role === "admin").length;
+          const employeeCount = allUsers.filter(
+            (u) => u.role === "employee",
+          ).length;
+          console.log(`   - ${adminCount} Administrators`);
+          console.log(`   - ${employeeCount} Employees/Collectors`);
         }
       } catch (error) {
-        console.error("Failed to load employees:", error);
+        console.error("Failed to load users:", error);
         toast({
           title: "Loading Error",
           description:
-            "Failed to load employees from Firebase. Starting with empty list.",
+            "Failed to load users from Firebase. Starting with empty list.",
           variant: "destructive",
         });
       } finally {
@@ -120,75 +110,69 @@ export default function EmployeeManagement() {
       }
     };
 
-    loadEmployees();
+    loadUsers();
   }, [toast]);
 
-  // Filter employees based on search term
-  const filteredEmployees = employees.filter((employee) => {
+  // Filter users based on search term
+  const filteredUsers = users.filter((user) => {
     if (!searchTerm) return true;
 
     const term = searchTerm.toLowerCase();
     return (
-      employee.name?.toLowerCase().includes(term) ||
-      employee.role?.toLowerCase().includes(term) ||
-      employee.id?.toLowerCase().includes(term)
+      user.name?.toLowerCase().includes(term) ||
+      user.role?.toLowerCase().includes(term) ||
+      user.id?.toLowerCase().includes(term)
     );
   });
 
-  const handleToggleStatus = (employee: Employee) => {
+  const handleToggleStatus = (user: User) => {
     // For now, just show a notification since we don't have isActive in our simple structure
     toast({
       title: "Status Toggle",
-      description: `Status toggle for ${employee.name} - Feature coming soon`,
+      description: `Status toggle for ${user.name} - Feature coming soon`,
     });
   };
 
-  const handleDeleteEmployee = async () => {
-    if (!deleteEmployee) return;
+  const handleDeleteUser = async () => {
+    if (!deleteUser) return;
 
     try {
       // Note: This is a simplified version since we don't have the full user management
       // In a real implementation, this would call authService.deleteUser()
 
       // For now, just remove from local state
-      setEmployees((prev) =>
-        prev.filter((emp) => emp.id !== deleteEmployee.id),
-      );
+      setUsers((prev) => prev.filter((user) => user.id !== deleteUser.id));
 
       toast({
-        title: "Employee Removed",
-        description: `${deleteEmployee.name} has been removed from the list.`,
+        title: "User Removed",
+        description: `${deleteUser.name} has been removed from the list.`,
       });
 
-      setDeleteEmployee(null);
+      setDeleteUser(null);
     } catch (error) {
       toast({
         title: "Delete Failed",
-        description: "Failed to remove employee. Please try again.",
+        description: "Failed to remove user. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const handleAddEmployee = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
 
-    const employeeData = {
+    const userData = {
       name: formData.get("name") as string,
       username: formData.get("username") as string,
       password: formData.get("password") as string,
       role: (formData.get("role") as string) || "employee",
-      collector_name: formData.get("name") as string, // Use name as collector name
+      collector_name: formData.get("name") as string, // Use name as collector name for employees
     };
 
     try {
       // Validate required fields
-      if (
-        !employeeData.name ||
-        !employeeData.username ||
-        !employeeData.password
-      ) {
+      if (!userData.name || !userData.username || !userData.password) {
         toast({
           title: "Validation Error",
           description: "Please fill in all required fields.",
@@ -198,7 +182,7 @@ export default function EmployeeManagement() {
       }
 
       // Validate password strength
-      if (employeeData.password.length < 6) {
+      if (userData.password.length < 6) {
         toast({
           title: "Validation Error",
           description: "Password must be at least 6 characters long.",
@@ -207,38 +191,43 @@ export default function EmployeeManagement() {
         return;
       }
 
+      console.log(`🔄 Creating new ${userData.role}: ${userData.name}`);
+
       // Create user through authentication service
       const newUserId = await authService.createUser({
-        username: employeeData.username,
-        password: employeeData.password,
-        name: employeeData.name,
-        role: employeeData.role as "admin" | "employee",
-        collector_name: employeeData.collector_name,
+        username: userData.username,
+        password: userData.password,
+        name: userData.name,
+        role: userData.role as "admin" | "employee",
+        collector_name:
+          userData.role === "employee" ? userData.collector_name : null,
       });
 
       // Add to local state
-      const newEmployee: Employee = {
+      const newUser: User = {
         id: newUserId,
-        name: employeeData.name,
-        role: employeeData.role,
+        name: userData.name,
+        role: userData.role,
       };
 
-      setEmployees((prev) => [...prev, newEmployee]);
-      setShowAddEmployeeModal(false);
+      setUsers((prev) => [...prev, newUser]);
+      setShowAddUserModal(false);
 
       // Reset form
       (event.target as HTMLFormElement).reset();
 
       toast({
         title: "User Created",
-        description: `${employeeData.name} has been successfully created and can now log in.`,
+        description: `${userData.name} has been successfully created and can now log in.`,
       });
+
+      console.log(`✅ Successfully created ${userData.role}: ${userData.name}`);
     } catch (error: any) {
-      console.error("Failed to create employee:", error);
+      console.error("Failed to create user:", error);
       toast({
         title: "Creation Failed",
         description:
-          error.message || "Failed to create employee. Please try again.",
+          error.message || "Failed to create user. Please try again.",
         variant: "destructive",
       });
     }
@@ -246,10 +235,10 @@ export default function EmployeeManagement() {
 
   if (isLoading) {
     return (
-      <DashboardLayout title="Employee Management">
+      <DashboardLayout title="User Management">
         <div className="p-4 lg:p-6">
           <div className="text-center py-8 text-muted-foreground">
-            Loading employees...
+            Loading users...
           </div>
         </div>
       </DashboardLayout>
@@ -257,7 +246,7 @@ export default function EmployeeManagement() {
   }
 
   return (
-    <DashboardLayout title="Employee Management">
+    <DashboardLayout title="User Management">
       <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
@@ -270,10 +259,7 @@ export default function EmployeeManagement() {
             </p>
           </div>
 
-          <Button
-            onClick={() => setShowAddEmployeeModal(true)}
-            className="text-sm"
-          >
+          <Button onClick={() => setShowAddUserModal(true)} className="text-sm">
             <Plus className="mr-2 h-4 w-4" />
             Add User
           </Button>
@@ -300,15 +286,20 @@ export default function EmployeeManagement() {
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
           <div className="text-sm text-blue-800 dark:text-blue-200">
             <span className="font-medium">
-              Showing {filteredEmployees.length} of {employees.length} users
+              Showing {filteredUsers.length} of {users.length} users
             </span>
             {searchTerm && (
               <span className="ml-2">• Search: "{searchTerm}"</span>
             )}
+            <span className="ml-4">
+              ({users.filter((u) => u.role === "admin").length} Admins,{" "}
+              {users.filter((u) => u.role === "employee").length}{" "}
+              Employees/Collectors)
+            </span>
           </div>
         </div>
 
-        {/* Employee Table */}
+        {/* User Table */}
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -317,13 +308,13 @@ export default function EmployeeManagement() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Employee ID</TableHead>
+                    <TableHead>User ID</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEmployees.length === 0 ? (
+                  {filteredUsers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8">
                         <div className="text-muted-foreground">
@@ -338,18 +329,24 @@ export default function EmployeeManagement() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredEmployees.map((employee) => (
-                      <TableRow key={employee.id} className="hover:bg-muted/50">
+                    filteredUsers.map((user) => (
+                      <TableRow key={user.id} className="hover:bg-muted/50">
                         <TableCell>
                           <div className="flex items-center space-x-3">
-                            <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
+                            <div
+                              className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                                user.role === "admin"
+                                  ? "bg-purple-600"
+                                  : "bg-blue-600"
+                              }`}
+                            >
                               <span className="text-xs font-medium text-white">
-                                {employee.name?.charAt(0).toUpperCase() || "?"}
+                                {user.name?.charAt(0).toUpperCase() || "?"}
                               </span>
                             </div>
                             <div>
                               <div className="font-medium text-foreground">
-                                {employee.name || "Unknown"}
+                                {user.name || "Unknown"}
                               </div>
                             </div>
                           </div>
@@ -357,17 +354,15 @@ export default function EmployeeManagement() {
                         <TableCell>
                           <Badge
                             variant={
-                              employee.role === "admin"
-                                ? "default"
-                                : "secondary"
+                              user.role === "admin" ? "default" : "secondary"
                             }
                             className={
-                              employee.role === "admin"
+                              user.role === "admin"
                                 ? "bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-200"
                                 : "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200"
                             }
                           >
-                            {employee.role === "admin" ? (
+                            {user.role === "admin" ? (
                               <>
                                 <Shield className="w-3 h-3 mr-1" />
                                 Administrator
@@ -375,14 +370,14 @@ export default function EmployeeManagement() {
                             ) : (
                               <>
                                 <UserCheck className="w-3 h-3 mr-1" />
-                                Employee
+                                Employee/Collector
                               </>
                             )}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <span className="font-mono text-sm text-muted-foreground">
-                            {employee.id}
+                            {user.id}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -403,13 +398,13 @@ export default function EmployeeManagement() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onClick={() => handleToggleStatus(employee)}
+                                onClick={() => handleToggleStatus(user)}
                               >
                                 <UserX className="mr-2 h-4 w-4" />
                                 Toggle Status
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => setDeleteEmployee(employee)}
+                                onClick={() => setDeleteUser(user)}
                                 className="text-red-600"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -427,19 +422,17 @@ export default function EmployeeManagement() {
           </CardContent>
         </Card>
 
-        {/* Add Employee Modal */}
-        <Dialog
-          open={showAddEmployeeModal}
-          onOpenChange={setShowAddEmployeeModal}
-        >
+        {/* Add User Modal */}
+        <Dialog open={showAddUserModal} onOpenChange={setShowAddUserModal}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Add New User</DialogTitle>
               <DialogDescription>
-                Create a new user account (Admin or Employee/Collector). They will be able to log in with these credentials.
+                Create a new user account (Admin or Employee/Collector). They
+                will be able to log in with these credentials.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleAddEmployee}>
+            <form onSubmit={handleAddUser}>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="name" className="text-right">
@@ -498,7 +491,7 @@ export default function EmployeeManagement() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowAddEmployeeModal(false)}
+                  onClick={() => setShowAddUserModal(false)}
                 >
                   Cancel
                 </Button>
@@ -510,26 +503,26 @@ export default function EmployeeManagement() {
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog
-          open={!!deleteEmployee}
-          onOpenChange={() => setDeleteEmployee(null)}
+          open={!!deleteUser}
+          onOpenChange={() => setDeleteUser(null)}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Remove Employee</AlertDialogTitle>
+              <AlertDialogTitle>Remove User</AlertDialogTitle>
               <AlertDialogDescription>
                 Are you sure you want to remove{" "}
-                <strong>{deleteEmployee?.name}</strong> from the employee list?
-                This action will remove them from the current view but won't
-                delete their Firebase account.
+                <strong>{deleteUser?.name}</strong> from the user list? This
+                action will remove them from the current view but won't delete
+                their Firebase account.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleDeleteEmployee}
+                onClick={handleDeleteUser}
                 className="bg-red-600 hover:bg-red-700"
               >
-                Remove Employee
+                Remove User
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
