@@ -183,6 +183,10 @@ export default function Customers() {
     }
   };
 
+  const handleDeleteClick = (customer: Customer) => {
+    setDeleteCustomer(customer);
+  };
+
   const handleDeleteConfirm = async () => {
     if (deleteCustomer) {
       setIsSaving(true);
