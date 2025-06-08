@@ -483,44 +483,15 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Today's Highlights (Employee View) or System Status (Admin View) */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-foreground">
-                {isAdmin ? "System Overview" : "Today's Activity"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isAdmin ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">
-                      Active Packages
-                    </span>
-                    <Badge variant="outline">4 Available</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">
-                      Payment Methods
-                    </span>
-                    <Badge variant="outline">Cash, Online, Card</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">
-                      Billing Cycle
-                    </span>
-                    <Badge variant="outline">Monthly</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">
-                      System Status
-                    </span>
-                    <Badge className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200">
-                      Online
-                    </Badge>
-                  </div>
-                </div>
-              ) : (
+          {/* Today's Activity (Employee View only) */}
+          {!isAdmin && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-foreground">
+                  Today's Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-4">
                   {todayPayments.length > 0 ? (
                     <>
@@ -552,9 +523,9 @@ export default function Dashboard() {
                     </p>
                   )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Quick Actions */}
