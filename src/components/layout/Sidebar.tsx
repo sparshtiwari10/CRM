@@ -48,9 +48,9 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
   const navigation = isAdmin ? adminNavigation : employeeNavigation;
 
   return (
-    <div className="flex h-full flex-col bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
+    <div className="flex h-full flex-col bg-background border-r border-border">
       {/* Logo */}
-      <div className="flex h-16 items-center justify-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div className="flex h-16 items-center justify-center border-b border-border">
         <div className="flex items-center space-x-2">
           <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
             <Package className="h-5 w-5 text-white" />
@@ -60,7 +60,7 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
       </div>
 
       {/* Role indicator */}
-      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
+      <div className="px-4 py-2 border-b border-border bg-muted">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           {isAdmin ? "Administrator" : "Employee Portal"}
         </div>
@@ -99,9 +99,9 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+      <div className="p-4 border-t border-border">
         <div className="text-xs text-muted-foreground text-center">
-          © 2024 CableTV Operator
+          © 2024 AGV Cable
         </div>
       </div>
     </div>
@@ -109,32 +109,33 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
 }
 
 export function Sidebar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-      {/* Mobile sidebar */}
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden fixed top-4 left-4 z-50"
-          >
-            <Menu className="h-6 w-6" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-64">
-          <SidebarContent onLinkClick={() => setMobileOpen(false)} />
-        </SheetContent>
-      </Sheet>
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
+        <SidebarContent />
+      </div>
 
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:block lg:w-64 lg:flex-shrink-0">
-        <div className="h-full">
-          <SidebarContent />
-        </div>
-      </aside>
+      {/* Mobile Sidebar */}
+      <div className="lg:hidden">
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              aria-label="Open sidebar"
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-64">
+            <SidebarContent onLinkClick={() => setIsOpen(false)} />
+          </SheetContent>
+        </Sheet>
+      </div>
     </>
   );
 }

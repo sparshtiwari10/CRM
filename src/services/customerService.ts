@@ -142,13 +142,13 @@ export class CustomerService {
         error,
       );
 
-      // Fallback to mock data if Firestore is not available
-      if (error?.message?.includes("Firebase not available")) {
-        const allRecords = this.getMockBillingRecords();
-        return allRecords.filter((record) => record.customerId === customerId);
-      }
-
-      throw error;
+      // Fallback: return empty array instead of throwing error
+      // This allows the UI to gracefully handle the failure
+      console.warn(
+        `Returning empty billing records for customer ${customerId} due to error:`,
+        error,
+      );
+      return [];
     }
   }
 
@@ -240,7 +240,6 @@ export class CustomerService {
         phoneNumber: "+91 98765 43210",
         address: "123 Main Street, Mumbai, Maharashtra 400001",
         currentPackage: "Premium HD",
-        billingStatus: "Paid",
         lastPaymentDate: "2024-01-15",
         email: "john.smith@email.com",
         joinDate: "2023-06-15",
@@ -248,6 +247,7 @@ export class CustomerService {
         collectorName: "John Collector",
         portalBill: 599,
         isActive: true,
+        status: "active",
         activationDate: "2023-06-15",
         numberOfConnections: 1,
         connections: [
@@ -257,12 +257,36 @@ export class CustomerService {
             planName: "Premium HD",
             planPrice: 599,
             isCustomPlan: false,
+            isPrimary: true,
+            connectionIndex: 0,
+            status: "active",
+            packageAmount: 599,
+            previousOutstanding: 150,
+            currentOutstanding: 0,
           },
         ],
-        previousOutstanding: 150,
-        planBill: 599,
-        currentOutstanding: 749,
         packageAmount: 599,
+        previousOutstanding: 150,
+        currentOutstanding: 749,
+        billDueDate: 15,
+        invoiceHistory: [
+          {
+            id: "inv-1",
+            customerId: "1",
+            customerName: "John Smith",
+            packageName: "Premium HD",
+            amount: 599,
+            dueDate: "2024-02-15",
+            status: "Paid",
+            invoiceNumber: "INV-2024-001",
+            generatedDate: "2024-01-15",
+            generatedBy: "John Collector",
+            employeeId: "emp-1",
+            billingMonth: "January",
+            billingYear: "2024",
+            vcNumber: "VC001234",
+          },
+        ],
       },
       {
         id: "2",
@@ -270,7 +294,6 @@ export class CustomerService {
         phoneNumber: "+91 87654 32109",
         address: "456 Garden Road, Delhi, Delhi 110001",
         currentPackage: "Basic",
-        billingStatus: "Pending",
         lastPaymentDate: "2023-12-20",
         email: "priya.sharma@email.com",
         joinDate: "2023-03-10",
@@ -278,6 +301,7 @@ export class CustomerService {
         collectorName: "John Collector",
         portalBill: 299,
         isActive: true,
+        status: "active",
         activationDate: "2023-03-10",
         numberOfConnections: 1,
         connections: [
@@ -287,12 +311,36 @@ export class CustomerService {
             planName: "Basic",
             planPrice: 299,
             isCustomPlan: false,
+            isPrimary: true,
+            connectionIndex: 0,
+            status: "active",
+            packageAmount: 299,
+            previousOutstanding: 0,
+            currentOutstanding: 299,
           },
         ],
-        previousOutstanding: 0,
-        planBill: 299,
-        currentOutstanding: 299,
         packageAmount: 299,
+        previousOutstanding: 0,
+        currentOutstanding: 299,
+        billDueDate: 10,
+        invoiceHistory: [
+          {
+            id: "inv-2",
+            customerId: "2",
+            customerName: "Priya Sharma",
+            packageName: "Basic",
+            amount: 299,
+            dueDate: "2024-02-10",
+            status: "Pending",
+            invoiceNumber: "INV-2024-002",
+            generatedDate: "2024-01-10",
+            generatedBy: "John Collector",
+            employeeId: "emp-1",
+            billingMonth: "January",
+            billingYear: "2024",
+            vcNumber: "VC001235",
+          },
+        ],
       },
       {
         id: "3",
@@ -300,7 +348,6 @@ export class CustomerService {
         phoneNumber: "+91 76543 21098",
         address: "789 Commercial Street, Bangalore, Karnataka 560001",
         currentPackage: "Custom Plan",
-        billingStatus: "Overdue",
         lastPaymentDate: "2023-11-25",
         email: "raj.patel@email.com",
         joinDate: "2022-12-05",
@@ -308,9 +355,10 @@ export class CustomerService {
         collectorName: "Sarah Collector",
         portalBill: 899,
         isActive: false,
+        status: "inactive",
         activationDate: "2022-12-05",
         deactivationDate: "2024-01-05",
-        numberOfConnections: 1,
+        numberOfConnections: 2,
         connections: [
           {
             id: "conn-1",
@@ -318,6 +366,25 @@ export class CustomerService {
             planName: "Enterprise Package",
             planPrice: 899,
             isCustomPlan: true,
+            isPrimary: true,
+            connectionIndex: 0,
+            status: "inactive",
+            packageAmount: 899,
+            previousOutstanding: 899,
+            currentOutstanding: 1798,
+          },
+          {
+            id: "conn-2",
+            vcNumber: "VC001237",
+            planName: "Enterprise Package",
+            planPrice: 899,
+            isCustomPlan: true,
+            isPrimary: false,
+            connectionIndex: 1,
+            status: "inactive",
+            packageAmount: 899,
+            previousOutstanding: 0,
+            currentOutstanding: 899,
           },
         ],
         customPlan: {
@@ -325,10 +392,11 @@ export class CustomerService {
           price: 899,
           description: "Custom enterprise solution with dedicated support",
         },
-        previousOutstanding: 899,
-        planBill: 899,
-        currentOutstanding: 1798,
         packageAmount: 899,
+        previousOutstanding: 899,
+        currentOutstanding: 1798,
+        billDueDate: 5,
+        invoiceHistory: [],
       },
     ];
   }

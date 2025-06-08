@@ -1,334 +1,105 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { AuthService } from "@/services/authService";
-import {
-  performConnectivityCheck,
-  getNetworkTroubleshooting,
-} from "@/utils/networkUtils";
-import { getConnectionStatus, retryFirebaseConnection } from "@/lib/firebase";
-import {
-  runFirebaseDiagnostics,
-  downloadDiagnosticsReport,
-} from "@/utils/firebaseDiagnostics";
-import {
-  Cloud,
-  CloudOff,
-  AlertTriangle,
-  RefreshCw,
-  Wifi,
-  Clock,
-  XCircle,
-  Download,
-  Bug,
-} from "lucide-react";
-import type { ConnectivityCheck } from "@/utils/networkUtils";
+import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, onSnapshot } from "firebase/firestore";
+
+type FirebaseConnectionStatus = "connected" | "disconnected" | "error";
 
 export function FirebaseStatus() {
-  const [isFirebaseAvailable, setIsFirebaseAvailable] = useState<
-    boolean | null
-  >(null);
-  const [connectivityCheck, setConnectivityCheck] =
-    useState<ConnectivityCheck | null>(null);
-  const [isChecking, setIsChecking] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<any>(null);
-  const [isRunningDiagnostics, setIsRunningDiagnostics] = useState(false);
-
-  const checkStatus = async () => {
-    const status = AuthService.getFirebaseStatus();
-    const connStatus = getConnectionStatus();
-
-    setIsFirebaseAvailable(status);
-    setConnectionStatus(connStatus);
-
-    // If Firebase is not available, run connectivity diagnostics
-    if (!status) {
-      setIsChecking(true);
-      try {
-        const check = await performConnectivityCheck();
-        setConnectivityCheck(check);
-      } catch (error) {
-        console.error("Connectivity check failed:", error);
-      } finally {
-        setIsChecking(false);
-      }
-    } else {
-      // Clear connectivity check if now available
-      setConnectivityCheck(null);
-    }
-  };
+  const [status, setStatus] =
+    useState<FirebaseConnectionStatus>("disconnected");
+  const [lastCheck, setLastCheck] = useState<Date>(new Date());
 
   useEffect(() => {
-    checkStatus();
+    let unsubscribe: (() => void) | null = null;
 
-    // Check status periodically while connection is unstable
-    const timer = setInterval(() => {
-      const connStatus = getConnectionStatus();
-      if (
-        connStatus.status === "connecting" ||
-        connStatus.status === "failed"
-      ) {
-        checkStatus();
+    const checkFirebaseConnection = () => {
+      try {
+        if (!db) {
+          setStatus("error");
+          return;
+        }
+
+        // Listen to a test collection to verify connection
+        const testRef = collection(db, "connection_test");
+        unsubscribe = onSnapshot(
+          testRef,
+          (snapshot) => {
+            // Connection is working if we can listen to changes
+            setStatus("connected");
+            setLastCheck(new Date());
+          },
+          (error) => {
+            console.error("Firebase connection error:", error);
+            setStatus("error");
+            setLastCheck(new Date());
+          },
+        );
+      } catch (error) {
+        console.error("Firebase initialization error:", error);
+        setStatus("error");
+        setLastCheck(new Date());
       }
-    }, 2000);
+    };
 
-    return () => clearInterval(timer);
+    checkFirebaseConnection();
+
+    // Cleanup function
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
-  const handleRetryConnection = async () => {
-    setIsChecking(true);
-    setConnectivityCheck(null);
-
-    try {
-      const success = await retryFirebaseConnection();
-      if (success) {
-        // Connection successful, update status
-        await checkStatus();
-      } else {
-        // Still failed, run diagnostics
-        const check = await performConnectivityCheck();
-        setConnectivityCheck(check);
-      }
-    } catch (error) {
-      console.error("Retry failed:", error);
-      const check = await performConnectivityCheck();
-      setConnectivityCheck(check);
-    } finally {
-      setIsChecking(false);
+  const getStatusIcon = () => {
+    switch (status) {
+      case "connected":
+        return <CheckCircle className="h-3 w-3" />;
+      case "disconnected":
+        return <AlertCircle className="h-3 w-3" />;
+      case "error":
+        return <XCircle className="h-3 w-3" />;
     }
   };
 
-  const handleRunDiagnostics = async () => {
-    setIsRunningDiagnostics(true);
-
-    try {
-      const diagnostics = await runFirebaseDiagnostics();
-
-      // Display results in console for now
-      console.log("📊 Firebase Diagnostics Results:");
-      console.log("Internet:", diagnostics.connectivity.internet);
-      console.log("Firebase:", diagnostics.connectivity.firebase);
-      console.log("Firestore:", diagnostics.connectivity.firestore);
-      console.log("Config Valid:", diagnostics.configuration.validConfig);
-      console.log("Recommendations:", diagnostics.recommendations);
-
-      // Download the report
-      downloadDiagnosticsReport(diagnostics);
-    } catch (error) {
-      console.error("Diagnostics failed:", error);
-    } finally {
-      setIsRunningDiagnostics(false);
+  const getStatusColor = () => {
+    switch (status) {
+      case "connected":
+        return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200";
+      case "disconnected":
+        return "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200";
+      case "error":
+        return "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200";
     }
   };
 
-  if (
-    isFirebaseAvailable === null ||
-    connectionStatus?.status === "initializing"
-  ) {
-    return (
-      <Badge variant="secondary" className="text-xs">
-        <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-        <span className="hidden lg:inline">Initializing...</span>
-      </Badge>
-    );
-  }
+  const getStatusText = () => {
+    switch (status) {
+      case "connected":
+        return "Online";
+      case "disconnected":
+        return "Connecting...";
+      case "error":
+        return "Offline";
+    }
+  };
 
-  if (connectionStatus?.status === "connecting") {
-    return (
-      <Badge
-        variant="secondary"
-        className="text-xs bg-blue-100 text-blue-800 border-blue-300"
-      >
-        <RefreshCw className="w-3 h-3 lg:mr-1 animate-spin" />
-        <span className="hidden lg:inline">Connecting...</span>
-      </Badge>
-    );
-  }
-
-  if (isFirebaseAvailable) {
-    return (
-      <Badge
-        variant="default"
-        className="text-xs bg-green-100 text-green-800 border-green-300"
-      >
-        <Cloud className="w-3 h-3 lg:mr-1" />
-        <span className="hidden lg:inline">Firebase Connected</span>
-      </Badge>
-    );
-  }
-
-  // Firebase not available - show detailed status with troubleshooting
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Badge
-          variant="secondary"
-          className="text-xs bg-orange-100 text-orange-800 border-orange-300 cursor-pointer hover:bg-orange-200"
-        >
-          <CloudOff className="w-3 h-3 lg:mr-1" />
-          <span className="hidden lg:inline">Demo Mode</span>
-          <AlertTriangle className="w-3 h-3 lg:ml-1 ml-0" />
-        </Badge>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="center">
-        <Card className="border-0">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center space-x-2">
-              {connectionStatus?.status === "failed" ? (
-                <XCircle className="w-4 h-4 text-red-600" />
-              ) : (
-                <CloudOff className="w-4 h-4 text-orange-600" />
-              )}
-              <span>Firebase Connection Issue</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Alert>
-              <Wifi className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                App is running in <strong>Demo Mode</strong> with mock data.
-                Your changes won't be saved permanently.
-              </AlertDescription>
-            </Alert>
-
-            {connectionStatus && (
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-foreground">
-                  Connection Status:
-                </div>
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center space-x-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        connectionStatus.status === "connected"
-                          ? "bg-green-500"
-                          : connectionStatus.status === "connecting"
-                            ? "bg-blue-500"
-                            : "bg-red-500"
-                      }`}
-                    />
-                    <span>Status: {connectionStatus.status}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-3 h-3" />
-                    <span>
-                      Attempts: {connectionStatus.retryCount}/
-                      {connectionStatus.maxRetries}
-                    </span>
-                  </div>
-                  {connectionStatus.lastAttempt && (
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-3 h-3" />
-                      <span>
-                        Last attempt:{" "}
-                        {connectionStatus.lastAttempt.toLocaleTimeString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {connectivityCheck && (
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-foreground">
-                  Connectivity Status:
-                </div>
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center space-x-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${connectivityCheck.isOnline ? "bg-green-500" : "bg-red-500"}`}
-                    />
-                    <span>
-                      Internet:{" "}
-                      {connectivityCheck.isOnline
-                        ? "Connected"
-                        : "Disconnected"}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${connectivityCheck.firebaseReachable ? "bg-green-500" : "bg-red-500"}`}
-                    />
-                    <span>
-                      Firebase:{" "}
-                      {connectivityCheck.firebaseReachable
-                        ? "Reachable"
-                        : "Unreachable"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  <div className="text-xs font-medium text-foreground mb-1">
-                    Suggestions:
-                  </div>
-                  <div className="text-xs space-y-1 text-muted-foreground">
-                    {getNetworkTroubleshooting(connectivityCheck).map(
-                      (suggestion, index) => (
-                        <div key={index}>{suggestion}</div>
-                      ),
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRetryConnection}
-                disabled={isChecking || isRunningDiagnostics}
-                className="w-full text-xs"
-              >
-                {isChecking ? (
-                  <>
-                    <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                    Retrying...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-3 h-3 mr-1" />
-                    Retry Connection
-                  </>
-                )}
-              </Button>
-
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleRunDiagnostics}
-                disabled={isChecking || isRunningDiagnostics}
-                className="w-full text-xs"
-              >
-                {isRunningDiagnostics ? (
-                  <>
-                    <Bug className="w-3 h-3 mr-1 animate-spin" />
-                    Running Diagnostics...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-3 h-3 mr-1" />
-                    Download Diagnostics
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <div className="text-xs text-muted-foreground text-center">
-              Demo mode includes all features except data persistence
-            </div>
-          </CardContent>
-        </Card>
-      </PopoverContent>
-    </Popover>
+    <div className="flex items-center space-x-2">
+      <Badge
+        variant="outline"
+        className={`${getStatusColor()} border-0 text-xs flex items-center space-x-1`}
+      >
+        {getStatusIcon()}
+        <span>{getStatusText()}</span>
+      </Badge>
+      {status === "connected" && (
+        <span className="text-xs text-muted-foreground hidden sm:inline">
+          Last sync: {lastCheck.toLocaleTimeString()}
+        </span>
+      )}
+    </div>
   );
 }
