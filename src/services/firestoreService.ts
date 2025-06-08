@@ -73,10 +73,12 @@ export interface FirestoreBillingRecord {
 export interface FirestoreRequest {
   customer_id: string;
   customer_name: string;
+  vc_number: string; // VC number for the request
   employee_id: string;
   employee_name: string;
   action_type: "activation" | "deactivation" | "plan_change";
   current_plan?: string;
+  current_status?: "active" | "inactive" | "demo"; // Current VC status
   requested_plan?: string; // Optional - only present for plan_change requests
   reason: string;
   status: "pending" | "approved" | "rejected";
