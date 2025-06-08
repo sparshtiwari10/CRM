@@ -257,7 +257,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
           <TableBody>
             {enrichedCustomers.map((customer) => (
               <React.Fragment key={customer.id}>
-                <TableRow className="hover:bg-gray-50">
+                <TableRow className="hover:bg-muted/50">
                   <TableCell>
                     <Button
                       variant="ghost"
@@ -275,11 +275,11 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                   <TableCell>
                     <div className="space-y-1">
                       <div className="font-medium">{customer.name}</div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {customer.phoneNumber}
                       </div>
                       {customer.email && (
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-muted-foreground/70">
                           {customer.email}
                         </div>
                       )}
