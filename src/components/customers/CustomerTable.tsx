@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -16,6 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ChevronDown,
   ChevronRight,
@@ -35,6 +43,7 @@ import {
   PowerOff,
   Clock,
   User,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -58,6 +67,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ActionRequest } from "@/types/auth";
 import { ActionRequestModal } from "./ActionRequestModal";
+import { CustomerService } from "@/services/customerService";
 
 interface CustomerTableProps {
   customers: Customer[];
@@ -85,9 +95,40 @@ export default function CustomerTable({
   const [selectedRequest, setSelectedRequest] = useState<ActionRequest | null>(
     null,
   );
+  const [customerInvoices, setCustomerInvoices] = useState<
+    Record<string, BillingRecord[]>
+  >({});
 
   const { isAdmin, user } = useAuth();
   const { toast } = useToast();
+
+  // Fetch recent invoices for expanded customers
+  useEffect(() => {
+    const fetchInvoicesForExpandedCustomers = async () => {
+      for (const customerId of expandedRows) {
+        if (!customerInvoices[customerId]) {
+          try {
+            const invoices =
+              await CustomerService.getBillingRecordsByCustomer(customerId);
+            setCustomerInvoices((prev) => ({
+              ...prev,
+              [customerId]: invoices.slice(-5).reverse(), // Last 5 invoices, newest first
+            }));
+          } catch (error) {
+            console.error(
+              "Failed to fetch invoices for customer:",
+              customerId,
+              error,
+            );
+          }
+        }
+      }
+    };
+
+    if (expandedRows.size > 0) {
+      fetchInvoicesForExpandedCustomers();
+    }
+  }, [expandedRows, customerInvoices]);
 
   const toggleRowExpansion = useCallback((customerId: string) => {
     setExpandedRows((prev) => {
@@ -101,7 +142,43 @@ export default function CustomerTable({
     });
   }, []);
 
-  // Handle status change
+  // Calculate VC status for a customer
+  const calculateVCStatus = useCallback((customer: Customer) => {
+    if (!customer.connections || customer.connections.length === 0) {
+      return customer.status || (customer.isActive ? "active" : "inactive");
+    }
+
+    const activeVCs = customer.connections.filter(
+      (conn) => conn.isPrimary || customer.isActive,
+    );
+    const inactiveVCs = customer.connections.filter(
+      (conn) => !conn.isPrimary && !customer.isActive,
+    );
+
+    if (activeVCs.length === customer.connections.length) return "active";
+    if (inactiveVCs.length === customer.connections.length) return "inactive";
+    return "mixed"; // Some active, some inactive
+  }, []);
+
+  // Calculate current outstanding for active VCs only
+  const calculateCurrentOutstanding = useCallback((customer: Customer) => {
+    if (!customer.connections || customer.connections.length === 0) {
+      return customer.currentOutstanding || 0;
+    }
+
+    // Only calculate outstanding for active VCs
+    const activeConnections = customer.connections.filter(
+      (conn) => customer.status === "active" || customer.status === "demo",
+    );
+
+    if (activeConnections.length === 0) return 0;
+
+    // For now, return the customer's current outstanding
+    // In a full implementation, this would sum up outstanding amounts per VC
+    return customer.currentOutstanding || 0;
+  }, []);
+
+  // Handle status change (now affects VC status)
   const handleStatusChange = useCallback(
     async (customer: Customer, newStatus: CustomerStatus) => {
       if (!isAdmin || !onCustomerUpdate || !user) return;
@@ -113,26 +190,26 @@ export default function CustomerTable({
           newStatus,
           changedBy: user.name,
           changedDate: new Date().toISOString(),
-          reason: `Status changed from ${customer.status} to ${newStatus}`,
+          reason: `VC Status changed from ${customer.status} to ${newStatus}`,
         };
 
         const updatedCustomer: Partial<Customer> = {
           status: newStatus,
-          isActive: newStatus === "active",
+          isActive: newStatus === "active" || newStatus === "demo",
           statusLogs: [...(customer.statusLogs || []), statusLog],
         };
 
         await onCustomerUpdate(customer.id, updatedCustomer);
 
         toast({
-          title: "Status Updated",
-          description: `Customer status changed to ${newStatus}`,
+          title: "VC Status Updated",
+          description: `VC Status changed to ${newStatus}`,
         });
       } catch (error) {
-        console.error("Failed to update customer status:", error);
+        console.error("Failed to update VC status:", error);
         toast({
           title: "Error",
-          description: "Failed to update customer status",
+          description: "Failed to update VC status",
           variant: "destructive",
         });
       }
@@ -145,8 +222,10 @@ export default function CustomerTable({
       ...customer,
       // Ensure status exists, fallback to active based on isActive
       status: customer.status || (customer.isActive ? "active" : "inactive"),
+      vcStatus: calculateVCStatus(customer),
+      calculatedOutstanding: calculateCurrentOutstanding(customer),
     }));
-  }, [customers]);
+  }, [customers, calculateVCStatus, calculateCurrentOutstanding]);
 
   const filteredCustomers = useMemo(() => {
     if (!searchTerm) return enrichedCustomers;
@@ -159,7 +238,11 @@ export default function CustomerTable({
         customer.address.toLowerCase().includes(term) ||
         customer.vcNumber.toLowerCase().includes(term) ||
         customer.collectorName.toLowerCase().includes(term) ||
-        customer.email?.toLowerCase().includes(term),
+        customer.email?.toLowerCase().includes(term) ||
+        (customer.connections &&
+          customer.connections.some((conn) =>
+            conn.vcNumber.toLowerCase().includes(term),
+          )),
     );
   }, [enrichedCustomers, searchTerm]);
 
@@ -171,7 +254,6 @@ export default function CustomerTable({
   };
 
   const formatAddress = (address: string) => {
-    // Truncate long addresses for better display
     return address.length > 50 ? address.substring(0, 50) + "..." : address;
   };
 
@@ -187,7 +269,7 @@ export default function CustomerTable({
     return `${day}${day === 1 ? "st" : day === 2 ? "nd" : day === 3 ? "rd" : "th"} of every month`;
   };
 
-  const getStatusBadgeVariant = (status: CustomerStatus) => {
+  const getStatusBadgeVariant = (status: CustomerStatus | string) => {
     switch (status) {
       case "active":
         return "default";
@@ -195,12 +277,14 @@ export default function CustomerTable({
         return "secondary";
       case "demo":
         return "outline";
+      case "mixed":
+        return "outline";
       default:
         return "secondary";
     }
   };
 
-  const getStatusBadgeColor = (status: CustomerStatus) => {
+  const getStatusBadgeColor = (status: CustomerStatus | string) => {
     switch (status) {
       case "active":
         return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200";
@@ -208,9 +292,26 @@ export default function CustomerTable({
         return "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200";
       case "demo":
         return "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200";
+      case "mixed":
+        return "bg-orange-100 dark:bg-orange-900/20 text-orange-800 dark:text-orange-200";
       default:
         return "bg-muted text-muted-foreground";
     }
+  };
+
+  const getStatusDisplayText = (customer: any) => {
+    if (!customer.connections || customer.connections.length <= 1) {
+      return customer.status.charAt(0).toUpperCase() + customer.status.slice(1);
+    }
+
+    const activeCount = customer.connections.filter(
+      (conn: any) => customer.status === "active",
+    ).length;
+    const inactiveCount = customer.connections.length - activeCount;
+
+    if (activeCount === customer.connections.length) return "All Active";
+    if (inactiveCount === customer.connections.length) return "All Inactive";
+    return `${activeCount} Active, ${inactiveCount} Inactive`;
   };
 
   const requestPermission = (action: string, customer: Customer) => {
@@ -258,7 +359,7 @@ export default function CustomerTable({
               <TableHead className="text-right">Current Outstanding</TableHead>
               <TableHead>Bill Due Date</TableHead>
               <TableHead>Collector</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>VC Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -324,14 +425,14 @@ export default function CustomerTable({
                     <div
                       className={cn(
                         "font-medium",
-                        customer.currentOutstanding > 0
+                        customer.calculatedOutstanding > 0
                           ? "text-red-600 dark:text-red-400"
-                          : customer.currentOutstanding < 0
+                          : customer.calculatedOutstanding < 0
                             ? "text-green-600 dark:text-green-400"
                             : "text-muted-foreground",
                       )}
                     >
-                      {formatCurrency(customer.currentOutstanding)}
+                      {formatCurrency(customer.calculatedOutstanding)}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -361,16 +462,15 @@ export default function CustomerTable({
                       </Select>
                     ) : (
                       <Badge
-                        variant={getStatusBadgeVariant(customer.status)}
-                        className={cn(getStatusBadgeColor(customer.status))}
+                        variant={getStatusBadgeVariant(customer.vcStatus)}
+                        className={cn(getStatusBadgeColor(customer.vcStatus))}
                       >
-                        {customer.status.charAt(0).toUpperCase() +
-                          customer.status.slice(1)}
+                        {getStatusDisplayText(customer)}
                       </Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
+                    <div className="flex justify-end space-x-1">
                       {isAdmin ? (
                         <>
                           <Button
@@ -380,76 +480,103 @@ export default function CustomerTable({
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setDeleteCustomer(customer)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => onView(customer)}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => onViewHistory(customer)}
+                              >
+                                <History className="mr-2 h-4 w-4" />
+                                View History
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => onPaymentCapture(customer)}
+                              >
+                                <CreditCard className="mr-2 h-4 w-4" />
+                                Payment
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setDeleteCustomer(customer)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </>
                       ) : (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => requestPermission("edit", customer)}
-                            title="Request Edit Permission"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              requestPermission("delete", customer)
-                            }
-                            title="Request Delete Permission"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                requestPermission("edit", customer)
+                              }
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Request Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                requestPermission("delete", customer)
+                              }
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Request Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </div>
                   </TableCell>
                 </TableRow>
 
-                {/* Expanded Row Content */}
+                {/* Expanded Row Content - Optimized */}
                 {expandedRows.has(customer.id) && (
                   <TableRow>
                     <TableCell colSpan={11} className="p-0">
-                      <div className="p-4 bg-muted/30 dark:bg-muted/20">
-                        <div className="space-y-4">
+                      <div className="p-3 bg-muted/30 dark:bg-muted/20">
+                        <div className="space-y-3">
                           {/* Service Details - Moved to top */}
                           <div>
                             <h4 className="font-medium text-foreground mb-2 flex items-center">
                               <Package className="h-4 w-4 mr-2" />
                               Service Details
                             </h4>
-                            <div className="bg-card dark:bg-card/50 p-3 rounded-lg space-y-2 border border-border">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  Package:
-                                </span>
-                                <span className="font-medium text-foreground">
-                                  {customer.currentPackage}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  Collector:
-                                </span>
-                                <span className="text-foreground">
-                                  {customer.collectorName}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  Bill Due Date:
-                                </span>
-                                <span className="text-foreground">
-                                  {formatDueDate(customer.billDueDate)}
-                                </span>
+                            <div className="bg-card dark:bg-card/50 p-2 rounded-lg space-y-2 border border-border">
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    Package:
+                                  </span>
+                                  <span className="font-medium text-foreground">
+                                    {customer.currentPackage}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    Collector:
+                                  </span>
+                                  <span className="text-foreground">
+                                    {customer.collectorName}
+                                  </span>
+                                </div>
                               </div>
                               {customer.connections &&
                                 customer.connections.length > 0 && (
@@ -457,171 +584,168 @@ export default function CustomerTable({
                                     <div className="text-sm text-muted-foreground mb-1">
                                       VC Numbers:
                                     </div>
-                                    {customer.connections.map((connection) => (
-                                      <div
-                                        key={connection.id}
-                                        className="text-base font-mono text-blue-600 dark:text-blue-400 font-semibold"
-                                      >
-                                        {connection.vcNumber} (
-                                        {connection.isPrimary
-                                          ? "Primary"
-                                          : "Secondary"}
-                                        )
-                                      </div>
-                                    ))}
+                                    <div className="flex flex-wrap gap-1">
+                                      {customer.connections.map(
+                                        (connection) => (
+                                          <Badge
+                                            key={connection.id}
+                                            variant="outline"
+                                            className="text-sm font-mono"
+                                          >
+                                            {connection.vcNumber}
+                                          </Badge>
+                                        ),
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                             </div>
                           </div>
 
-                          {/* Financial Summary */}
+                          {/* Financial Summary - Compact */}
                           <div>
                             <h4 className="font-medium text-foreground mb-2 flex items-center">
                               <IndianRupee className="h-4 w-4 mr-2" />
                               Financial Summary
                             </h4>
-                            <div className="bg-card dark:bg-card/50 p-3 rounded-lg space-y-2 border border-border">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  Package Amount:
-                                </span>
-                                <span className="font-medium text-foreground">
-                                  {formatCurrency(customer.packageAmount)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  Previous Outstanding:
-                                </span>
-                                <span
-                                  className={cn(
-                                    "font-medium",
-                                    customer.previousOutstanding > 0
-                                      ? "text-red-600 dark:text-red-400"
-                                      : customer.previousOutstanding < 0
-                                        ? "text-green-600 dark:text-green-400"
-                                        : "text-muted-foreground",
-                                  )}
-                                >
-                                  {formatCurrency(customer.previousOutstanding)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm border-t border-border pt-2">
-                                <span className="font-medium text-foreground">
-                                  Current Outstanding:
-                                </span>
-                                <span
-                                  className={cn(
-                                    "font-medium",
-                                    customer.currentOutstanding > 0
-                                      ? "text-red-600 dark:text-red-400"
-                                      : customer.currentOutstanding < 0
-                                        ? "text-green-600 dark:text-green-400"
-                                        : "text-muted-foreground",
-                                  )}
-                                >
-                                  {formatCurrency(customer.currentOutstanding)}
-                                </span>
+                            <div className="bg-card dark:bg-card/50 p-2 rounded-lg border border-border">
+                              <div className="grid grid-cols-3 gap-4 text-sm">
+                                <div className="text-center">
+                                  <div className="text-xs text-muted-foreground">
+                                    Package Amount
+                                  </div>
+                                  <div className="font-medium text-foreground">
+                                    {formatCurrency(customer.packageAmount)}
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-xs text-muted-foreground">
+                                    Previous O/S
+                                  </div>
+                                  <div
+                                    className={cn(
+                                      "font-medium",
+                                      customer.previousOutstanding > 0
+                                        ? "text-red-600 dark:text-red-400"
+                                        : customer.previousOutstanding < 0
+                                          ? "text-green-600 dark:text-green-400"
+                                          : "text-muted-foreground",
+                                    )}
+                                  >
+                                    {formatCurrency(
+                                      customer.previousOutstanding,
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-xs text-muted-foreground">
+                                    Current O/S
+                                  </div>
+                                  <div
+                                    className={cn(
+                                      "font-medium",
+                                      customer.calculatedOutstanding > 0
+                                        ? "text-red-600 dark:text-red-400"
+                                        : customer.calculatedOutstanding < 0
+                                          ? "text-green-600 dark:text-green-400"
+                                          : "text-muted-foreground",
+                                    )}
+                                  >
+                                    {formatCurrency(
+                                      customer.calculatedOutstanding,
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
 
-                          {/* Status Change Log - Admin Only */}
-                          {isAdmin &&
-                            customer.statusLogs &&
-                            customer.statusLogs.length > 0 && (
-                              <div>
-                                <h4 className="font-medium text-foreground mb-2 flex items-center">
-                                  <Clock className="h-4 w-4 mr-2" />
-                                  Status Change Log
-                                </h4>
-                                <div className="bg-card dark:bg-card/50 p-3 rounded-lg border border-border">
-                                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                                    {customer.statusLogs
-                                      .slice()
-                                      .reverse()
-                                      .map((log) => (
-                                        <div
-                                          key={log.id}
-                                          className="flex items-start justify-between p-2 bg-muted/50 dark:bg-muted/30 rounded-md"
-                                        >
-                                          <div className="flex-1">
-                                            <div className="text-sm font-medium text-foreground">
-                                              {log.previousStatus} →{" "}
-                                              {log.newStatus}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground mt-1 flex items-center">
-                                              <User className="h-3 w-3 mr-1" />
-                                              Changed by {log.changedBy}
-                                            </div>
-                                          </div>
-                                          <div className="text-xs text-muted-foreground ml-4">
-                                            {formatDate(log.changedDate)}
-                                          </div>
-                                        </div>
-                                      ))}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                          {/* Recent Invoices */}
+                          {/* Recent Invoices - Enhanced with Firestore data */}
                           <div>
                             <h4 className="font-medium text-foreground mb-2 flex items-center">
                               <FileText className="h-4 w-4 mr-2" />
                               Recent Invoices
                             </h4>
-                            {customer.invoiceHistory &&
-                            customer.invoiceHistory.length > 0 ? (
-                              <div className="space-y-2">
-                                {customer.invoiceHistory
-                                  .slice(-3)
-                                  .reverse()
-                                  .map((invoice) => (
+                            {customerInvoices[customer.id] &&
+                            customerInvoices[customer.id].length > 0 ? (
+                              <div className="space-y-1">
+                                {customerInvoices[customer.id].map(
+                                  (invoice) => (
                                     <div
                                       key={invoice.id}
-                                      className="bg-card dark:bg-card/50 p-3 rounded-lg border border-border"
+                                      className="bg-card dark:bg-card/50 p-2 rounded border border-border"
                                     >
-                                      <div className="flex justify-between items-start">
-                                        <div>
-                                          <div className="font-medium text-sm text-foreground">
-                                            #{invoice.invoiceNumber}
-                                          </div>
-                                          <div className="text-xs text-muted-foreground">
-                                            {formatDate(invoice.generatedDate)}
+                                      <div className="flex justify-between items-center">
+                                        <div className="flex-1">
+                                          <div className="flex items-center space-x-2">
+                                            <span className="font-medium text-sm text-foreground">
+                                              #{invoice.invoiceNumber}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">
+                                              {formatDate(
+                                                invoice.generatedDate,
+                                              )}
+                                            </span>
                                           </div>
                                           <div className="text-xs text-muted-foreground">
                                             {invoice.billingMonth}{" "}
                                             {invoice.billingYear}
                                           </div>
-                                          {invoice.allVcNumbers &&
-                                            invoice.allVcNumbers.length > 0 && (
-                                              <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                                                VC:{" "}
-                                                {invoice.allVcNumbers.join(
-                                                  ", ",
-                                                )}
-                                              </div>
-                                            )}
                                         </div>
                                         <div className="text-right">
                                           <div className="font-medium text-sm text-foreground">
                                             {formatCurrency(invoice.amount)}
                                           </div>
                                           <div className="text-xs text-muted-foreground">
-                                            By {invoice.generatedBy}
+                                            {invoice.generatedBy}
                                           </div>
                                         </div>
                                       </div>
                                     </div>
-                                  ))}
+                                  ),
+                                )}
                               </div>
                             ) : (
-                              <div className="bg-card dark:bg-card/50 p-3 rounded-lg text-center text-muted-foreground text-sm border border-border">
+                              <div className="bg-card dark:bg-card/50 p-2 rounded text-center text-muted-foreground text-sm border border-border">
                                 No recent invoices
                               </div>
                             )}
                           </div>
+
+                          {/* Status Change Log - Admin Only - Compact */}
+                          {isAdmin &&
+                            customer.statusLogs &&
+                            customer.statusLogs.length > 0 && (
+                              <div>
+                                <h4 className="font-medium text-foreground mb-2 flex items-center">
+                                  <Clock className="h-4 w-4 mr-2" />
+                                  VC Status Changes
+                                </h4>
+                                <div className="bg-card dark:bg-card/50 p-2 rounded border border-border">
+                                  <div className="space-y-1 max-h-24 overflow-y-auto">
+                                    {customer.statusLogs
+                                      .slice()
+                                      .reverse()
+                                      .slice(0, 3)
+                                      .map((log) => (
+                                        <div
+                                          key={log.id}
+                                          className="flex justify-between items-center p-1 bg-muted/50 dark:bg-muted/30 rounded text-xs"
+                                        >
+                                          <span className="font-medium text-foreground">
+                                            {log.previousStatus} →{" "}
+                                            {log.newStatus}
+                                          </span>
+                                          <span className="text-muted-foreground">
+                                            {log.changedBy} •{" "}
+                                            {formatDate(log.changedDate)}
+                                          </span>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                         </div>
                       </div>
                     </TableCell>
@@ -633,21 +757,21 @@ export default function CustomerTable({
         </Table>
       </div>
 
-      {/* Mobile Cards */}
-      <div className="md:hidden space-y-4">
+      {/* Mobile Cards - Optimized */}
+      <div className="md:hidden space-y-3">
         {filteredCustomers.map((customer) => (
           <div
             key={customer.id}
             className="bg-card dark:bg-card/80 rounded-lg border border-border shadow-sm"
           >
-            {/* Card Header */}
-            <div className="p-4 border-b border-border">
+            {/* Card Header - Compact */}
+            <div className="p-3 border-b border-border">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <h3 className="font-semibold text-foreground">
                     {customer.name}
                   </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-muted-foreground">
                     {customer.phoneNumber}
                   </p>
                 </div>
@@ -670,11 +794,10 @@ export default function CustomerTable({
                     </Select>
                   ) : (
                     <Badge
-                      variant={getStatusBadgeVariant(customer.status)}
-                      className={cn(getStatusBadgeColor(customer.status))}
+                      variant={getStatusBadgeVariant(customer.vcStatus)}
+                      className={cn(getStatusBadgeColor(customer.vcStatus))}
                     >
-                      {customer.status.charAt(0).toUpperCase() +
-                        customer.status.slice(1)}
+                      {getStatusDisplayText(customer)}
                     </Badge>
                   )}
                   <Button
@@ -693,10 +816,10 @@ export default function CustomerTable({
               </div>
             </div>
 
-            {/* Card Content */}
-            <div className="p-4">
+            {/* Card Content - Compact */}
+            <div className="p-3">
               {/* Quick Info Grid */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
                   <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                     Package
@@ -712,169 +835,57 @@ export default function CustomerTable({
                   <div
                     className={cn(
                       "text-sm font-medium",
-                      customer.currentOutstanding > 0
+                      customer.calculatedOutstanding > 0
                         ? "text-red-600 dark:text-red-400"
-                        : customer.currentOutstanding < 0
+                        : customer.calculatedOutstanding < 0
                           ? "text-green-600 dark:text-green-400"
                           : "text-muted-foreground",
                     )}
                   >
-                    {formatCurrency(customer.currentOutstanding)}
+                    {formatCurrency(customer.calculatedOutstanding)}
                   </div>
                 </div>
               </div>
 
-              {/* Expanded Content */}
+              {/* Expanded Content for Mobile */}
               {expandedRows.has(customer.id) && (
                 <div className="space-y-3 pt-3 border-t border-border">
-                  {/* Service Details - Moved to top for mobile too */}
-                  <div>
-                    <h4 className="font-medium text-foreground mb-2 flex items-center">
-                      <Package className="h-4 w-4 mr-2" />
-                      Service Details
-                    </h4>
-                    <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          Collector:
-                        </span>
-                        <span className="text-foreground">
-                          {customer.collectorName}
-                        </span>
+                  {/* VC Numbers - Clean display */}
+                  {customer.connections && customer.connections.length > 0 && (
+                    <div>
+                      <div className="text-sm font-medium text-foreground mb-1">
+                        VC Numbers
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          Bill Due Date:
-                        </span>
-                        <span className="text-foreground">
-                          {formatDueDate(customer.billDueDate)}
-                        </span>
-                      </div>
-                      {customer.connections &&
-                        customer.connections.length > 0 && (
-                          <div className="border-t border-border pt-2">
-                            <div className="text-sm text-muted-foreground mb-1">
-                              VC Numbers:
-                            </div>
-                            {customer.connections.map((connection) => (
-                              <div
-                                key={connection.id}
-                                className="text-base font-mono text-blue-600 dark:text-blue-400 font-semibold"
-                              >
-                                {connection.vcNumber} (
-                                {connection.isPrimary ? "Primary" : "Secondary"}
-                                )
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                    </div>
-                  </div>
-
-                  {/* Financial Summary */}
-                  <div>
-                    <h4 className="font-medium text-foreground mb-2 flex items-center">
-                      <IndianRupee className="h-4 w-4 mr-2" />
-                      Financial Summary
-                    </h4>
-                    <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          Package Amount:
-                        </span>
-                        <span className="font-medium text-foreground">
-                          {formatCurrency(customer.packageAmount)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          Previous Outstanding:
-                        </span>
-                        <span
-                          className={cn(
-                            "font-medium",
-                            customer.previousOutstanding > 0
-                              ? "text-red-600 dark:text-red-400"
-                              : customer.previousOutstanding < 0
-                                ? "text-green-600 dark:text-green-400"
-                                : "text-muted-foreground",
-                          )}
-                        >
-                          {formatCurrency(customer.previousOutstanding)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm border-t border-border pt-2">
-                        <span className="font-medium text-foreground">
-                          Current Outstanding:
-                        </span>
-                        <span
-                          className={cn(
-                            "font-medium",
-                            customer.currentOutstanding > 0
-                              ? "text-red-600 dark:text-red-400"
-                              : customer.currentOutstanding < 0
-                                ? "text-green-600 dark:text-green-400"
-                                : "text-muted-foreground",
-                          )}
-                        >
-                          {formatCurrency(customer.currentOutstanding)}
-                        </span>
+                      <div className="flex flex-wrap gap-1">
+                        {customer.connections.map((connection) => (
+                          <Badge
+                            key={connection.id}
+                            variant="outline"
+                            className="text-sm font-mono"
+                          >
+                            {connection.vcNumber}
+                          </Badge>
+                        ))}
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Status Change Log - Admin Only */}
-                  {isAdmin &&
-                    customer.statusLogs &&
-                    customer.statusLogs.length > 0 && (
-                      <div>
-                        <h4 className="font-medium text-foreground mb-2 flex items-center">
-                          <Clock className="h-4 w-4 mr-2" />
-                          Status Change Log
-                        </h4>
-                        <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg">
-                          <div className="space-y-2 max-h-24 overflow-y-auto">
-                            {customer.statusLogs
-                              .slice()
-                              .reverse()
-                              .slice(0, 2) // Show only last 2 on mobile
-                              .map((log) => (
-                                <div
-                                  key={log.id}
-                                  className="text-xs p-2 bg-card dark:bg-card/50 rounded border border-border"
-                                >
-                                  <div className="font-medium text-foreground">
-                                    {log.previousStatus} → {log.newStatus}
-                                  </div>
-                                  <div className="text-muted-foreground mt-1">
-                                    By {log.changedBy} •{" "}
-                                    {formatDate(log.changedDate)}
-                                  </div>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                  {/* Recent Invoices */}
+                  {/* Recent Invoices - Mobile */}
                   <div>
-                    <h4 className="font-medium text-foreground mb-2 flex items-center">
-                      <FileText className="h-4 w-4 mr-2" />
+                    <div className="text-sm font-medium text-foreground mb-1">
                       Recent Invoices
-                    </h4>
-                    {customer.invoiceHistory &&
-                    customer.invoiceHistory.length > 0 ? (
-                      <div className="space-y-2">
-                        {customer.invoiceHistory
-                          .slice(-2)
-                          .reverse()
+                    </div>
+                    {customerInvoices[customer.id] &&
+                    customerInvoices[customer.id].length > 0 ? (
+                      <div className="space-y-1">
+                        {customerInvoices[customer.id]
+                          .slice(0, 2)
                           .map((invoice) => (
                             <div
                               key={invoice.id}
-                              className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg"
+                              className="bg-muted/50 dark:bg-muted/30 p-2 rounded"
                             >
-                              <div className="flex justify-between items-start">
+                              <div className="flex justify-between items-center">
                                 <div>
                                   <div className="font-medium text-sm text-foreground">
                                     #{invoice.invoiceNumber}
@@ -882,16 +893,10 @@ export default function CustomerTable({
                                   <div className="text-xs text-muted-foreground">
                                     {formatDate(invoice.generatedDate)}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {invoice.billingMonth} {invoice.billingYear}
-                                  </div>
                                 </div>
                                 <div className="text-right">
                                   <div className="font-medium text-sm text-foreground">
                                     {formatCurrency(invoice.amount)}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    By {invoice.generatedBy}
                                   </div>
                                 </div>
                               </div>
@@ -899,13 +904,13 @@ export default function CustomerTable({
                           ))}
                       </div>
                     ) : (
-                      <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg text-center text-muted-foreground text-sm">
+                      <div className="bg-muted/50 dark:bg-muted/30 p-2 rounded text-center text-muted-foreground text-sm">
                         No recent invoices
                       </div>
                     )}
                   </div>
 
-                  {/* Actions for mobile */}
+                  {/* Actions - Optimized for mobile */}
                   <div className="flex space-x-2">
                     {isAdmin ? (
                       <>
@@ -918,39 +923,65 @@ export default function CustomerTable({
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDeleteCustomer(customer)}
-                          className="flex-1"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Delete
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => onViewHistory(customer)}
+                            >
+                              <History className="mr-2 h-4 w-4" />
+                              History
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => onPaymentCapture(customer)}
+                            >
+                              <CreditCard className="mr-2 h-4 w-4" />
+                              Payment
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setDeleteCustomer(customer)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </>
                     ) : (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => requestPermission("edit", customer)}
-                          className="flex-1"
-                          title="Request Edit Permission"
-                        >
-                          <RefreshCw className="h-4 w-4 mr-1" />
-                          Request Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => requestPermission("delete", customer)}
-                          className="flex-1"
-                          title="Request Delete Permission"
-                        >
-                          <RefreshCw className="h-4 w-4 mr-1" />
-                          Request Delete
-                        </Button>
-                      </>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                          >
+                            <MoreHorizontal className="h-4 w-4 mr-1" />
+                            Actions
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => requestPermission("edit", customer)}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Request Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              requestPermission("delete", customer)
+                            }
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Request Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 </div>
