@@ -442,6 +442,9 @@ export default function Billing() {
                     <p className="text-center text-muted-foreground py-4">
                       No billing yesterday
                     </p>
+                  )}
+                  <div className="pt-3 border-t border-blue-200 dark:border-blue-800 bg-blue-100 dark:bg-blue-900/20 rounded-lg p-3">
+                    <div className="flex justify-between font-bold text-blue-800 dark:text-blue-200">
                       <span>Yesterday's Total:</span>
                       <span>₹{yesterdayTotal.toFixed(2)}</span>
                     </div>
