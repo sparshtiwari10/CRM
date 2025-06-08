@@ -318,11 +318,14 @@ src/
 - **Features**:
   - **Primary VC Status Control**: Admin dropdown in main table to change primary VC status
   - **Secondary VC Status Control**: Individual status dropdowns for each secondary VC in expanded view
-  - **Expandable VC Details**: Detailed view showing all VC connections with independent status controls
+  - **Expandable Customer History**: Complete customer timeline with invoice and request history
+  - **Invoice History**: Shows last 10 invoices with amounts, due dates, payment status, and generation details
+  - **Request History**: Displays VC activation/deactivation requests with approval status and timestamps
   - **Role-Based Status Management**: Admins can change VC status, employees see read-only status badges
   - **Current Outstanding Calculation**: Only active VCs contribute to outstanding amounts
   - **Status Change Audit**: All VC status changes logged with admin details and timestamps
   - **VC-Specific Actions**: Employee request buttons for VC activation/deactivation per VC
+  - **Lazy History Loading**: Invoice and request histories loaded only when customer row is expanded
 - **VC Status Implementation**:
 
   ```typescript
