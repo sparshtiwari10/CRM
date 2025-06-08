@@ -95,13 +95,15 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <ErrorBoundary>
-            <Toaster />
-          </ErrorBoundary>
-          <Sonner />
-          <AppContent />
-        </AuthProvider>
+        <ThemeProvider defaultTheme="light">
+          <AuthProvider>
+            <ErrorBoundary>
+              <Toaster />
+            </ErrorBoundary>
+            <Sonner />
+            <AppContent />
+          </AuthProvider>
+        </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>
