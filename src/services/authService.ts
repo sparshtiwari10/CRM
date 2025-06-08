@@ -12,14 +12,14 @@ import {
 } from "firebase/firestore";
 import bcrypt from "bcryptjs";
 
-// Mock users for demo mode when Firebase is unavailable
+// Minimal mock users for absolute fallback only (demo mode)
 const mockUsers = [
   {
     id: "admin-demo",
     username: "admin",
     password_hash:
       "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy", // admin123
-    name: "System Administrator",
+    name: "System Administrator (Demo)",
     role: "admin" as const,
     collector_name: null,
     access_scope: [],
@@ -31,36 +31,10 @@ const mockUsers = [
     id: "employee-demo",
     username: "employee",
     password_hash:
-      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy", // employee123 (same hash for demo)
-    name: "John Collector",
+      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy", // employee123
+    name: "Demo Employee",
     role: "employee" as const,
-    collector_name: "John Collector",
-    access_scope: [],
-    created_at: new Date("2024-01-01"),
-    last_login: new Date(),
-    is_active: true,
-  },
-  {
-    id: "employee-2",
-    username: "sarah",
-    password_hash:
-      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy",
-    name: "Sarah Collector",
-    role: "employee" as const,
-    collector_name: "Sarah Collector",
-    access_scope: [],
-    created_at: new Date("2024-01-01"),
-    last_login: new Date(),
-    is_active: true,
-  },
-  {
-    id: "employee-3",
-    username: "mike",
-    password_hash:
-      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy",
-    name: "Mike Johnson",
-    role: "employee" as const,
-    collector_name: "Mike Johnson",
+    collector_name: "Demo Employee",
     access_scope: [],
     created_at: new Date("2024-01-01"),
     last_login: new Date(),
@@ -316,65 +290,111 @@ class AuthService {
   }
 
   /**
-   * Get all employees for admin purposes (e.g., filtering in billing)
-   * Prioritizes Firebase data over mock data
+   * Get all employees for admin purposes - PRIORITIZES FIREBASE DATA
+   * Only falls back to mock data in demo mode or complete Firebase failure
    */
-  async getAllEmployees(): Promise<Array<{id: string, name: string, role: string}>> {
-    console.log("🔍 Fetching employees from Firebase...");
+  async getAllEmployees(): Promise<
+    Array<{ id: string; name: string; role: string }>
+  > {
+    console.log(
+      "🔍 Fetching employees from Firebase (prioritizing real data)...",
+    );
 
     try {
-      // Always try Firebase first, even if isFirebaseAvailable is false
+      // Always try Firebase first, regardless of isFirebaseAvailable flag
       if (db) {
-        console.log("📡 Attempting to connect to Firebase users collection...");
+        console.log("📡 Connecting to Firebase users collection...");
 
+        // Set a reasonable timeout for the query
         const usersRef = collection(db, "users");
-        const querySnapshot = await getDocs(usersRef);
-        const employees: Array<{id: string, name: string, role: string}> = [];
+        const queryPromise = getDocs(usersRef);
 
-        console.log(`📊 Found ${querySnapshot.size} users in Firebase`);
+        // Race against timeout
+        const result = await Promise.race([
+          queryPromise,
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Firebase query timeout")),
+              10000,
+            ),
+          ),
+        ]);
 
-        querySnapshot.forEach((doc) => {
+        const querySnapshot = result as any;
+        const employees: Array<{ id: string; name: string; role: string }> = [];
+
+        console.log(`📊 Found ${querySnapshot.size} total users in Firebase`);
+
+        querySnapshot.forEach((doc: any) => {
           const userData = doc.data();
-          console.log(`👤 Processing user: ${userData.name || userData.username} (${userData.role})`);
+          const userName = userData.name || userData.username || "Unknown User";
+          const userRole = userData.role || "employee";
 
-          if (userData.is_active !== false) { // Include active users
+          console.log(
+            `👤 Processing user: ${userName} (${userRole}) - Active: ${userData.is_active !== false}`,
+          );
+
+          // Include all active users (both admin and employee)
+          if (userData.is_active !== false) {
             employees.push({
               id: doc.id,
-              name: userData.name || userData.username || "Unknown User",
-              role: userData.role || "employee"
+              name: userName,
+              role: userRole,
             });
           }
         });
 
-        if (employees.length > 0) {
-          console.log(`✅ Successfully fetched ${employees.length} real employees from Firebase:`,
-                     employees.map(e => `${e.name} (${e.role})`));
-          return employees;
-        } else {
-          console.warn("⚠️ No employees found in Firebase, but connection successful");
-          return []; // Return empty array instead of mock data if Firebase is working but no users
+        console.log(
+          `✅ Successfully fetched ${employees.length} REAL employees from Firebase:`,
+        );
+        employees.forEach((emp) =>
+          console.log(`   - ${emp.name} (${emp.role})`),
+        );
+
+        if (employees.length === 0) {
+          console.warn(
+            "⚠️ No active employees found in Firebase. You may need to create employee accounts.",
+          );
+          console.log(
+            "💡 Tip: Use the Employee Management page to create new employee accounts",
+          );
         }
+
+        return employees;
       } else {
         throw new Error("Firebase database not initialized");
       }
     } catch (error: any) {
-      console.error("❌ Failed to fetch employees from Firebase:", error.message);
+      console.error(
+        "❌ Failed to fetch employees from Firebase:",
+        error.message,
+      );
 
-      // Only return mock data if explicitly requested for demo purposes
-      if (error.message.includes("demo") || !isFirebaseAvailable) {
-        console.log("🎭 Using mock employees for demo mode");
-        return mockUsers.map(user => ({
+      // Check if this is truly a connection issue or if Firebase is working but empty
+      if (
+        error.message.includes("timeout") ||
+        error.message.includes("unavailable")
+      ) {
+        console.log("🌐 Network/connection issue detected");
+      }
+
+      // Only use mock data if specifically in demo mode OR if Firebase is completely unavailable
+      if (!isFirebaseAvailable || error.message.includes("demo")) {
+        console.log("🎭 Falling back to demo employees (mock data)");
+        return mockUsers.map((user) => ({
           id: user.id,
-          name: user.name + " (Demo)",
-          role: user.role
+          name: user.name,
+          role: user.role,
         }));
       }
 
-      // For real Firebase errors, return empty array to show the issue
-      console.warn("🚫 Returning empty employee list due to Firebase error");
+      // For other Firebase errors, return empty array to encourage creating real accounts
+      console.warn(
+        "🚫 Returning empty employee list - please create employee accounts in Firebase",
+      );
+      console.log("💡 Go to Employee Management to create new employees");
       return [];
     }
-  }
   }
 
   /**
@@ -490,15 +510,6 @@ class AuthService {
       console.error("❌ Failed to update user:", error);
       throw error;
     }
-  }
-
-  /**
-   * Alias for getAllEmployees for backward compatibility
-   */
-  async getAllUsers(): Promise<
-    Array<{ id: string; name: string; role: string }>
-  > {
-    return this.getAllEmployees();
   }
 }
 
