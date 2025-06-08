@@ -824,14 +824,6 @@ export default function Billing() {
                         </div>
                       </TableCell>
                       <TableCell>{formatDate(record.dueDate)}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={cn(getBillingStatusColor(record.status))}
-                        >
-                          {record.status}
-                        </Badge>
-                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
                           <Button variant="ghost" size="sm">
