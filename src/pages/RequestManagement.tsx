@@ -312,7 +312,7 @@ export default function RequestManagement() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Pending Requests
               </CardTitle>
               <Clock className="h-4 w-4 text-yellow-600" />
@@ -321,7 +321,7 @@ export default function RequestManagement() {
               <div className="text-2xl font-bold text-yellow-600">
                 {pendingCount}
               </div>
-              <p className="text-xs text-gray-600">Awaiting review</p>
+              <p className="text-xs text-muted-foreground">Awaiting review</p>
             </CardContent>
           </Card>
 
