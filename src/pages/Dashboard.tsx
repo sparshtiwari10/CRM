@@ -649,7 +649,7 @@ export default function Dashboard() {
                     >
                       <div>
                         <p className="font-medium">{payment.customerName}</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           {payment.method} •{" "}
                           {new Date(payment.date).toLocaleDateString()}
                         </p>
@@ -666,7 +666,7 @@ export default function Dashboard() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-center text-gray-500 py-4">
+                  <p className="text-center text-muted-foreground py-4">
                     No payments today
                   </p>
                 )}
