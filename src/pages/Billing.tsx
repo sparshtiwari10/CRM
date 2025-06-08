@@ -400,8 +400,8 @@ export default function Billing() {
                       No billing today
                     </p>
                   )}
-                  <div className="pt-3 border-t border-green-200 bg-green-100 rounded-lg p-3">
-                    <div className="flex justify-between font-bold text-green-800">
+                  <div className="pt-3 border-t border-green-200 dark:border-green-800 bg-green-100 dark:bg-green-900/20 rounded-lg p-3">
+                    <div className="flex justify-between font-bold text-green-800 dark:text-green-200">
                       <span>Today's Total:</span>
                       <span>₹{todayTotal.toFixed(2)}</span>
                     </div>
@@ -443,8 +443,8 @@ export default function Billing() {
                       No billing yesterday
                     </p>
                   )}
-                  <div className="pt-3 border-t border-blue-200 bg-blue-100 rounded-lg p-3">
-                    <div className="flex justify-between font-bold text-blue-800">
+                  <div className="pt-3 border-t border-blue-200 dark:border-blue-800 bg-blue-100 dark:bg-blue-900/20 rounded-lg p-3">
+                    <div className="flex justify-between font-bold text-blue-800 dark:text-blue-200">
                       <span>Yesterday's Total:</span>
                       <span>₹{yesterdayTotal.toFixed(2)}</span>
                     </div>
