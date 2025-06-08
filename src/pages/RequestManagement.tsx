@@ -396,7 +396,9 @@ export default function RequestManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Customer</TableHead>
+                  <TableHead>VC Number</TableHead>
                   <TableHead>Action Type</TableHead>
+                  <TableHead>Current Status</TableHead>
                   {isAdmin && <TableHead>Employee</TableHead>}
                   <TableHead>Request Date</TableHead>
                   <TableHead>Status</TableHead>
