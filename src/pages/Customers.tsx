@@ -143,8 +143,49 @@ export default function Customers() {
     }
   };
 
-  const handleDeleteClick = (customer: Customer) => {
-    setDeleteCustomer(customer);
+  const handleViewHistory = (customer: Customer) => {
+    console.log("View history for:", customer.name);
+    // TODO: Implement view history functionality
+  };
+
+  const handleActionRequest = (request: ActionRequest) => {
+    console.log("Action request:", request);
+    // TODO: Send action request to admin
+  };
+
+  const handlePaymentCapture = (customer: Customer) => {
+    console.log("Payment capture for:", customer.name);
+    // TODO: Implement payment capture functionality
+  };
+
+  const handleCustomerUpdate = async (
+    customerId: string,
+    updates: Partial<Customer>,
+  ) => {
+    try {
+      setIsSaving(true);
+      await CustomerService.updateCustomer(customerId, updates);
+
+      setCustomers((prevCustomers) =>
+        prevCustomers.map((customer) =>
+          customer.id === customerId ? { ...customer, ...updates } : customer,
+        ),
+      );
+
+      toast({
+        title: "Customer Updated",
+        description: "Customer information has been successfully updated.",
+      });
+    } catch (error) {
+      console.error("Update error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update customer. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -440,11 +481,13 @@ export default function Customers() {
         ) : (
           <CustomerTable
             customers={filteredCustomers}
+            searchTerm={searchTerm}
             onEdit={handleEdit}
             onDelete={handleDeleteClick}
             onView={handleView}
-            onActionRequest={handleActionRequest}
             onViewHistory={handleViewHistory}
+            onPaymentCapture={handlePaymentCapture}
+            onCustomerUpdate={handleCustomerUpdate}
           />
         )}
 
