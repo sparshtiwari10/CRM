@@ -148,11 +148,6 @@ export default function Customers() {
     // TODO: Implement view history functionality
   };
 
-  const handleActionRequest = (request: ActionRequest) => {
-    console.log("Action request:", request);
-    // TODO: Send action request to admin
-  };
-
   const handlePaymentCapture = (customer: Customer) => {
     console.log("Payment capture for:", customer.name);
     // TODO: Implement payment capture functionality
@@ -310,14 +305,6 @@ export default function Customers() {
         variant: "destructive",
       });
     }
-  };
-
-  const handleViewHistory = (customer: Customer) => {
-    // For now, redirect to billing page or open billing modal
-    toast({
-      title: "Feature Coming Soon",
-      description: "Full billing history view will be available soon.",
-    });
   };
 
   const handleImportSuccess = () => {
