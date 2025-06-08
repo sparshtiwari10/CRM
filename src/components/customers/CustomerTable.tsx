@@ -112,7 +112,7 @@ export default function CustomerTable({
               await CustomerService.getBillingRecordsByCustomer(customerId);
             setCustomerInvoices((prev) => ({
               ...prev,
-              [customerId]: invoices.slice(-5).reverse(), // Last 5 invoices, newest first
+              [customerId]: invoices || [], // Ensure we always have an array
             }));
           } catch (error) {
             console.error(
@@ -120,6 +120,11 @@ export default function CustomerTable({
               customerId,
               error,
             );
+            // Set empty array on error to prevent repeated attempts
+            setCustomerInvoices((prev) => ({
+              ...prev,
+              [customerId]: [],
+            }));
           }
         }
       }
