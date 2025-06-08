@@ -508,6 +508,34 @@ function CustomerModal({
                   />
                   <Label>Active Customer</Label>
                 </div>
+
+                {/* Display Additional VC Numbers when multiple connections are selected */}
+                {formData.numberOfConnections > 1 &&
+                  formData.connections.length > 1 && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">
+                        All VC Numbers
+                      </Label>
+                      <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+                        {formData.connections.map((connection, index) => (
+                          <div
+                            key={connection.id}
+                            className="flex justify-between items-center"
+                          >
+                            <span className="text-sm text-gray-600">
+                              {connection.isPrimary
+                                ? "Primary"
+                                : `Secondary ${index}`}
+                              :
+                            </span>
+                            <span className="font-mono text-sm text-blue-600">
+                              {connection.vcNumber}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
               </div>
             </CardContent>
           </Card>
