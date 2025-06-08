@@ -94,9 +94,8 @@ export default function EmployeeManagement() {
 
   const filteredEmployees = employees.filter(
     (employee) =>
-      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.phone?.includes(searchTerm),
+      employee.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.role?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const handleToggleStatus = (employee: User) => {
