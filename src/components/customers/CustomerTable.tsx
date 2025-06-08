@@ -827,12 +827,12 @@ export default function CustomerTable({
                     <div className="text-sm font-medium text-foreground mb-1">
                       Recent Invoices
                     </div>
-                    {customerInvoices[customer.id] &&
-                    customerInvoices[customer.id].length > 0 ? (
-                      <div className="space-y-1">
-                        {customerInvoices[customer.id]
-                          .slice(0, 2)
-                          .map((invoice) => (
+                    {(() => {
+                      // Use Firestore data if available, otherwise fallback to customer's invoice history
+                      const invoices = customerInvoices[customer.id] || customer.invoiceHistory || [];
+                      return invoices.length > 0 ? (
+                        <div className="space-y-1">
+                          {invoices.slice(0, 2).map((invoice) => (
                             <div
                               key={invoice.id}
                               className="bg-muted/50 dark:bg-muted/30 p-2 rounded"
@@ -843,7 +843,7 @@ export default function CustomerTable({
                                     #{invoice.invoiceNumber}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {formatDate(invoice.generatedDate)}
+                                    {formatDate(invoice.generatedDate || invoice.issueDate)}
                                   </div>
                                 </div>
                                 <div className="text-right">
@@ -854,12 +854,13 @@ export default function CustomerTable({
                               </div>
                             </div>
                           ))}
-                      </div>
-                    ) : (
-                      <div className="bg-muted/50 dark:bg-muted/30 p-2 rounded text-center text-muted-foreground text-sm">
-                        No recent invoices
-                      </div>
-                    )}
+                        </div>
+                      ) : (
+                        <div className="bg-muted/50 dark:bg-muted/30 p-2 rounded text-center text-muted-foreground text-sm">
+                          No recent invoices
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Actions - Optimized for mobile */}
