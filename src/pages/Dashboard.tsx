@@ -180,7 +180,7 @@ export default function Dashboard() {
             <p className="text-sm lg:text-base text-muted-foreground">
               {isAdmin
                 ? "Complete overview of your cable TV management system"
-                : "Your daily collection summary and customer overview"}
+                : `Your assigned customers and collection summary${user?.collector_name || user?.name ? ` (${user.collector_name || user.name})` : ""}`}
             </p>
           </div>
 
