@@ -46,7 +46,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Customer, Invoice, CustomerStatus, StatusLog, BillingRecord } from "@/types";
+import {
+  Customer,
+  Invoice,
+  CustomerStatus,
+  StatusLog,
+  BillingRecord,
+} from "@/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -288,7 +294,9 @@ export default function CustomerTable({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">{formatAddress(customer.address)}</div>
+                    <div className="text-sm">
+                      {formatAddress(customer.address)}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">{customer.currentPackage}</div>
@@ -393,7 +401,9 @@ export default function CustomerTable({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => requestPermission("delete", customer)}
+                            onClick={() =>
+                              requestPermission("delete", customer)
+                            }
                             title="Request Delete Permission"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -418,18 +428,28 @@ export default function CustomerTable({
                             </h4>
                             <div className="bg-card dark:bg-card/50 p-3 rounded-lg space-y-2 border border-border">
                               <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Package:</span>
+                                <span className="text-muted-foreground">
+                                  Package:
+                                </span>
                                 <span className="font-medium text-foreground">
                                   {customer.currentPackage}
                                 </span>
                               </div>
                               <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Collector:</span>
-                                <span className="text-foreground">{customer.collectorName}</span>
+                                <span className="text-muted-foreground">
+                                  Collector:
+                                </span>
+                                <span className="text-foreground">
+                                  {customer.collectorName}
+                                </span>
                               </div>
                               <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Bill Due Date:</span>
-                                <span className="text-foreground">{formatDueDate(customer.billDueDate)}</span>
+                                <span className="text-muted-foreground">
+                                  Bill Due Date:
+                                </span>
+                                <span className="text-foreground">
+                                  {formatDueDate(customer.billDueDate)}
+                                </span>
                               </div>
                               {customer.connections &&
                                 customer.connections.length > 0 && (
@@ -443,7 +463,9 @@ export default function CustomerTable({
                                         className="text-base font-mono text-blue-600 dark:text-blue-400 font-semibold"
                                       >
                                         {connection.vcNumber} (
-                                        {connection.isPrimary ? "Primary" : "Secondary"}
+                                        {connection.isPrimary
+                                          ? "Primary"
+                                          : "Secondary"}
                                         )
                                       </div>
                                     ))}
@@ -460,13 +482,17 @@ export default function CustomerTable({
                             </h4>
                             <div className="bg-card dark:bg-card/50 p-3 rounded-lg space-y-2 border border-border">
                               <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Package Amount:</span>
+                                <span className="text-muted-foreground">
+                                  Package Amount:
+                                </span>
                                 <span className="font-medium text-foreground">
                                   {formatCurrency(customer.packageAmount)}
                                 </span>
                               </div>
                               <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Previous Outstanding:</span>
+                                <span className="text-muted-foreground">
+                                  Previous Outstanding:
+                                </span>
                                 <span
                                   className={cn(
                                     "font-medium",
@@ -521,7 +547,8 @@ export default function CustomerTable({
                                         >
                                           <div className="flex-1">
                                             <div className="text-sm font-medium text-foreground">
-                                              {log.previousStatus} → {log.newStatus}
+                                              {log.previousStatus} →{" "}
+                                              {log.newStatus}
                                             </div>
                                             <div className="text-xs text-muted-foreground mt-1 flex items-center">
                                               <User className="h-3 w-3 mr-1" />
@@ -564,12 +591,16 @@ export default function CustomerTable({
                                             {formatDate(invoice.generatedDate)}
                                           </div>
                                           <div className="text-xs text-muted-foreground">
-                                            {invoice.billingMonth} {invoice.billingYear}
+                                            {invoice.billingMonth}{" "}
+                                            {invoice.billingYear}
                                           </div>
                                           {invoice.allVcNumbers &&
                                             invoice.allVcNumbers.length > 0 && (
                                               <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                                                VC: {invoice.allVcNumbers.join(", ")}
+                                                VC:{" "}
+                                                {invoice.allVcNumbers.join(
+                                                  ", ",
+                                                )}
                                               </div>
                                             )}
                                         </div>
@@ -704,12 +735,20 @@ export default function CustomerTable({
                     </h4>
                     <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Collector:</span>
-                        <span className="text-foreground">{customer.collectorName}</span>
+                        <span className="text-muted-foreground">
+                          Collector:
+                        </span>
+                        <span className="text-foreground">
+                          {customer.collectorName}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Bill Due Date:</span>
-                        <span className="text-foreground">{formatDueDate(customer.billDueDate)}</span>
+                        <span className="text-muted-foreground">
+                          Bill Due Date:
+                        </span>
+                        <span className="text-foreground">
+                          {formatDueDate(customer.billDueDate)}
+                        </span>
                       </div>
                       {customer.connections &&
                         customer.connections.length > 0 && (
@@ -740,13 +779,17 @@ export default function CustomerTable({
                     </h4>
                     <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Package Amount:</span>
+                        <span className="text-muted-foreground">
+                          Package Amount:
+                        </span>
                         <span className="font-medium text-foreground">
                           {formatCurrency(customer.packageAmount)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Previous Outstanding:</span>
+                        <span className="text-muted-foreground">
+                          Previous Outstanding:
+                        </span>
                         <span
                           className={cn(
                             "font-medium",
@@ -781,35 +824,38 @@ export default function CustomerTable({
                   </div>
 
                   {/* Status Change Log - Admin Only */}
-                  {isAdmin && customer.statusLogs && customer.statusLogs.length > 0 && (
-                    <div>
-                      <h4 className="font-medium text-foreground mb-2 flex items-center">
-                        <Clock className="h-4 w-4 mr-2" />
-                        Status Change Log
-                      </h4>
-                      <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg">
-                        <div className="space-y-2 max-h-24 overflow-y-auto">
-                          {customer.statusLogs
-                            .slice()
-                            .reverse()
-                            .slice(0, 2) // Show only last 2 on mobile
-                            .map((log) => (
-                              <div
-                                key={log.id}
-                                className="text-xs p-2 bg-card dark:bg-card/50 rounded border border-border"
-                              >
-                                <div className="font-medium text-foreground">
-                                  {log.previousStatus} → {log.newStatus}
+                  {isAdmin &&
+                    customer.statusLogs &&
+                    customer.statusLogs.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-foreground mb-2 flex items-center">
+                          <Clock className="h-4 w-4 mr-2" />
+                          Status Change Log
+                        </h4>
+                        <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg">
+                          <div className="space-y-2 max-h-24 overflow-y-auto">
+                            {customer.statusLogs
+                              .slice()
+                              .reverse()
+                              .slice(0, 2) // Show only last 2 on mobile
+                              .map((log) => (
+                                <div
+                                  key={log.id}
+                                  className="text-xs p-2 bg-card dark:bg-card/50 rounded border border-border"
+                                >
+                                  <div className="font-medium text-foreground">
+                                    {log.previousStatus} → {log.newStatus}
+                                  </div>
+                                  <div className="text-muted-foreground mt-1">
+                                    By {log.changedBy} •{" "}
+                                    {formatDate(log.changedDate)}
+                                  </div>
                                 </div>
-                                <div className="text-muted-foreground mt-1">
-                                  By {log.changedBy} • {formatDate(log.changedDate)}
-                                </div>
-                              </div>
-                            ))}
+                              ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {/* Recent Invoices */}
                   <div>
@@ -941,6 +987,7 @@ export default function CustomerTable({
               Delete Customer
             </AlertDialogAction>
           </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
 
       {/* Action Request Modal */}
