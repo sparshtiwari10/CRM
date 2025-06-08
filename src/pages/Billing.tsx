@@ -775,7 +775,6 @@ export default function Billing() {
                   <TableHead>Period</TableHead>
                   <TableHead>Generated</TableHead>
                   <TableHead>Due Date</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
