@@ -77,7 +77,7 @@ const initialFormData: FormData = {
   billDueDate: 1,
 };
 
-export const CustomerModal: React.FC<CustomerModalProps> = ({
+const CustomerModal: React.FC<CustomerModalProps> = ({
   open,
   onOpenChange,
   customer,
