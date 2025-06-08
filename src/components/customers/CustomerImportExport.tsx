@@ -418,6 +418,23 @@ export function CustomerImportExport({
       "Join Date",
       "Number of Connections",
       "Portal Bill",
+      // Secondary connection fields
+      "Secondary VC 1",
+      "Secondary Desc 1",
+      "Secondary Plan 1",
+      "Secondary Price 1",
+      "Secondary VC 2",
+      "Secondary Desc 2",
+      "Secondary Plan 2",
+      "Secondary Price 2",
+      "Secondary VC 3",
+      "Secondary Desc 3",
+      "Secondary Plan 3",
+      "Secondary Price 3",
+      "Secondary VC 4",
+      "Secondary Desc 4",
+      "Secondary Plan 4",
+      "Secondary Price 4",
     ];
 
     const sampleRow = [
@@ -435,8 +452,25 @@ export function CustomerImportExport({
       "true",
       "2024-01-15",
       "2024-01-01",
-      "1",
+      "2",
       "599",
+      // Secondary connection sample data
+      "VC001234-SEC",
+      "Living Room",
+      "Basic Cable",
+      "299",
+      "", // Empty secondary connection 2
+      "",
+      "",
+      "",
+      "", // Empty secondary connection 3
+      "",
+      "",
+      "",
+      "", // Empty secondary connection 4
+      "",
+      "",
+      "",
     ];
 
     const csvContent = [headers.join(","), sampleRow.join(",")].join("\n");
