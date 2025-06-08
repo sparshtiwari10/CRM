@@ -81,7 +81,7 @@ export class CustomerService {
 
   static async updateCustomer(
     customerId: string,
-    customer: Customer,
+    customer: Customer | Partial<Customer>,
   ): Promise<void> {
     try {
       return await firestoreService.updateCustomer(customerId, customer);
