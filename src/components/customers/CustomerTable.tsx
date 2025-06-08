@@ -91,7 +91,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
   onPaymentCapture,
   onActionRequest,
 }) => {
-  const { user } = useCurrentUser();
+  const { user } = useAuth();
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
   const [actionRequestCustomer, setActionRequestCustomer] =
     useState<Customer | null>(null);
