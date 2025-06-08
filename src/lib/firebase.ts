@@ -116,22 +116,28 @@ async function testFirebaseConnection(): Promise<void> {
       "firebase/firestore"
     );
 
-    // Try a simple query to test connectivity
+    // Try a simple query to test connectivity with shorter timeout
     const testRef = collection(db, "users");
     const testQuery = query(testRef, limit(1));
 
-    // Use a timeout for the test
+    // Use a shorter timeout for faster feedback
     await Promise.race([
       getDocs(testQuery),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Connection test timeout")), 5000),
+        setTimeout(
+          () => reject(new Error("Connection test timeout (3s)")),
+          3000,
+        ),
       ),
     ]);
 
     console.log("✅ Firebase connection test successful");
   } catch (error: any) {
     console.warn("⚠️ Firebase connection test failed:", error.message);
-    throw new Error(`Connection test failed: ${error.message}`);
+
+    // Don't throw error for connection test failure - allow app to continue
+    // The app can work with Firebase but show appropriate connection status
+    console.log("📡 Continuing with Firebase connection despite test failure");
   }
 }
 
