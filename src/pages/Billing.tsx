@@ -79,16 +79,36 @@ export default function Billing() {
     const loadEmployees = async () => {
       if (isAdmin) {
         try {
+          console.log("🔄 Loading employees for billing filter...");
           const employees = await authService.getAllEmployees();
           setAllEmployees(employees);
+
+          if (employees.length === 0) {
+            toast({
+              title: "No Employees Found",
+              description:
+                "No employee accounts found in Firebase. Create employees in Employee Management.",
+              variant: "destructive",
+            });
+          } else {
+            console.log(
+              `✅ Loaded ${employees.length} employees for filter dropdown`,
+            );
+          }
         } catch (error) {
           console.error("Failed to load employees:", error);
+          toast({
+            title: "Employee Loading Error",
+            description:
+              "Failed to load employees from Firebase. Check connection.",
+            variant: "destructive",
+          });
         }
       }
     };
 
     loadEmployees();
-  }, [isAdmin]);
+  }, [isAdmin, toast]);
 
   // Filter billing records
   const filteredRecords = billingRecords.filter((record) => {
