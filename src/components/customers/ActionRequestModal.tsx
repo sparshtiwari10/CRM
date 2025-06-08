@@ -128,7 +128,10 @@ export function ActionRequestModal({
         employeeName: user.name,
         actionType: values.actionType,
         currentPlan: customerData.currentPackage,
-        requestedPlan: values.requestedPlan || undefined,
+        // Only include requestedPlan for plan_change actions
+        ...(values.actionType === "plan_change" && values.requestedPlan
+          ? { requestedPlan: values.requestedPlan }
+          : {}),
         reason: values.reason,
         status: "pending",
         requestDate: new Date().toISOString().split("T")[0],
