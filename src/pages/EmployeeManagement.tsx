@@ -294,7 +294,7 @@ export default function EmployeeManagement() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalCustomersAssigned}</div>
-              <p className="text-xs text-gray-600">Total assignments</p>
+              <p className="text-xs text-muted-foreground">Total assignments</p>
             </CardContent>
           </Card>
         </div>
