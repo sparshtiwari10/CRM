@@ -50,7 +50,7 @@ export function CustomerImportExport({
     setExporting(true);
 
     try {
-      // Define CSV headers
+      // Define CSV headers including secondary connection fields
       const headers = [
         "Name",
         "Phone Number",
@@ -68,6 +68,23 @@ export function CustomerImportExport({
         "Join Date",
         "Number of Connections",
         "Portal Bill",
+        // Secondary connection fields (up to 4 secondary connections)
+        "Secondary VC 1",
+        "Secondary Desc 1",
+        "Secondary Plan 1",
+        "Secondary Price 1",
+        "Secondary VC 2",
+        "Secondary Desc 2",
+        "Secondary Plan 2",
+        "Secondary Price 2",
+        "Secondary VC 3",
+        "Secondary Desc 3",
+        "Secondary Plan 3",
+        "Secondary Price 3",
+        "Secondary VC 4",
+        "Secondary Desc 4",
+        "Secondary Plan 4",
+        "Secondary Price 4",
       ];
 
       // Convert customers to CSV rows
