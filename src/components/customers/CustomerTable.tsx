@@ -432,91 +432,40 @@ export function CustomerTable({
                             </>
                           ) : null}
 
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                          {isAdmin ? (
+                            <>
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onEdit(customer)}
+                                className="h-8 px-3"
                               >
-                                <MoreHorizontal className="h-4 w-4" />
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem className="flex flex-col items-start p-3">
-                                <div className="font-medium text-sm">
-                                  VC Numbers
-                                </div>
-                                <div className="space-y-1">
-                                  {customer.connections &&
-                                  customer.connections.length > 0 ? (
-                                    customer.connections.map((connection) => (
-                                      <div
-                                        key={connection.id}
-                                        className="font-mono text-xs"
-                                      >
-                                        <span className="text-blue-600">
-                                          {connection.vcNumber}
-                                        </span>
-                                        <span className="text-gray-500 ml-2">
-                                          (
-                                          {connection.isPrimary
-                                            ? "Primary"
-                                            : `Secondary ${connection.connectionIndex - 1}`}
-                                          )
-                                        </span>
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="font-mono text-blue-600 text-sm">
-                                      {customer.vcNumber}
-                                    </div>
-                                  )}
-                                </div>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => onView(customer)}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDeleteCustomer(customer)}
+                                className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => onViewHistory(customer)}
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Delete
+                              </Button>
+                            </>
+                          ) : (
+                            canAccessCustomer(customer.id) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleGenericActionRequest(customer)}
+                                className="h-8 px-3"
                               >
-                                <History className="mr-2 h-4 w-4" />
-                                Full Billing History
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {isAdmin ? (
-                                <DropdownMenuItem
-                                  onClick={() => onEdit(customer)}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Edit Customer
-                                </DropdownMenuItem>
-                              ) : null}
-                              {!isAdmin && canAccessCustomer(customer.id) ? (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleGenericActionRequest(customer)
-                                  }
-                                >
-                                  <RefreshCw className="mr-2 h-4 w-4" />
-                                  Request Action
-                                </DropdownMenuItem>
-                              ) : null}
-                              {isAdmin ? (
-                                <DropdownMenuItem
-                                  onClick={() => setDeleteCustomer(customer)}
-                                  className="text-red-600"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete Customer
-                                </DropdownMenuItem>
-                              ) : null}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                <RefreshCw className="h-4 w-4 mr-1" />
+                                Request
+                              </Button>
+                            )
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
