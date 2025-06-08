@@ -288,12 +288,59 @@ function CustomerModal({
       },
       ...(field === "price"
         ? {
-            packageAmount: value || 0,
-            portalBill: value || 0,
+            packageAmount: value,
+            portalBill: value,
           }
         : {}),
     }));
   }, []);
+
+  // Secondary connection change handler
+  const handleSecondaryConnectionChange = useCallback(
+    (connectionIndex: number, field: string, value: any) => {
+      setFormData((prev) => {
+        const connections = [...prev.connections];
+        if (connections[connectionIndex]) {
+          connections[connectionIndex] = {
+            ...connections[connectionIndex],
+            [field]: value,
+          };
+        }
+        return {
+          ...prev,
+          connections,
+        };
+      });
+    },
+    [],
+  );
+
+  // Secondary package change handler
+  const handleSecondaryPackageChange = useCallback(
+    (connectionIndex: number, packageName: string) => {
+      const selectedPackage = mockPackages.find(
+        (pkg) => pkg.name === packageName,
+      );
+      if (selectedPackage) {
+        setFormData((prev) => {
+          const connections = [...prev.connections];
+          if (connections[connectionIndex]) {
+            connections[connectionIndex] = {
+              ...connections[connectionIndex],
+              planName: packageName,
+              planPrice: selectedPackage.price,
+              isCustomPlan: false,
+            };
+          }
+          return {
+            ...prev,
+            connections,
+          };
+        });
+      }
+    },
+    [],
+  );
 
   // Form validation
   const validateForm = useCallback(() => {
