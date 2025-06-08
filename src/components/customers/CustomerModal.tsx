@@ -971,3 +971,5 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
     </Dialog>
   );
 };
+
+export default CustomerModal;
