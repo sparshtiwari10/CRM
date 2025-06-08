@@ -21,6 +21,7 @@ interface TopBarProps {
 
 export function TopBar({ title }: TopBarProps) {
   const { user, logout, isAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = () => {
     logout();
