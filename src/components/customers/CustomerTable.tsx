@@ -55,6 +55,32 @@ interface CustomerTableProps {
   onActionRequest: (request: Omit<ActionRequest, "id">) => void;
 }
 
+// Utility functions
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+  }).format(amount);
+};
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString("en-IN");
+};
+
+const formatAddress = (address: string) => {
+  return address.length > 50 ? address.substring(0, 50) + "..." : address;
+};
+
+const formatDueDate = (dayOfMonth: number) => {
+  return `${dayOfMonth}${dayOfMonth === 1 ? "st" : dayOfMonth === 2 ? "nd" : dayOfMonth === 3 ? "rd" : "th"} of every month`;
+};
+
+const isOverdue = (billDueDate: number) => {
+  const today = new Date();
+  const currentDay = today.getDate();
+  return currentDay > billDueDate;
+};
+
 export const CustomerTable: React.FC<CustomerTableProps> = ({
   customers,
   searchTerm,
