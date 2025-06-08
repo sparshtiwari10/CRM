@@ -136,8 +136,8 @@ export default function Customers() {
     loadEmployees();
   }, [isAdmin]);
 
-  // Also get unique collectors from existing customer data as fallback
-  const uniqueCollectors = Array.from(
+  // Also get unique employees from existing customer data as fallback
+  const uniqueEmployees = Array.from(
     new Set(customers.map((customer) => customer.collectorName)),
   ).filter(Boolean);
 
