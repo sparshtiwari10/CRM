@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { authService } from "@/services/authService";
 import {
   Dialog,
@@ -34,7 +34,47 @@ interface CustomerModalProps {
   isSaving?: boolean;
 }
 
-// Dynamic collectors will be loaded from active employees
+interface FormData {
+  name: string;
+  phoneNumber: string;
+  email: string;
+  address: string;
+  vcNumber: string;
+  currentPackage: string;
+  collectorName: string;
+  isActive: boolean;
+  portalBill: number;
+  numberOfConnections: number | string;
+  connections: Connection[];
+  customPlan: {
+    name: string;
+    price: number;
+    description: string;
+  } | null;
+  packageAmount: number;
+  previousOutstanding: number;
+  currentOutstanding: number;
+  billDueDate: number;
+}
+
+const initialFormData: FormData = {
+  name: "",
+  phoneNumber: "",
+  email: "",
+  address: "",
+  vcNumber: "",
+  currentPackage: "",
+  collectorName: "",
+  isActive: true,
+  portalBill: 0,
+  numberOfConnections: 1,
+  connections: [],
+  customPlan: null,
+  packageAmount: 0,
+  previousOutstanding: 0,
+  currentOutstanding: 0,
+  billDueDate: 1,
+};
 
 export function CustomerModal({
   open,
@@ -46,64 +86,22 @@ export function CustomerModal({
   const { isAdmin } = useAuth();
   const { toast } = useToast();
   const isEditing = !!customer;
+
+  // Simple state management
+  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [showCustomPlan, setShowCustomPlan] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [availableCollectors, setAvailableCollectors] = useState<string[]>([
     "System Administrator",
   ]);
 
-  // Load available collectors when modal opens
-  useEffect(() => {
-    if (open) {
-      const loadCollectors = async () => {
-        try {
-          console.log("Loading collectors...");
-          const users = await authService.getAllUsers();
-          console.log("All users:", users);
-
-          const employees = users
-            .filter((user) => {
-              console.log(
-                `User ${user.name}: role=${user.role}, isActive=${user.is_active}`,
-              );
-              return user.role === "employee" && user.is_active;
-            })
-            .map((user) => user.name);
-
-          console.log("Filtered employees:", employees);
-
-          // Always include System Administrator as first option
-          const collectors = ["System Administrator"];
-
-          // Add active employees
-          if (employees.length > 0) {
-            collectors.push(...employees);
-          }
-
-          setAvailableCollectors(collectors);
-          console.log("Final collectors list:", collectors);
-        } catch (error) {
-          console.error("Failed to load collectors:", error);
-          // Fallback to default admin
-          setAvailableCollectors(["System Administrator"]);
-          toast({
-            title: "Warning",
-            description:
-              "Could not load employee list. Using default collectors.",
-            variant: "destructive",
-          });
-        }
-      };
-
-      loadCollectors();
-    }
-  }, [open, toast]);
-
-  // Initialize with either customer data or empty form
-  const getInitialData = () => {
+  // Initialize form data based on customer prop
+  const initializeFormData = useCallback(() => {
     if (customer) {
       return {
         name: customer.name || "",
         phoneNumber: customer.phoneNumber || "",
-        email: customer.email || "", // Always ensure string, not undefined
+        email: customer.email || "",
         address: customer.address || "",
         vcNumber: customer.vcNumber || "",
         currentPackage: customer.currentPackage || "",
@@ -117,390 +115,276 @@ export function CustomerModal({
         previousOutstanding: customer.previousOutstanding || 0,
         currentOutstanding: customer.currentOutstanding || 0,
         billDueDate: customer.billDueDate || 1,
-        isInitialized: true,
-      };
-    } else {
-      return {
-        name: "",
-        phoneNumber: "",
-        email: "", // Empty string, not undefined
-        address: "",
-        vcNumber: "", // Start blank as requested
-        currentPackage: "",
-        collectorName: "",
-        isActive: true,
-        portalBill: 0,
-        numberOfConnections: 1,
-        connections: [] as Connection[],
-        customPlan: null,
-        packageAmount: 0,
-        previousOutstanding: 0,
-        currentOutstanding: 0,
-        billDueDate: 1,
-        isInitialized: false,
       };
     }
-  };
+    return initialFormData;
+  }, [customer]);
 
-  const initialData = getInitialData();
-
-  const [formData, setFormData] = useState(initialData);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showCustomPlan, setShowCustomPlan] = useState(!!customer?.customPlan);
-
-  // Reset form when modal opens with different customer
-  useEffect(() => {
-    if (open && customer && formData.vcNumber !== customer.vcNumber) {
-      setFormData({
-        name: customer.name || "",
-        phoneNumber: customer.phoneNumber || "",
-        email: customer.email || "",
-        address: customer.address || "",
-        vcNumber: customer.vcNumber || "",
-        currentPackage: customer.currentPackage || "",
-        collectorName: customer.collectorName || "",
-        isActive: customer.isActive !== undefined ? customer.isActive : true,
-        portalBill: customer.portalBill || 0,
-        numberOfConnections: customer.numberOfConnections || "",
-        connections: customer.connections || [],
-        customPlan: customer.customPlan || null,
-        packageAmount: customer.packageAmount || 0,
-        previousOutstanding: customer.previousOutstanding || 0,
-        currentOutstanding: customer.currentOutstanding || 0,
-        billDueDate: customer.billDueDate || 1,
-        isInitialized: true,
-      });
-      setShowCustomPlan(!!customer.customPlan);
-      setErrors({});
-    }
-  }, [open, customer?.id]);
-
-  // Load available collectors when modal opens
+  // Reset form when modal opens or customer changes
   useEffect(() => {
     if (open) {
+      const newFormData = initializeFormData();
+      setFormData(newFormData);
+      setShowCustomPlan(!!customer?.customPlan);
+      setErrors({});
+    }
+  }, [open, customer?.id, initializeFormData]);
+
+  // Load collectors only once when modal opens
+  useEffect(() => {
+    if (open) {
+      let mounted = true;
+
       const loadCollectors = async () => {
         try {
-          console.log("Loading collectors...");
           const users = await authService.getAllUsers();
-          console.log("All users:", users);
-
           const employees = users
-            .filter((user) => {
-              console.log(
-                `User ${user.name}: role=${user.role}, isActive=${user.is_active}`,
-              );
-              return user.role === "employee" && user.is_active;
-            })
+            .filter((user) => user.role === "employee" && user.is_active)
             .map((user) => user.name);
 
-          console.log("Filtered employees:", employees);
-
-          // Always include System Administrator as first option
           const collectors = ["System Administrator"];
-
-          // Add active employees
           if (employees.length > 0) {
             collectors.push(...employees);
           }
 
-          setAvailableCollectors(collectors);
-          console.log("Final collectors list:", collectors);
+          if (mounted) {
+            setAvailableCollectors(collectors);
+          }
         } catch (error) {
           console.error("Failed to load collectors:", error);
-          // Fallback to default admin
-          setAvailableCollectors(["System Administrator"]);
-          toast({
-            title: "Warning",
-            description:
-              "Could not load employee list. Using default collectors.",
-            variant: "destructive",
-          });
+          if (mounted) {
+            setAvailableCollectors(["System Administrator"]);
+          }
         }
       };
 
       loadCollectors();
-    }
-  }, [open, toast]);
 
-  // Reset form when switching from edit to add mode
-  useEffect(() => {
-    if (open && !customer && !formData.isInitialized) {
-      setFormData({
-        name: "",
-        phoneNumber: "",
-        email: "",
-        address: "",
-        vcNumber: "",
-        currentPackage: "",
-        collectorName: "",
-        isActive: true,
-        portalBill: 0,
-        numberOfConnections: "",
-        connections: [],
-        customPlan: null,
-        packageAmount: 0,
-        previousOutstanding: 0,
-        currentOutstanding: 0,
-        billDueDate: 1,
-        isInitialized: true,
-      });
-      setShowCustomPlan(false);
-      setErrors({});
+      return () => {
+        mounted = false;
+      };
     }
-  }, [open, customer]);
+  }, [open]);
 
-  // Clean up form state when modal closes
+  // Clear form when modal closes
   useEffect(() => {
     if (!open) {
-      setFormData(initialData);
+      setFormData(initialFormData);
       setShowCustomPlan(false);
       setErrors({});
     }
   }, [open]);
 
-  function handleInputChange(field: string, value: any) {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleInputChange = useCallback(
+    (field: string, value: any) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Auto-populate package amount and portal bill when selecting a package
-    if (field === "currentPackage" && value && !showCustomPlan) {
-      const selectedPackage = mockPackages.find((pkg) => pkg.name === value);
-      if (selectedPackage) {
+      // Clear error for this field
+      if (errors[field]) {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    },
+    [errors],
+  );
+
+  const handleConnectionsChange = useCallback(
+    (newCountStr: string) => {
+      const newCount = newCountStr === "" ? 1 : parseInt(newCountStr) || 1;
+
+      if (newCount < 1) {
         setFormData((prev) => ({
           ...prev,
-          [field]: value,
-          packageAmount: selectedPackage.price,
-          portalBill: selectedPackage.portalAmount || selectedPackage.price, // Use portal amount if available
-          planBill: selectedPackage.price, // Set plan bill
+          numberOfConnections: 1,
+          connections: [],
         }));
+        return;
       }
-    }
 
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
-  }
+      const connections: Connection[] = [];
+      for (let i = 0; i < newCount; i++) {
+        const existingConnection = formData.connections[i];
+        const isPrimary = i === 0;
 
-  function handleConnectionsChange(newCountStr: string) {
-    const newCount = newCountStr === "" ? 0 : parseInt(newCountStr) || 1;
+        let vcNumber;
+        if (isPrimary) {
+          vcNumber = existingConnection?.vcNumber || formData.vcNumber;
+        } else {
+          const suffix = i === 1 ? "SEC" : `SEC${i - 1}`;
+          const baseVc = formData.vcNumber || "VC000000";
+          vcNumber = existingConnection?.vcNumber || `${baseVc}-${suffix}`;
+        }
 
-    if (newCount < 1) {
+        connections.push({
+          id: existingConnection?.id || `conn-${i + 1}`,
+          vcNumber: vcNumber,
+          planName:
+            existingConnection?.planName || formData.currentPackage || "",
+          planPrice:
+            existingConnection?.planPrice ||
+            mockPackages.find((p) => p.name === formData.currentPackage)
+              ?.price ||
+            0,
+          isCustomPlan: existingConnection?.isCustomPlan || false,
+          isPrimary: isPrimary,
+          connectionIndex: i + 1,
+        });
+      }
+
       setFormData((prev) => ({
         ...prev,
-        numberOfConnections: "",
-        connections: [],
+        numberOfConnections: newCount,
+        connections,
       }));
-      return;
-    }
+    },
+    [formData.connections, formData.currentPackage, formData.vcNumber],
+  );
 
-    const connections: Connection[] = [];
-    for (let i = 0; i < newCount; i++) {
-      const existingConnection = formData.connections[i];
-      const isPrimary = i === 0; // First connection is always primary
-
-      // Generate VC number based on primary/secondary structure
-      let vcNumber;
-      if (isPrimary) {
-        vcNumber = existingConnection?.vcNumber || formData.vcNumber;
-      } else {
-        // Secondary connections get -SEC, -SEC1, -SEC2, etc.
-        const suffix = i === 1 ? "SEC" : `SEC${i - 1}`;
-        const baseVc =
-          formData.vcNumber || existingConnection?.vcNumber || "VC000000";
-        vcNumber = existingConnection?.vcNumber || `${baseVc}-${suffix}`;
-      }
-
-      connections.push({
-        id: existingConnection?.id || `conn-${i + 1}`,
-        vcNumber: vcNumber,
-        planName: existingConnection?.planName || formData.currentPackage || "",
-        planPrice:
-          existingConnection?.planPrice ||
-          mockPackages.find((p) => p.name === formData.currentPackage)?.price ||
-          0,
-        isCustomPlan: existingConnection?.isCustomPlan || false,
-        isPrimary: isPrimary,
-        connectionIndex: i + 1,
-      });
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      numberOfConnections: newCountStr,
-      connections,
-    }));
-  }
-
-  function handleConnectionChange(index: number, field: string, value: any) {
-    const newConnections = [...formData.connections];
-    newConnections[index] = { ...newConnections[index], [field]: value };
-    setFormData((prev) => ({ ...prev, connections: newConnections }));
-  }
-
-  function toggleConnectionCustomPlan(index: number, isCustom: boolean) {
-    const newConnections = [...formData.connections];
-    newConnections[index] = {
-      ...newConnections[index],
-      isCustomPlan: isCustom,
-      planName: isCustom ? "" : formData.currentPackage,
-      planPrice: isCustom
-        ? 0
-        : mockPackages.find((p) => p.name === formData.currentPackage)?.price ||
-          0,
-      customPlanName: isCustom
-        ? newConnections[index].customPlanName || ""
-        : "",
-      customPlanPrice: isCustom
-        ? newConnections[index].customPlanPrice || 0
-        : 0,
-      customPlanDescription: isCustom
-        ? newConnections[index].customPlanDescription || ""
-        : "",
-    };
-    setFormData((prev) => ({ ...prev, connections: newConnections }));
-  }
-
-  function handleCustomPlanChange(field: string, value: any) {
-    const newCustomPlan = formData.customPlan
-      ? { ...formData.customPlan, [field]: value }
-      : { name: "", price: 0, description: "", [field]: value };
-
-    setFormData((prev) => ({
-      ...prev,
-      customPlan: newCustomPlan,
-      // Auto-populate package amount and portal bill when custom plan price changes
-      ...(field === "price" && {
-        packageAmount: value || 0,
-        portalBill: value || 0,
-      }),
-    }));
-  }
-
-  function validateForm() {
+  const validateForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.phoneNumber.trim())
+    if (!formData.name.trim()) {
+      newErrors.name = "Customer name is required";
+    }
+
+    if (!formData.phoneNumber.trim()) {
       newErrors.phoneNumber = "Phone number is required";
-    if (!formData.address.trim()) newErrors.address = "Address is required";
-    if (!formData.vcNumber.trim()) newErrors.vcNumber = "VC Number is required";
-    if (!formData.currentPackage && !showCustomPlan)
-      newErrors.currentPackage = "Package is required";
-    if (!formData.collectorName)
-      newErrors.collectorName = "Collector is required";
-
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email format";
     }
 
-    if (showCustomPlan && formData.customPlan) {
-      if (!formData.customPlan.name.trim())
-        newErrors.customPlanName = "Custom plan name is required";
-      if (formData.customPlan.price <= 0)
-        newErrors.customPlanPrice = "Custom plan price must be greater than 0";
+    if (!formData.address.trim()) {
+      newErrors.address = "Address is required";
     }
 
-    // Validate connections
+    if (!formData.vcNumber.trim()) {
+      newErrors.vcNumber = "VC Number is required";
+    }
+
+    if (!formData.collectorName) {
+      newErrors.collectorName = "Collector selection is required";
+    }
+
+    if (!formData.currentPackage && !showCustomPlan) {
+      newErrors.currentPackage = "Package selection is required";
+    }
+
     if (
-      formData.numberOfConnections !== "" &&
-      parseInt(formData.numberOfConnections) > 0
+      showCustomPlan &&
+      (!formData.customPlan?.name || !formData.customPlan?.price)
     ) {
-      formData.connections.forEach((conn, index) => {
-        if (conn.isCustomPlan) {
-          if (!conn.customPlanName?.trim()) {
-            newErrors[`conn${index}CustomName`] =
-              `Connection ${index + 1} custom plan name is required`;
-          }
-          if (!conn.customPlanPrice || conn.customPlanPrice <= 0) {
-            newErrors[`conn${index}CustomPrice`] =
-              `Connection ${index + 1} custom plan price must be greater than 0`;
-          }
-        } else {
-          if (!conn.planName) {
-            newErrors[`conn${index}Plan`] =
-              `Connection ${index + 1} plan is required`;
-          }
-        }
-      });
+      newErrors.customPlan = "Custom plan details are required";
+    }
+
+    if (formData.billDueDate < 1 || formData.billDueDate > 31) {
+      newErrors.billDueDate = "Bill due date must be between 1 and 31";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }
+  }, [formData, showCustomPlan]);
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
 
-    if (!validateForm()) return;
+      if (!validateForm()) return;
 
-    const finalNumberOfConnections =
-      formData.numberOfConnections === ""
-        ? 1
-        : parseInt(formData.numberOfConnections) || 1;
+      const finalNumberOfConnections =
+        typeof formData.numberOfConnections === "number"
+          ? formData.numberOfConnections
+          : parseInt(formData.numberOfConnections as string) || 1;
 
-    // Build customer data with proper handling of optional fields
-    const customerData: Customer = {
-      id: customer?.id || Date.now().toString(),
-      name: formData.name.trim(),
-      phoneNumber: formData.phoneNumber.trim(),
-      address: formData.address.trim(),
-      vcNumber: formData.vcNumber.trim(),
-      currentPackage: showCustomPlan
-        ? formData.customPlan?.name || "Custom"
-        : formData.currentPackage,
-      collectorName: formData.collectorName,
-      isActive: formData.isActive,
-      portalBill: formData.portalBill,
-      lastPaymentDate:
-        customer?.lastPaymentDate || new Date().toISOString().split("T")[0],
-      joinDate: customer?.joinDate || new Date().toISOString().split("T")[0],
-      activationDate: formData.isActive
-        ? customer?.activationDate || new Date().toISOString().split("T")[0]
-        : customer?.activationDate,
-      deactivationDate:
-        !formData.isActive && customer?.isActive
-          ? new Date().toISOString().split("T")[0]
-          : customer?.deactivationDate || undefined,
-      numberOfConnections: finalNumberOfConnections,
-      connections: formData.connections.slice(0, finalNumberOfConnections),
-      packageAmount: formData.packageAmount,
-      previousOutstanding: formData.previousOutstanding,
-      currentOutstanding: formData.currentOutstanding,
-      billDueDate: formData.billDueDate,
-    };
+      const customerData: Customer = {
+        id: customer?.id || Date.now().toString(),
+        name: formData.name.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
+        address: formData.address.trim(),
+        vcNumber: formData.vcNumber.trim(),
+        currentPackage: showCustomPlan
+          ? formData.customPlan?.name || "Custom"
+          : formData.currentPackage,
+        collectorName: formData.collectorName,
+        isActive: formData.isActive,
+        portalBill: formData.portalBill,
+        lastPaymentDate:
+          customer?.lastPaymentDate || new Date().toISOString().split("T")[0],
+        joinDate: customer?.joinDate || new Date().toISOString().split("T")[0],
+        activationDate: formData.isActive
+          ? customer?.activationDate || new Date().toISOString().split("T")[0]
+          : customer?.activationDate,
+        deactivationDate:
+          !formData.isActive && customer?.isActive
+            ? new Date().toISOString().split("T")[0]
+            : customer?.deactivationDate || undefined,
+        numberOfConnections: finalNumberOfConnections,
+        connections: formData.connections.slice(0, finalNumberOfConnections),
+        packageAmount: formData.packageAmount,
+        previousOutstanding: formData.previousOutstanding,
+        currentOutstanding: formData.currentOutstanding,
+        billDueDate: formData.billDueDate,
+      };
 
-    // Only add optional fields if they have valid values (avoid undefined)
-    if (formData.email && formData.email.trim() !== "") {
-      customerData.email = formData.email.trim();
+      // Add optional fields
+      if (formData.email && formData.email.trim() !== "") {
+        customerData.email = formData.email.trim();
+      }
+
+      if (showCustomPlan && formData.customPlan) {
+        customerData.customPlan = formData.customPlan;
+      }
+
+      onSave(customerData);
+    },
+    [formData, showCustomPlan, customer, validateForm, onSave],
+  );
+
+  const handlePackageChange = useCallback((packageName: string) => {
+    const selectedPackage = mockPackages.find(
+      (pkg) => pkg.name === packageName,
+    );
+    if (selectedPackage) {
+      setFormData((prev) => ({
+        ...prev,
+        currentPackage: packageName,
+        packageAmount: selectedPackage.price,
+        portalBill: selectedPackage.portalAmount || selectedPackage.price,
+      }));
     }
+  }, []);
 
-    if (showCustomPlan && formData.customPlan) {
-      customerData.customPlan = formData.customPlan;
-    }
+  const handleCustomPlanChange = useCallback((field: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      customPlan: {
+        ...prev.customPlan,
+        [field]: value,
+      } as any,
+      packageAmount: field === "price" ? value || 0 : prev.packageAmount,
+      portalBill: field === "price" ? value || 0 : prev.portalBill,
+    }));
+  }, []);
 
-    onSave(customerData);
+  // Memoize expensive computations
+  const connectionOptions = useMemo(() => {
+    return Array.from({ length: 10 }, (_, i) => i + 1);
+  }, []);
 
-    // Reset form state after save
-    setFormData(initialData);
-    setShowCustomPlan(false);
-    setErrors({});
+  const billDueDateOptions = useMemo(() => {
+    return Array.from({ length: 31 }, (_, i) => i + 1);
+  }, []);
 
-    // Show toast notification at bottom for mobile
-    toast({
-      title: isEditing ? "Customer Updated" : "Customer Added",
-      description: `${customerData.name} has been successfully ${isEditing ? "updated" : "added"}.`,
-      className:
-        "lg:bottom-4 lg:right-4 bottom-2 right-2 left-2 lg:left-auto lg:max-w-sm",
-    });
-  }
-
-  const finalConnections = parseInt(formData.numberOfConnections) || 0;
+  if (!open) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Edit Customer" : "Add Customer"}
+            {isEditing
+              ? `Edit Customer - ${customer?.name}`
+              : "Add New Customer"}
           </DialogTitle>
         </DialogHeader>
 
@@ -513,7 +397,7 @@ export function CustomerModal({
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="name">Name *</Label>
+                  <Label htmlFor="name">Customer Name *</Label>
                   <Input
                     id="name"
                     value={formData.name}
@@ -522,12 +406,12 @@ export function CustomerModal({
                     className={errors.name ? "border-red-500" : ""}
                   />
                   {errors.name && (
-                    <p className="text-sm text-red-500 mt-1">{errors.name}</p>
+                    <p className="text-red-500 text-xs mt-1">{errors.name}</p>
                   )}
                 </div>
 
                 <div>
-                  <Label htmlFor="phoneNumber">Phone *</Label>
+                  <Label htmlFor="phoneNumber">Phone Number *</Label>
                   <Input
                     id="phoneNumber"
                     value={formData.phoneNumber}
@@ -538,12 +422,14 @@ export function CustomerModal({
                     className={errors.phoneNumber ? "border-red-500" : ""}
                   />
                   {errors.phoneNumber && (
-                    <p className="text-sm text-red-500 mt-1">
+                    <p className="text-red-500 text-xs mt-1">
                       {errors.phoneNumber}
                     </p>
                   )}
                 </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -552,11 +438,7 @@ export function CustomerModal({
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     disabled={isSaving}
-                    className={errors.email ? "border-red-500" : ""}
                   />
-                  {errors.email && (
-                    <p className="text-sm text-red-500 mt-1">{errors.email}</p>
-                  )}
                 </div>
 
                 <div>
@@ -569,9 +451,10 @@ export function CustomerModal({
                     }
                     disabled={isSaving}
                     className={errors.vcNumber ? "border-red-500" : ""}
+                    placeholder="e.g., VC001234"
                   />
                   {errors.vcNumber && (
-                    <p className="text-sm text-red-500 mt-1">
+                    <p className="text-red-500 text-xs mt-1">
                       {errors.vcNumber}
                     </p>
                   )}
@@ -588,21 +471,13 @@ export function CustomerModal({
                   className={errors.address ? "border-red-500" : ""}
                 />
                 {errors.address && (
-                  <p className="text-sm text-red-500 mt-1">{errors.address}</p>
+                  <p className="text-red-500 text-xs mt-1">{errors.address}</p>
                 )}
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Service Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Service Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="collectorName">Collector Name *</Label>
+                  <Label htmlFor="collectorName">Collector *</Label>
                   <Select
                     value={formData.collectorName}
                     onValueChange={(value) =>
@@ -624,7 +499,7 @@ export function CustomerModal({
                     </SelectContent>
                   </Select>
                   {errors.collectorName && (
-                    <p className="text-sm text-red-500 mt-1">
+                    <p className="text-red-500 text-xs mt-1">
                       {errors.collectorName}
                     </p>
                   )}
@@ -634,89 +509,83 @@ export function CustomerModal({
                   <Label htmlFor="numberOfConnections">
                     Number of Connections
                   </Label>
-                  <Input
-                    id="numberOfConnections"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={formData.numberOfConnections}
-                    onChange={(e) => handleConnectionsChange(e.target.value)}
+                  <Select
+                    value={formData.numberOfConnections.toString()}
+                    onValueChange={(value) => handleConnectionsChange(value)}
                     disabled={isSaving}
-                    placeholder="Enter number (default: 1)"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Leave empty for default single connection
-                  </p>
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {connectionOptions.map((num) => (
+                        <SelectItem key={num} value={num.toString()}>
+                          {num} Connection{num > 1 ? "s" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
 
-              {/* Package Selection */}
-              <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Switch
-                    checked={showCustomPlan}
-                    onCheckedChange={(checked) => {
-                      setShowCustomPlan(checked);
-                      // Reset package amount when switching between custom and regular packages
-                      if (checked) {
-                        // Switching to custom plan - reset amounts to allow manual entry
-                        setFormData((prev) => ({
-                          ...prev,
-                          packageAmount: formData.customPlan?.price || 0,
-                          portalBill: formData.customPlan?.price || 0,
-                        }));
-                      } else {
-                        // Switching to regular package - auto-populate if package selected
-                        const selectedPackage = mockPackages.find(
-                          (pkg) => pkg.name === formData.currentPackage,
-                        );
-                        if (selectedPackage) {
-                          setFormData((prev) => ({
-                            ...prev,
-                            packageAmount: selectedPackage.price,
-                            portalBill: selectedPackage.price,
-                          }));
-                        }
-                      }
-                    }}
+                    checked={formData.isActive}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("isActive", checked)
+                    }
                     disabled={isSaving}
                   />
-                  <Label>Use Custom Plan</Label>
+                  <Label>Active Customer</Label>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
 
-                {!showCustomPlan ? (
-                  <div>
-                    <Label htmlFor="currentPackage">Package *</Label>
-                    <Select
-                      value={formData.currentPackage}
-                      onValueChange={(value) =>
-                        handleInputChange("currentPackage", value)
-                      }
-                      disabled={isSaving}
+          {/* Package Selection */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Package Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={showCustomPlan}
+                  onCheckedChange={setShowCustomPlan}
+                  disabled={isSaving}
+                />
+                <Label>Use Custom Plan</Label>
+              </div>
+
+              {!showCustomPlan ? (
+                <div>
+                  <Label htmlFor="currentPackage">Select Package *</Label>
+                  <Select
+                    value={formData.currentPackage}
+                    onValueChange={handlePackageChange}
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger
+                      className={errors.currentPackage ? "border-red-500" : ""}
                     >
-                      <SelectTrigger
-                        className={
-                          errors.currentPackage ? "border-red-500" : ""
-                        }
-                      >
-                        <SelectValue placeholder="Select package" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mockPackages.map((pkg) => (
-                          <SelectItem key={pkg.id} value={pkg.name}>
-                            {pkg.name} - ₹{pkg.price}/month
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.currentPackage && (
-                      <p className="text-sm text-red-500 mt-1">
-                        {errors.currentPackage}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-4">
+                      <SelectValue placeholder="Choose a package" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockPackages.map((pkg) => (
+                        <SelectItem key={pkg.id} value={pkg.name}>
+                          {pkg.name} - ₹{pkg.price}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.currentPackage && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.currentPackage}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="customPlanName">Custom Plan Name *</Label>
                       <Input
@@ -726,24 +595,14 @@ export function CustomerModal({
                           handleCustomPlanChange("name", e.target.value)
                         }
                         disabled={isSaving}
-                        className={
-                          errors.customPlanName ? "border-red-500" : ""
-                        }
                       />
-                      {errors.customPlanName && (
-                        <p className="text-sm text-red-500 mt-1">
-                          {errors.customPlanName}
-                        </p>
-                      )}
                     </div>
                     <div>
                       <Label htmlFor="customPlanPrice">Price (₹) *</Label>
                       <Input
                         id="customPlanPrice"
                         type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.customPlan?.price || 0}
+                        value={formData.customPlan?.price || ""}
                         onChange={(e) =>
                           handleCustomPlanChange(
                             "price",
@@ -751,472 +610,152 @@ export function CustomerModal({
                           )
                         }
                         disabled={isSaving}
-                        className={
-                          errors.customPlanPrice ? "border-red-500" : ""
-                        }
-                      />
-                      {errors.customPlanPrice && (
-                        <p className="text-sm text-red-500 mt-1">
-                          {errors.customPlanPrice}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="customPlanDescription">Description</Label>
-                      <Input
-                        id="customPlanDescription"
-                        value={formData.customPlan?.description || ""}
-                        onChange={(e) =>
-                          handleCustomPlanChange("description", e.target.value)
-                        }
-                        disabled={isSaving}
                       />
                     </div>
                   </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                {isAdmin && (
                   <div>
-                    <Label htmlFor="portalBill">
-                      Portal Bill (₹)
-                      {!showCustomPlan && formData.currentPackage && (
-                        <span className="text-green-600 text-xs ml-1">
-                          (Auto-filled)
-                        </span>
-                      )}
-                    </Label>
+                    <Label htmlFor="customPlanDescription">Description</Label>
                     <Input
-                      id="portalBill"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.portalBill}
+                      id="customPlanDescription"
+                      value={formData.customPlan?.description || ""}
                       onChange={(e) =>
-                        handleInputChange(
-                          "portalBill",
-                          parseFloat(e.target.value) || 0,
-                        )
+                        handleCustomPlanChange("description", e.target.value)
                       }
                       disabled={isSaving}
-                      className={
-                        !showCustomPlan && formData.currentPackage
-                          ? "bg-green-50 border-green-200"
-                          : ""
-                      }
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      {!showCustomPlan && formData.currentPackage
-                        ? "Auto-populated from package amount"
-                        : "Monthly billing amount"}
+                  </div>
+                  {errors.customPlan && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.customPlan}
                     </p>
-                  </div>
-                )}
-
-                {/* Billing Calculations - Admin Only */}
-                {isAdmin && (
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-gray-900">
-                      Billing Calculations
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="packageAmount">
-                          Package Amount (₹)
-                          {!showCustomPlan && formData.currentPackage && (
-                            <span className="text-green-600 text-xs ml-1">
-                              (Auto-filled from {formData.currentPackage})
-                            </span>
-                          )}
-                          {showCustomPlan && (
-                            <span className="text-blue-600 text-xs ml-1">
-                              (From custom plan)
-                            </span>
-                          )}
-                        </Label>
-                        <Input
-                          id="packageAmount"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.packageAmount}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "packageAmount",
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          disabled={isSaving}
-                          className={
-                            !showCustomPlan && formData.currentPackage
-                              ? "bg-green-50 border-green-200"
-                              : ""
-                          }
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          {!showCustomPlan && formData.currentPackage
-                            ? "Auto-populated from selected package"
-                            : "Monthly package amount"}
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="billDueDate">Bill Due Date</Label>
-                        <Select
-                          value={formData.billDueDate?.toString() || "1"}
-                          onValueChange={(value) =>
-                            handleInputChange("billDueDate", parseInt(value))
-                          }
-                          disabled={isSaving}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select due date" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 31 }, (_, i) => i + 1).map(
-                              (day) => (
-                                <SelectItem key={day} value={day.toString()}>
-                                  {day}{" "}
-                                  {day === 1
-                                    ? "st"
-                                    : day === 2
-                                      ? "nd"
-                                      : day === 3
-                                        ? "rd"
-                                        : "th"}{" "}
-                                  of every month
-                                </SelectItem>
-                              ),
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Monthly billing cycle date
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="previousOutstanding">
-                          Previous O/S (₹){" "}
-                          <span className="text-xs text-gray-500">
-                            (can be negative)
-                          </span>
-                        </Label>
-                        <Input
-                          id="previousOutstanding"
-                          type="number"
-                          step="0.01"
-                          value={formData.previousOutstanding}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "previousOutstanding",
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          disabled={isSaving}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Previous outstanding amount
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="currentOutstanding">
-                          Current O/S (₹){" "}
-                          <span className="text-xs text-gray-500">
-                            (can be negative)
-                          </span>
-                        </Label>
-                        <Input
-                          id="currentOutstanding"
-                          type="number"
-                          step="0.01"
-                          value={formData.currentOutstanding}
-                          onChange={(e) =>
-                            handleInputChange(
-                              "currentOutstanding",
-                              parseFloat(e.target.value) || 0,
-                            )
-                          }
-                          disabled={isSaving}
-                          className="font-medium"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Auto-calculated: Package Amount + Previous O/S - Paid
-                          Invoices
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Billing Logic Info */}
-                    <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-                      <h5 className="font-medium mb-1">Billing Logic:</h5>
-                      <ul className="text-xs space-y-1">
-                        <li>
-                          • Current O/S = Package Amount + Previous O/S - Paid
-                          Invoice Amounts
-                        </li>
-                        <li>
-                          • When invoice is generated: Deduct invoice amount
-                          from Current O/S
-                        </li>
-                        <li>
-                          • On bill due date each month: Previous O/S = Current
-                          O/S, then Current O/S = Previous O/S + Package Amount
-                        </li>
-                        <li>
-                          • Both Previous O/S and Current O/S can be negative
-                          (credit balance)
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <Label>Active Status</Label>
-                  <div className="text-sm text-gray-500">
-                    Service is {formData.isActive ? "active" : "inactive"}
-                  </div>
+                  )}
                 </div>
-                <Switch
-                  checked={formData.isActive}
-                  onCheckedChange={(checked) =>
-                    handleInputChange("isActive", checked)
-                  }
-                  disabled={isSaving}
-                />
-              </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Multiple Connections (if more than 1) */}
-          {finalConnections > 1 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Connection Details</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {Array.from({ length: finalConnections }, (_, index) => (
-                    <div
-                      key={index}
-                      className="p-4 border rounded-lg space-y-4"
-                    >
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium">Connection {index + 1}</h4>
-                        <div className="flex items-center space-x-2">
-                          <Label className="text-sm">Use Custom Plan</Label>
-                          <Switch
-                            checked={
-                              formData.connections[index]?.isCustomPlan || false
-                            }
-                            onCheckedChange={(checked) =>
-                              toggleConnectionCustomPlan(index, checked)
-                            }
-                            disabled={isSaving}
-                          />
-                        </div>
-                      </div>
+          {/* Billing Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Billing Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="packageAmount">Package Amount (₹)</Label>
+                  <Input
+                    id="packageAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.packageAmount}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "packageAmount",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
+                    disabled={isSaving}
+                  />
+                </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label>VC Number</Label>
-                          <Input
-                            value={
-                              formData.connections[index]?.vcNumber ||
-                              `${formData.vcNumber}-${index + 1}`
-                            }
-                            onChange={(e) =>
-                              handleConnectionChange(
-                                index,
-                                "vcNumber",
-                                e.target.value,
-                              )
-                            }
-                            disabled={isSaving}
-                          />
-                        </div>
-
-                        {!formData.connections[index]?.isCustomPlan ? (
-                          <>
-                            <div>
-                              <Label>Plan</Label>
-                              <Select
-                                value={
-                                  formData.connections[index]?.planName ||
-                                  formData.currentPackage
-                                }
-                                onValueChange={(value) => {
-                                  const pkg = mockPackages.find(
-                                    (p) => p.name === value,
-                                  );
-                                  handleConnectionChange(
-                                    index,
-                                    "planName",
-                                    value,
-                                  );
-                                  handleConnectionChange(
-                                    index,
-                                    "planPrice",
-                                    pkg?.price || 0,
-                                  );
-                                }}
-                                disabled={isSaving}
-                              >
-                                <SelectTrigger
-                                  className={
-                                    errors[`conn${index}Plan`]
-                                      ? "border-red-500"
-                                      : ""
-                                  }
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {mockPackages.map((pkg) => (
-                                    <SelectItem key={pkg.id} value={pkg.name}>
-                                      {pkg.name} - ₹{pkg.price}/month
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              {errors[`conn${index}Plan`] && (
-                                <p className="text-sm text-red-500 mt-1">
-                                  {errors[`conn${index}Plan`]}
-                                </p>
-                              )}
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div>
-                              <Label>Custom Plan Name *</Label>
-                              <Input
-                                value={
-                                  formData.connections[index]?.customPlanName ||
-                                  ""
-                                }
-                                onChange={(e) =>
-                                  handleConnectionChange(
-                                    index,
-                                    "customPlanName",
-                                    e.target.value,
-                                  )
-                                }
-                                disabled={isSaving}
-                                className={
-                                  errors[`conn${index}CustomName`]
-                                    ? "border-red-500"
-                                    : ""
-                                }
-                              />
-                              {errors[`conn${index}CustomName`] && (
-                                <p className="text-sm text-red-500 mt-1">
-                                  {errors[`conn${index}CustomName`]}
-                                </p>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      {formData.connections[index]?.isCustomPlan && (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Price (₹) *</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={
-                                formData.connections[index]?.customPlanPrice ||
-                                0
-                              }
-                              onChange={(e) =>
-                                handleConnectionChange(
-                                  index,
-                                  "customPlanPrice",
-                                  parseFloat(e.target.value) || 0,
-                                )
-                              }
-                              disabled={isSaving}
-                              className={
-                                errors[`conn${index}CustomPrice`]
-                                  ? "border-red-500"
-                                  : ""
-                              }
-                            />
-                            {errors[`conn${index}CustomPrice`] && (
-                              <p className="text-sm text-red-500 mt-1">
-                                {errors[`conn${index}CustomPrice`]}
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <Label>Description</Label>
-                            <Input
-                              value={
-                                formData.connections[index]
-                                  ?.customPlanDescription || ""
-                              }
-                              onChange={(e) =>
-                                handleConnectionChange(
-                                  index,
-                                  "customPlanDescription",
-                                  e.target.value,
-                                )
-                              }
-                              disabled={isSaving}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="text-right">
-                        <span className="text-sm font-medium">
-                          Monthly Price: ₹
-                          {formData.connections[index]?.isCustomPlan
-                            ? (
-                                formData.connections[index]?.customPlanPrice ||
-                                0
-                              ).toFixed(2)
-                            : (
-                                formData.connections[index]?.planPrice || 0
-                              ).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-
-                  {finalConnections > 1 && (
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <div className="text-sm font-medium text-blue-800">
-                        Total Monthly Billing: ₹
-                        {formData.connections
-                          .slice(0, finalConnections)
-                          .reduce((sum, conn) => {
-                            const price = conn?.isCustomPlan
-                              ? conn.customPlanPrice || 0
-                              : conn?.planPrice || 0;
-                            return sum + price;
-                          }, 0)
-                          .toFixed(2)}
-                      </div>
-                      <div className="text-xs text-blue-600">
-                        All connections will be billed as one combined invoice
-                      </div>
-                    </div>
+                <div>
+                  <Label htmlFor="billDueDate">Bill Due Date</Label>
+                  <Select
+                    value={formData.billDueDate.toString()}
+                    onValueChange={(value) =>
+                      handleInputChange("billDueDate", parseInt(value))
+                    }
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {billDueDateOptions.map((day) => (
+                        <SelectItem key={day} value={day.toString()}>
+                          {day}{" "}
+                          {day === 1
+                            ? "st"
+                            : day === 2
+                              ? "nd"
+                              : day === 3
+                                ? "rd"
+                                : "th"}{" "}
+                          of every month
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.billDueDate && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.billDueDate}
+                    </p>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="previousOutstanding">
+                    Previous Outstanding (₹)
+                  </Label>
+                  <Input
+                    id="previousOutstanding"
+                    type="number"
+                    step="0.01"
+                    value={formData.previousOutstanding}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "previousOutstanding",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
+                    disabled={isSaving}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="currentOutstanding">
+                    Current Outstanding (₹)
+                  </Label>
+                  <Input
+                    id="currentOutstanding"
+                    type="number"
+                    step="0.01"
+                    value={formData.currentOutstanding}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "currentOutstanding",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+
+              {isAdmin && (
+                <div>
+                  <Label htmlFor="portalBill">Portal Bill (₹)</Label>
+                  <Input
+                    id="portalBill"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.portalBill}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "portalBill",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
+                    disabled={isSaving}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <DialogFooter>
             <Button
