@@ -92,6 +92,7 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
   onActionRequest,
 }) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
   const [actionRequestCustomer, setActionRequestCustomer] =
     useState<Customer | null>(null);
