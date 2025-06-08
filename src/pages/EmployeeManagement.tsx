@@ -91,7 +91,7 @@ export default function EmployeeManagement() {
         setUsers(allUsers);
 
         if (allUsers.length === 0) {
-          console.warn("⚠️ No users found in Firebase");
+          console.warn("⚠�� No users found in Firebase");
           toast({
             title: "No Users Found",
             description:
@@ -242,24 +242,34 @@ export default function EmployeeManagement() {
     if (!deleteUser) return;
 
     try {
-      // Note: This is a simplified version since we don't have the full user management
-      // In a real implementation, this would call authService.deleteUser()
+      setIsUpdating(deleteUser.id);
 
-      // For now, just remove from local state
+      console.log(`🔄 Deleting user from Firebase: ${deleteUser.name}`);
+
+      // Actually delete the user from Firebase
+      await authService.deleteUser(deleteUser.id);
+
+      // Remove from local state only after successful Firebase deletion
       setUsers((prev) => prev.filter((user) => user.id !== deleteUser.id));
 
       toast({
-        title: "User Removed",
-        description: `${deleteUser.name} has been removed from the list.`,
+        title: "User Deleted",
+        description: `${deleteUser.name} has been permanently removed from the system.`,
       });
 
+      console.log(`✅ Successfully deleted user: ${deleteUser.name}`);
+
       setDeleteUser(null);
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Failed to delete user:", error);
       toast({
         title: "Delete Failed",
-        description: "Failed to remove user. Please try again.",
+        description:
+          error.message || "Failed to remove user. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsUpdating(null);
     }
   };
 
