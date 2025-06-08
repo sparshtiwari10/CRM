@@ -81,6 +81,38 @@ export default function Dashboard() {
     (c) => c.billingStatus === "Overdue",
   ).length;
 
+  // Calculate VC number statistics (for admin view)
+  const calculateVCStats = () => {
+    let activeVCs = 0;
+    let inactiveVCs = 0;
+
+    customers.forEach((customer) => {
+      // Count primary VC
+      if (customer.status === "active") {
+        activeVCs++;
+      } else {
+        inactiveVCs++;
+      }
+
+      // Count secondary VCs
+      if (customer.connections && customer.connections.length > 1) {
+        customer.connections.forEach((conn) => {
+          if (!conn.isPrimary) {
+            if (conn.status === "active") {
+              activeVCs++;
+            } else {
+              inactiveVCs++;
+            }
+          }
+        });
+      }
+    });
+
+    return { activeVCs, inactiveVCs, totalVCs: activeVCs + inactiveVCs };
+  };
+
+  const { activeVCs, inactiveVCs, totalVCs } = calculateVCStats();
+
   // Calculate total revenue from all customers
   const totalRevenue = customers.reduce(
     (sum, customer) => sum + (customer.portalBill || 0),
