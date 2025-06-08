@@ -559,13 +559,13 @@ export default function Billing() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center py-8">
+                      <TableCell colSpan={8} className="text-center py-8">
                         Loading billing records...
                       </TableCell>
                     </TableRow>
                   ) : filteredBillingRecords.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center py-8">
+                      <TableCell colSpan={8} className="text-center py-8">
                         No billing records found
                       </TableCell>
                     </TableRow>
