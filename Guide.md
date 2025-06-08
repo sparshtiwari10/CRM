@@ -464,19 +464,36 @@ if (userData.is_active === false) {
 **Symptoms**: Employee logs in but sees no customers
 **Debug Steps**:
 
-1. Check console logs for customer assignment debugging
-2. Verify employee has `collector_name` set in Firebase
-3. Ensure customers have `collectorName` matching employee name
+1. Check console logs for customer assignment debugging (detailed logs now provided)
+2. Verify employee has `collector_name` set in Firebase (should equal employee name)
+3. Ensure customers have `collectorName` matching employee name exactly
 4. Check if employee status is active
+5. Look for yellow diagnostic card on empty customer page
+
+**Enhanced Debugging**:
+
+- **Console Logs**: Detailed customer assignment debugging automatically shown
+- **Diagnostic UI**: Yellow info card appears for employees with no customers
+- **Field Comparison**: Console shows exact field matching for troubleshooting
 
 **Solution**:
 
 ```typescript
-// Check in console:
-console.log("User collector_name:", user?.collector_name);
-console.log("Customer collectorName:", customer.collectorName);
-// These should match exactly
+// Enhanced debugging in console:
+console.log("Employee looking for:", user?.collector_name || user?.name);
+console.log("Available customers and assignments:");
+allCustomers.forEach((c) => {
+  console.log(
+    `${c.name} → "${c.collectorName}" ${c.collectorName === employeeName ? "✅" : "❌"}`,
+  );
+});
 ```
+
+**Common Fixes**:
+
+1. **Create Employee Properly**: Ensure `collector_name` is set when creating employee
+2. **Assign Customers**: In customer modal, select exact employee name in "Employee" field
+3. **Check Spelling**: Customer `collectorName` must exactly match employee `collector_name`
 
 ### **User Management Issues**
 
@@ -495,6 +512,23 @@ console.log("Customer collectorName:", customer.collectorName);
 console.log("Is admin:", authService.isAdmin());
 console.log("Current user:", authService.getCurrentUser());
 ```
+
+### **Website Freezing After Employee Deletion**
+
+**Symptoms**: Browser freezes and requires reload after deleting employee
+**Root Cause**: State update conflicts and race conditions in deletion process
+**Solution Applied**:
+
+- Enhanced state management with functional updates
+- Improved error handling in async operations
+- Added proper loading states and UI feedback
+- Fixed modal close timing to prevent conflicts
+
+**Prevention**:
+
+- Always wait for deletion completion before UI updates
+- Use loading indicators during operations
+- Proper cleanup in component unmount
 
 ### **Login Problems**
 
