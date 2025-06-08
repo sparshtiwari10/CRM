@@ -49,22 +49,27 @@ async function initializeFirebaseWithRetry(attempt = 1): Promise<void> {
       throw initError;
     }
 
+    // Handle emulator connection in development (before testing connection)
+    if (
+      import.meta.env.DEV &&
+      import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
+    ) {
+      try {
+        connectFirestoreEmulator(db, "localhost", 8090);
+        console.log("🔗 Connected to Firestore emulator");
+      } catch (error) {
+        console.log(
+          "📡 Using production Firestore (emulator connection failed)",
+        );
+      }
+    }
+
     // Test connection immediately after initialization
     await testFirebaseConnection();
 
     isFirebaseAvailable = true;
     connectionStatus = "connected";
     connectionRetryCount = 0;
-
-    // Handle emulator connection in development
-    if (import.meta.env.DEV) {
-      try {
-        connectFirestoreEmulator(db, "localhost", 8090);
-        console.log("🔗 Connected to Firestore emulator");
-      } catch (error) {
-        console.log("📡 Using production Firestore with enhanced connectivity");
-      }
-    }
 
     console.log("✅ Firebase initialized successfully");
     console.log("🔗 Firestore connection established and tested");
