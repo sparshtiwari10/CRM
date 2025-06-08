@@ -322,7 +322,7 @@ class AuthService {
     Array<{ id: string; name: string; role: string }>
   > {
     try {
-      if (!isFirebaseAvailable() || !db) {
+      if (!isFirebaseAvailable || !db) {
         // Return mock employees when Firebase unavailable
         return mockUsers.map((user) => ({
           id: user.id,
@@ -402,7 +402,7 @@ class AuthService {
         throw new Error("Only administrators can create users");
       }
 
-      if (!isFirebaseAvailable() || !db) {
+      if (!isFirebaseAvailable || !db) {
         throw new Error("Firebase not available for user creation");
       }
 
@@ -449,7 +449,7 @@ class AuthService {
         throw new Error("Only administrators can update users");
       }
 
-      if (!isFirebaseAvailable() || !db) {
+      if (!isFirebaseAvailable || !db) {
         throw new Error("Firebase not available for user updates");
       }
 

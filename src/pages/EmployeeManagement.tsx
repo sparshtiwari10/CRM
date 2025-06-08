@@ -65,7 +65,7 @@ export default function EmployeeManagement() {
       try {
         setIsLoading(true);
         // Get all users from the authentication service
-        const allUsers = await authService.getAllUsers();
+        const allUsers = await authService.getAllEmployees();
         setEmployees(allUsers.filter((user) => user.role === "employee"));
         console.log(
           "Loaded employees:",
