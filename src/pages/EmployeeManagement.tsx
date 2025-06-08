@@ -12,6 +12,7 @@ import {
   Power,
   PowerOff,
   KeyRound,
+  Loader2,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -242,24 +243,34 @@ export default function EmployeeManagement() {
     if (!deleteUser) return;
 
     try {
-      // Note: This is a simplified version since we don't have the full user management
-      // In a real implementation, this would call authService.deleteUser()
+      setIsUpdating(deleteUser.id);
 
-      // For now, just remove from local state
+      console.log(`🔄 Deleting user from Firebase: ${deleteUser.name}`);
+
+      // Actually delete the user from Firebase
+      await authService.deleteUser(deleteUser.id);
+
+      // Remove from local state only after successful Firebase deletion
       setUsers((prev) => prev.filter((user) => user.id !== deleteUser.id));
 
       toast({
-        title: "User Removed",
-        description: `${deleteUser.name} has been removed from the list.`,
+        title: "User Deleted",
+        description: `${deleteUser.name} has been permanently removed from the system.`,
       });
 
+      console.log(`✅ Successfully deleted user: ${deleteUser.name}`);
+
       setDeleteUser(null);
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Failed to delete user:", error);
       toast({
         title: "Delete Failed",
-        description: "Failed to remove user. Please try again.",
+        description:
+          error.message || "Failed to remove user. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsUpdating(null);
     }
   };
 
@@ -561,10 +572,11 @@ export default function EmployeeManagement() {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => setDeleteUser(user)}
+                                disabled={isUpdating === user.id}
                                 className="text-red-600"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Remove
+                                Delete User
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -698,24 +710,34 @@ export default function EmployeeManagement() {
         {/* Delete User Confirmation Dialog */}
         <AlertDialog
           open={!!deleteUser}
-          onOpenChange={() => setDeleteUser(null)}
+          onOpenChange={() => !isUpdating && setDeleteUser(null)}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Remove User</AlertDialogTitle>
+              <AlertDialogTitle>Delete User</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to remove {deleteUser?.name}? This action
-                cannot be undone and they will be permanently removed from the
-                system.
+                Are you sure you want to permanently delete {deleteUser?.name}?
+                This action cannot be undone and they will be completely removed
+                from the system, including all their data.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isUpdating === deleteUser?.id}>
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteUser}
+                disabled={isUpdating === deleteUser?.id}
                 className="bg-red-600 hover:bg-red-700"
               >
-                Remove
+                {isUpdating === deleteUser?.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete User"
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

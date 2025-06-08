@@ -8,6 +8,7 @@ import {
   getDoc,
   addDoc,
   updateDoc,
+  deleteDoc,
   Timestamp,
 } from "firebase/firestore";
 import bcrypt from "bcryptjs";
@@ -483,6 +484,42 @@ class AuthService {
       };
     } catch (error) {
       console.error("❌ Failed to get user:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete user permanently (admin only)
+   */
+  async deleteUser(userId: string): Promise<void> {
+    try {
+      if (!this.isAdmin()) {
+        throw new Error("Only administrators can delete users");
+      }
+
+      if (!isFirebaseAvailable || !db) {
+        throw new Error("Firebase not available for user deletion");
+      }
+
+      // Check if user exists first
+      const userDoc = await getDoc(doc(db, "users", userId));
+      if (!userDoc.exists()) {
+        throw new Error("User not found");
+      }
+
+      const userData = userDoc.data();
+
+      // Prevent deletion of current user
+      if (userId === this.currentUser?.id) {
+        throw new Error("You cannot delete your own account");
+      }
+
+      // Delete the user document from Firebase
+      await deleteDoc(doc(db, "users", userId));
+
+      console.log("✅ User deleted successfully:", userData.name);
+    } catch (error) {
+      console.error("❌ Failed to delete user:", error);
       throw error;
     }
   }
