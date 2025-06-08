@@ -100,7 +100,18 @@ export default function CustomerModal({
           previousOutstanding: customer.previousOutstanding || 0,
           connections:
             customer.connections && customer.connections.length > 0
-              ? customer.connections
+              ? customer.connections.map((conn) => ({
+                  ...conn,
+                  vcNumber: conn.vcNumber || "",
+                  planName: conn.planName || "",
+                  planPrice: conn.planPrice || 0,
+                  isCustomPlan: conn.isCustomPlan || false,
+                  isPrimary: conn.isPrimary || false,
+                  status: conn.status || "active",
+                  packageAmount: conn.packageAmount || 0,
+                  previousOutstanding: conn.previousOutstanding || 0,
+                  currentOutstanding: conn.currentOutstanding || 0,
+                }))
               : [
                   {
                     id: "conn-1",
@@ -228,11 +239,11 @@ export default function CustomerModal({
 
     // Validate connections
     formData.connections.forEach((connection, index) => {
-      if (!connection.vcNumber.trim())
+      if (!connection.vcNumber?.trim())
         newErrors[`vcNumber_${index}`] = "VC Number is required";
-      if (!connection.planName.trim())
+      if (!connection.planName?.trim())
         newErrors[`planName_${index}`] = "Plan name is required";
-      if (connection.planPrice <= 0)
+      if ((connection.planPrice || 0) <= 0)
         newErrors[`planPrice_${index}`] = "Plan price must be greater than 0";
     });
 
@@ -243,7 +254,9 @@ export default function CustomerModal({
     }
 
     // Check for duplicate VC numbers
-    const vcNumbers = formData.connections.map((conn) => conn.vcNumber.trim());
+    const vcNumbers = formData.connections
+      .map((conn) => (conn.vcNumber || "").trim())
+      .filter(Boolean);
     const uniqueVcNumbers = new Set(vcNumbers);
     if (vcNumbers.length !== uniqueVcNumbers.size) {
       newErrors.duplicateVcNumbers = "VC Numbers must be unique";
@@ -259,7 +272,7 @@ export default function CustomerModal({
 
     try {
       const totalPackageAmount = formData.connections.reduce(
-        (sum, conn) => sum + conn.planPrice,
+        (sum, conn) => sum + (conn.planPrice || 0),
         0,
       );
 
@@ -303,8 +316,8 @@ export default function CustomerModal({
         connections: formData.connections.map((conn, index) => ({
           ...conn,
           connectionIndex: index,
-          packageAmount: conn.planPrice,
-          currentOutstanding: conn.currentOutstanding || conn.planPrice,
+          packageAmount: conn.planPrice || 0,
+          currentOutstanding: conn.currentOutstanding || conn.planPrice || 0,
         })),
 
         // Custom plan for legacy compatibility
@@ -360,7 +373,7 @@ export default function CustomerModal({
               <Label htmlFor="name">Customer Name *</Label>
               <Input
                 id="name"
-                value={formData.name}
+                value={formData.name || ""}
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 placeholder="Enter customer name"
                 className={errors.name ? "border-red-500" : ""}
@@ -374,7 +387,7 @@ export default function CustomerModal({
               <Label htmlFor="phoneNumber">Phone Number *</Label>
               <Input
                 id="phoneNumber"
-                value={formData.phoneNumber}
+                value={formData.phoneNumber || ""}
                 onChange={(e) =>
                   handleInputChange("phoneNumber", e.target.value)
                 }
@@ -391,7 +404,7 @@ export default function CustomerModal({
               <Input
                 id="email"
                 type="email"
-                value={formData.email}
+                value={formData.email || ""}
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 placeholder="Enter email address"
               />
@@ -402,7 +415,7 @@ export default function CustomerModal({
               <Input
                 id="joinDate"
                 type="date"
-                value={formData.joinDate}
+                value={formData.joinDate || ""}
                 onChange={(e) => handleInputChange("joinDate", e.target.value)}
               />
             </div>
@@ -410,7 +423,7 @@ export default function CustomerModal({
             <div className="space-y-2">
               <Label htmlFor="billDueDate">Bill Due Date *</Label>
               <Select
-                value={formData.billDueDate.toString()}
+                value={formData.billDueDate?.toString() || "1"}
                 onValueChange={(value) =>
                   handleInputChange("billDueDate", parseInt(value))
                 }
@@ -431,7 +444,7 @@ export default function CustomerModal({
             <div className="space-y-2">
               <Label htmlFor="status">Status *</Label>
               <Select
-                value={formData.status}
+                value={formData.status || "active"}
                 onValueChange={(value) =>
                   handleInputChange("status", value as CustomerStatus)
                 }
@@ -450,7 +463,7 @@ export default function CustomerModal({
             <div className="space-y-2">
               <Label htmlFor="collectorName">Employee *</Label>
               <Select
-                value={formData.collectorName}
+                value={formData.collectorName || ""}
                 onValueChange={(value) =>
                   handleInputChange("collectorName", value)
                 }
@@ -478,7 +491,7 @@ export default function CustomerModal({
               <Input
                 id="previousOutstanding"
                 type="number"
-                value={formData.previousOutstanding}
+                value={formData.previousOutstanding || 0}
                 onChange={(e) =>
                   handleInputChange(
                     "previousOutstanding",
@@ -497,7 +510,7 @@ export default function CustomerModal({
             <Label htmlFor="address">Address *</Label>
             <Textarea
               id="address"
-              value={formData.address}
+              value={formData.address || ""}
               onChange={(e) => handleInputChange("address", e.target.value)}
               placeholder="Enter complete address"
               className={errors.address ? "border-red-500" : ""}
@@ -572,7 +585,7 @@ export default function CustomerModal({
                   <div className="space-y-2">
                     <Label>VC Number *</Label>
                     <Input
-                      value={connection.vcNumber}
+                      value={connection.vcNumber || ""}
                       onChange={(e) =>
                         handleConnectionChange(
                           index,
@@ -624,26 +637,7 @@ export default function CustomerModal({
                   </div>
 
                   <div className="space-y-2">
-                    <Label>VC Number *</Label>
-                    <Input
-                      value={connection.vcNumber || ""}
-                      onChange={(e) =>
-                        handleConnectionChange(index, "vcNumber", e.target.value)
-                      }
-                      placeholder="Enter VC number"
-                      className={
-                        errors[`vcNumber_${index}`] ? "border-red-500" : ""
-                      }
-                    />
-                      <p className="text-sm text-red-500">
-                        {errors[`planPrice_${index}`]}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Label>Plan Price *</Label>
                     <Input
                       type="number"
                       value={connection.planPrice || 0}
@@ -654,6 +648,34 @@ export default function CustomerModal({
                           parseFloat(e.target.value) || 0,
                         )
                       }
+                      placeholder="Enter price"
+                      min="0"
+                      step="0.01"
+                      className={
+                        errors[`planPrice_${index}`] ? "border-red-500" : ""
+                      }
+                    />
+                    {errors[`planPrice_${index}`] && (
+                      <p className="text-sm text-red-500">
+                        {errors[`planPrice_${index}`]}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={connection.isPrimary || false}
+                      onChange={(e) =>
+                        handleConnectionChange(
+                          index,
+                          "isPrimary",
+                          e.target.checked,
+                        )
+                      }
+                      className="rounded"
                     />
                     <span className="text-sm">Primary Connection</span>
                   </label>
@@ -669,6 +691,8 @@ export default function CustomerModal({
                           e.target.checked,
                         )
                       }
+                      className="rounded"
+                    />
                     <span className="text-sm">Custom Plan</span>
                   </label>
                 </div>
