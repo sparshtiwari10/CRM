@@ -140,7 +140,6 @@ class FirestoreService {
       const q = query(
         customersRef,
         where("collector_name", "==", collectorName),
-        orderBy("name"),
       );
 
       const querySnapshot = await getDocs(q);
@@ -151,6 +150,12 @@ class FirestoreService {
         customers.push(this.convertFirestoreCustomerToCustomer(doc.id, data));
       });
 
+      // Sort in memory since we can't use orderBy with where clause without composite index
+      customers.sort((a, b) => a.name.localeCompare(b.name));
+
+      console.log(
+        `✅ Found ${customers.length} customers for collector: ${collectorName}`,
+      );
       return customers;
     } catch (error) {
       console.error("❌ Failed to load customers by collector:", error);
