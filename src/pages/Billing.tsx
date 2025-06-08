@@ -31,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { InvoiceGenerator } from "@/components/invoice/InvoiceGenerator";
 import { CustomerService } from "@/services/customerService";
+import { authService } from "@/services/authService";
 import { AuthContext } from "@/contexts/AuthContext";
 import { BillingRecord } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +46,9 @@ export default function Billing() {
   const [isLoading, setIsLoading] = useState(false);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [allEmployees, setAllEmployees] = useState<
+    Array<{ id: string; name: string; role: string }>
+  >([]);
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
 
@@ -70,6 +74,22 @@ export default function Billing() {
     loadBillingRecords();
   }, [toast]);
 
+  // Load all employees for admin filter dropdown
+  useEffect(() => {
+    const loadEmployees = async () => {
+      if (isAdmin) {
+        try {
+          const employees = await authService.getAllEmployees();
+          setAllEmployees(employees);
+        } catch (error) {
+          console.error("Failed to load employees:", error);
+        }
+      }
+    };
+
+    loadEmployees();
+  }, [isAdmin]);
+
   // Filter billing records
   const filteredRecords = billingRecords.filter((record) => {
     const matchesSearch =
@@ -91,11 +111,6 @@ export default function Billing() {
       matchesSearch && matchesStatus && matchesEmployee && matchesDateRange
     );
   });
-
-  // Get unique employees for filter dropdown
-  const uniqueEmployees = Array.from(
-    new Set(billingRecords.map((record) => record.generatedBy)),
-  ).filter(Boolean);
 
   // Calculate today's and yesterday's collections
   const today = new Date().toISOString().split("T")[0];
@@ -405,7 +420,7 @@ export default function Billing() {
                 </SelectContent>
               </Select>
 
-              {/* Employee Filter (Admin Only) */}
+              {/* Employee Filter (Admin Only) - Now uses Firebase users */}
               {isAdmin && (
                 <Select
                   value={employeeFilter}
@@ -416,9 +431,9 @@ export default function Billing() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Employees</SelectItem>
-                    {uniqueEmployees.map((employee) => (
-                      <SelectItem key={employee} value={employee}>
-                        {employee}
+                    {allEmployees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.name}>
+                        {employee.name} ({employee.role})
                       </SelectItem>
                     ))}
                   </SelectContent>
