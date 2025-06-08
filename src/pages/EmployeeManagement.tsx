@@ -12,6 +12,7 @@ import {
   Power,
   PowerOff,
   KeyRound,
+  Loader2,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,7 +92,7 @@ export default function EmployeeManagement() {
         setUsers(allUsers);
 
         if (allUsers.length === 0) {
-          console.warn("⚠�� No users found in Firebase");
+          console.warn("⚠️ No users found in Firebase");
           toast({
             title: "No Users Found",
             description:
@@ -708,24 +709,34 @@ export default function EmployeeManagement() {
         {/* Delete User Confirmation Dialog */}
         <AlertDialog
           open={!!deleteUser}
-          onOpenChange={() => setDeleteUser(null)}
+          onOpenChange={() => !isUpdating && setDeleteUser(null)}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Remove User</AlertDialogTitle>
+              <AlertDialogTitle>Delete User</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to remove {deleteUser?.name}? This action
-                cannot be undone and they will be permanently removed from the
-                system.
+                Are you sure you want to permanently delete {deleteUser?.name}?
+                This action cannot be undone and they will be completely removed
+                from the system, including all their data.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isUpdating === deleteUser?.id}>
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteUser}
+                disabled={isUpdating === deleteUser?.id}
                 className="bg-red-600 hover:bg-red-700"
               >
-                Remove
+                {isUpdating === deleteUser?.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete User"
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
