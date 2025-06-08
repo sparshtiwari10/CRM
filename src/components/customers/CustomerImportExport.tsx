@@ -50,7 +50,7 @@ export function CustomerImportExport({
     setExporting(true);
 
     try {
-      // Define CSV headers
+      // Define CSV headers including secondary connection fields
       const headers = [
         "Name",
         "Phone Number",
@@ -68,13 +68,30 @@ export function CustomerImportExport({
         "Join Date",
         "Number of Connections",
         "Portal Bill",
+        // Secondary connection fields (up to 4 secondary connections)
+        "Secondary VC 1",
+        "Secondary Desc 1",
+        "Secondary Plan 1",
+        "Secondary Price 1",
+        "Secondary VC 2",
+        "Secondary Desc 2",
+        "Secondary Plan 2",
+        "Secondary Price 2",
+        "Secondary VC 3",
+        "Secondary Desc 3",
+        "Secondary Plan 3",
+        "Secondary Price 3",
+        "Secondary VC 4",
+        "Secondary Desc 4",
+        "Secondary Plan 4",
+        "Secondary Price 4",
       ];
 
       // Convert customers to CSV rows
       const csvRows = [
         headers.join(","), // Header row
-        ...customers.map((customer) =>
-          [
+        ...customers.map((customer) => {
+          const basicFields = [
             `"${customer.name}"`,
             `"${customer.phoneNumber}"`,
             `"${customer.email || ""}"`,
@@ -91,8 +108,28 @@ export function CustomerImportExport({
             `"${customer.joinDate}"`,
             customer.numberOfConnections.toString(),
             (customer.portalBill || 0).toString(),
-          ].join(","),
-        ),
+          ];
+
+          // Add secondary connection fields (up to 4 secondary connections)
+          const secondaryFields = [];
+          const secondaryConnections = customer.connections?.slice(1) || []; // Skip primary connection
+
+          for (let i = 0; i < 4; i++) {
+            const connection = secondaryConnections[i];
+            if (connection) {
+              secondaryFields.push(
+                `"${connection.vcNumber}"`,
+                `"${connection.description || ""}"`,
+                `"${connection.planName}"`,
+                connection.planPrice.toString(),
+              );
+            } else {
+              secondaryFields.push('""', '""', '""', '""');
+            }
+          }
+
+          return [...basicFields, ...secondaryFields].join(",");
+        }),
       ];
 
       // Create and download file
@@ -175,6 +212,23 @@ export function CustomerImportExport({
         "Join Date": "joinDate",
         "Number of Connections": "numberOfConnections",
         "Portal Bill": "portalBill",
+        // Secondary connection mappings
+        "Secondary VC 1": "secondaryVc1",
+        "Secondary Desc 1": "secondaryDesc1",
+        "Secondary Plan 1": "secondaryPlan1",
+        "Secondary Price 1": "secondaryPrice1",
+        "Secondary VC 2": "secondaryVc2",
+        "Secondary Desc 2": "secondaryDesc2",
+        "Secondary Plan 2": "secondaryPlan2",
+        "Secondary Price 2": "secondaryPrice2",
+        "Secondary VC 3": "secondaryVc3",
+        "Secondary Desc 3": "secondaryDesc3",
+        "Secondary Plan 3": "secondaryPlan3",
+        "Secondary Price 3": "secondaryPrice3",
+        "Secondary VC 4": "secondaryVc4",
+        "Secondary Desc 4": "secondaryDesc4",
+        "Secondary Plan 4": "secondaryPlan4",
+        "Secondary Price 4": "secondaryPrice4",
       };
 
       dataLines.forEach((line, index) => {
@@ -202,10 +256,19 @@ export function CustomerImportExport({
             lastPaymentDate: new Date().toISOString().split("T")[0],
           };
 
+          // Secondary connection data
+          const secondaryData: any = {};
+
           headers.forEach((header, i) => {
             const fieldName = headerMap[header as keyof typeof headerMap];
             if (fieldName && values[i] !== undefined) {
               let value = values[i];
+
+              // Handle secondary connection fields separately
+              if (fieldName.startsWith("secondary")) {
+                secondaryData[fieldName] = value;
+                return;
+              }
 
               // Type conversion based on field
               switch (fieldName) {
@@ -227,6 +290,45 @@ export function CustomerImportExport({
               }
             }
           });
+
+          // Process secondary connections
+          const connections = [
+            // Primary connection
+            {
+              id: "conn-1",
+              vcNumber: customerData.vcNumber,
+              planName: customerData.currentPackage,
+              planPrice: customerData.packageAmount,
+              isCustomPlan: false,
+              isPrimary: true,
+              connectionIndex: 1,
+              description: "",
+            },
+          ];
+
+          // Add secondary connections
+          for (let i = 1; i <= 4; i++) {
+            const vcField = `secondaryVc${i}`;
+            const descField = `secondaryDesc${i}`;
+            const planField = `secondaryPlan${i}`;
+            const priceField = `secondaryPrice${i}`;
+
+            if (secondaryData[vcField] && secondaryData[vcField].trim()) {
+              connections.push({
+                id: `conn-${i + 1}`,
+                vcNumber: secondaryData[vcField].trim(),
+                planName: secondaryData[planField] || "",
+                planPrice: parseFloat(secondaryData[priceField]) || 0,
+                isCustomPlan: false,
+                isPrimary: false,
+                connectionIndex: i + 1,
+                description: secondaryData[descField] || "",
+              });
+            }
+          }
+
+          customerData.connections = connections;
+          customerData.numberOfConnections = connections.length;
 
           // Validation
           if (
@@ -316,6 +418,23 @@ export function CustomerImportExport({
       "Join Date",
       "Number of Connections",
       "Portal Bill",
+      // Secondary connection fields
+      "Secondary VC 1",
+      "Secondary Desc 1",
+      "Secondary Plan 1",
+      "Secondary Price 1",
+      "Secondary VC 2",
+      "Secondary Desc 2",
+      "Secondary Plan 2",
+      "Secondary Price 2",
+      "Secondary VC 3",
+      "Secondary Desc 3",
+      "Secondary Plan 3",
+      "Secondary Price 3",
+      "Secondary VC 4",
+      "Secondary Desc 4",
+      "Secondary Plan 4",
+      "Secondary Price 4",
     ];
 
     const sampleRow = [
@@ -333,8 +452,25 @@ export function CustomerImportExport({
       "true",
       "2024-01-15",
       "2024-01-01",
-      "1",
+      "2",
       "599",
+      // Secondary connection sample data
+      "VC001234-SEC",
+      "Living Room",
+      "Basic Cable",
+      "299",
+      "", // Empty secondary connection 2
+      "",
+      "",
+      "",
+      "", // Empty secondary connection 3
+      "",
+      "",
+      "",
+      "", // Empty secondary connection 4
+      "",
+      "",
+      "",
     ];
 
     const csvContent = [headers.join(","), sampleRow.join(",")].join("\n");

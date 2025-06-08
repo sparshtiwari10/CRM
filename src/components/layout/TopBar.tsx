@@ -1,4 +1,4 @@
-import { Bell, Search, Settings, User, LogOut } from "lucide-react";
+import { Bell, Search, Settings, User, LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { FirebaseStatus } from "@/components/common/FirebaseStatus";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface TopBarProps {
   title?: string;
@@ -20,6 +21,7 @@ interface TopBarProps {
 
 export function TopBar({ title }: TopBarProps) {
   const { user, logout, isAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = () => {
     logout();
@@ -35,13 +37,15 @@ export function TopBar({ title }: TopBarProps) {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 lg:px-6">
+    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-16 flex items-center justify-between px-4 lg:px-6">
       {/* Left side - Title and Search */}
       <div className="flex items-center space-x-4 flex-1">
         {/* Page Title */}
         {title && (
           <div className="hidden sm:block">
-            <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+              {title}
+            </h1>
           </div>
         )}
 
@@ -51,7 +55,7 @@ export function TopBar({ title }: TopBarProps) {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
               placeholder="Search customers, invoices..."
-              className="pl-10 bg-gray-50 border-gray-200 focus:bg-white"
+              className="pl-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
             />
           </div>
         </div>
@@ -61,6 +65,18 @@ export function TopBar({ title }: TopBarProps) {
       <div className="flex items-center space-x-4">
         {/* Firebase Status */}
         <FirebaseStatus />
+
+        {/* Dark Mode Toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          className="relative h-9 w-9"
+          title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+        >
+          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        </Button>
 
         {/* Mobile Search */}
         <Button variant="ghost" size="icon" className="md:hidden">

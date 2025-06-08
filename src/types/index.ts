@@ -4,8 +4,9 @@ export interface Connection {
   planName: string;
   planPrice: number;
   isCustomPlan: boolean;
-  isPrimary: boolean; // true for primary VC, false for secondary
-  connectionIndex: number; // 1, 2, 3, etc. for ordering
+  isPrimary: boolean;
+  connectionIndex: number;
+  description?: string;
 }
 
 export interface Customer {
