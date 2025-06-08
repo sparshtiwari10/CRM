@@ -58,9 +58,9 @@ const mockUsers = [
     username: "mike",
     password_hash:
       "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy",
-    name: "Mike Field",
+    name: "Mike Johnson",
     role: "employee" as const,
-    collector_name: "Mike Field",
+    collector_name: "Mike Johnson",
     access_scope: [],
     created_at: new Date("2024-01-01"),
     last_login: new Date(),
@@ -70,28 +70,17 @@ const mockUsers = [
 
 export interface User {
   id: string;
-  username: string;
   name: string;
   role: "admin" | "employee";
-  access_scope?: string[]; // For employees: list of customer IDs or collector names they can access
-  collector_name?: string; // For employees: their collector name
-  created_at: Date;
-  last_login?: Date;
-  is_active: boolean;
+  collector_name?: string | null;
+  access_scope?: string[];
+  email?: string;
+  avatar?: string;
 }
 
 export interface LoginCredentials {
   username: string;
   password: string;
-}
-
-export interface CreateUserData {
-  username: string;
-  password: string;
-  name: string;
-  role: "admin" | "employee";
-  collector_name?: string;
-  access_scope?: string[];
 }
 
 class AuthService {
@@ -200,12 +189,12 @@ class AuthService {
       const userData = userDoc.data();
 
       // Verify password
-      const isPasswordValid = await bcrypt.compare(
+      const isValidPassword = await bcrypt.compare(
         credentials.password,
         userData.password_hash,
       );
 
-      if (!isPasswordValid) {
+      if (!isValidPassword) {
         throw new Error("Invalid username or password");
       }
 
@@ -221,93 +210,68 @@ class AuthService {
         last_login: Timestamp.now(),
       });
 
-      // Create user object
       const user: User = {
         id: userDoc.id,
-        username: userData.username,
         name: userData.name,
         role: userData.role,
-        access_scope: userData.access_scope || [],
         collector_name: userData.collector_name,
-        created_at: userData.created_at.toDate(),
-        last_login: new Date(),
-        is_active: userData.is_active,
+        access_scope: userData.access_scope || [],
+        email: userData.email,
+        avatar: userData.avatar,
       };
 
-      // Store user in session
       this.currentUser = user;
       this.saveUserToStorage(user);
 
-      console.log(
-        `✅ User ${user.name} logged in successfully as ${user.role} (Firebase)`,
-      );
+      console.log("✅ Firebase authentication successful:", user.name);
       return user;
     } catch (error: any) {
-      // Handle specific Firebase errors
-      if (
-        error.code === "permission-denied" ||
-        error.message.includes("PERMISSION_DENIED")
-      ) {
-        console.error(
-          "Firebase permission denied - falling back to mock authentication",
-        );
-        // Fall back to mock authentication if Firebase permissions aren't set up
-        return await this.loginWithMockData(credentials);
-      }
+      console.error("❌ Firebase authentication failed:", error.message);
       throw error;
     }
   }
 
   /**
-   * Login with mock data (when Firebase is unavailable)
+   * Login with mock data (fallback)
    */
   private async loginWithMockData(
     credentials: LoginCredentials,
   ): Promise<User> {
     // Find user in mock data
-    const mockUser = mockUsers.find((u) => u.username === credentials.username);
+    const mockUser = mockUsers.find(
+      (user) => user.username === credentials.username,
+    );
 
     if (!mockUser) {
       throw new Error("Invalid username or password");
     }
 
-    // Verify password (for demo, we'll accept both hashed and plain passwords)
-    const isPasswordValid =
-      (credentials.password === "admin123" &&
-        credentials.username === "admin") ||
-      (credentials.password === "employee123" &&
-        credentials.username === "employee") ||
-      (await bcrypt.compare(credentials.password, mockUser.password_hash));
+    // Verify password (simple comparison for demo)
+    const isValidPassword = await bcrypt.compare(
+      credentials.password,
+      mockUser.password_hash,
+    );
 
-    if (!isPasswordValid) {
+    if (!isValidPassword) {
       throw new Error("Invalid username or password");
     }
 
-    // Check if user is active
     if (!mockUser.is_active) {
       throw new Error("Account is deactivated. Please contact administrator.");
     }
 
-    // Create user object
     const user: User = {
       id: mockUser.id,
-      username: mockUser.username,
       name: mockUser.name,
       role: mockUser.role,
-      access_scope: mockUser.access_scope || [],
       collector_name: mockUser.collector_name,
-      created_at: mockUser.created_at,
-      last_login: new Date(),
-      is_active: mockUser.is_active,
+      access_scope: mockUser.access_scope,
     };
 
-    // Store user in session
     this.currentUser = user;
     this.saveUserToStorage(user);
 
-    console.log(
-      `✅ User ${user.name} logged in successfully as ${user.role} (Demo Mode)`,
-    );
+    console.log("✅ Mock authentication successful:", user.name);
     return user;
   }
 
@@ -316,7 +280,7 @@ class AuthService {
    */
   logout(): void {
     this.currentUser = null;
-    this.clearUserFromStorage();
+    localStorage.removeItem("agv_user");
     console.log("✅ User logged out successfully");
   }
 
@@ -325,13 +289,6 @@ class AuthService {
    */
   getCurrentUser(): User | null {
     return this.currentUser;
-  }
-
-  /**
-   * Check if user is authenticated
-   */
-  isAuthenticated(): boolean {
-    return this.currentUser !== null;
   }
 
   /**
@@ -348,279 +305,165 @@ class AuthService {
     customerId: string,
     customerCollectorName?: string,
   ): boolean {
-    if (!this.currentUser) return false;
+    const currentUser = this.getCurrentUser();
+    if (!currentUser) return false;
 
     // Admins can access all customers
-    if (this.currentUser.role === "admin") return true;
+    if (currentUser.role === "admin") return true;
 
     // Employees can only access customers assigned to them
-    if (this.currentUser.role === "employee") {
-      // Check by collector name
-      if (customerCollectorName && this.currentUser.collector_name) {
-        return customerCollectorName === this.currentUser.collector_name;
-      }
-
-      // Check by access scope (customer IDs)
-      if (this.currentUser.access_scope?.includes(customerId)) {
-        return true;
-      }
-    }
-
-    return false;
+    return currentUser.collector_name === customerCollectorName;
   }
 
   /**
-   * Create new user (Admin only)
+   * Get all employees for admin purposes (e.g., filtering in billing)
    */
-  async createUser(userData: CreateUserData): Promise<User> {
-    if (!this.isAdmin()) {
-      throw new Error("Only administrators can create users");
-    }
-
-    if (!isFirebaseAvailable || !db) {
-      throw new Error("User creation is not available in demo mode");
-    }
-
+  static async getAllEmployees(): Promise<
+    Array<{ id: string; name: string; role: string }>
+  > {
     try {
-      // Check if username already exists
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("username", "==", userData.username));
-      const existingUser = await getDocs(q);
-
-      if (!existingUser.empty) {
-        throw new Error("Username already exists");
+      if (!isFirebaseAvailable() || !db) {
+        // Return mock employees when Firebase unavailable
+        return mockUsers.map((user) => ({
+          id: user.id,
+          name: user.name,
+          role: user.role,
+        }));
       }
 
-      // Hash password
-      const saltRounds = 12;
-      const password_hash = await bcrypt.hash(userData.password, saltRounds);
-
-      // Create user document
-      const newUserData = {
-        username: userData.username,
-        password_hash,
-        name: userData.name,
-        role: userData.role,
-        collector_name: userData.collector_name || null,
-        access_scope: userData.access_scope || [],
-        created_at: Timestamp.now(),
-        is_active: true,
-      };
-
-      const docRef = await addDoc(usersRef, newUserData);
-
-      const user: User = {
-        id: docRef.id,
-        username: userData.username,
-        name: userData.name,
-        role: userData.role,
-        access_scope: userData.access_scope || [],
-        collector_name: userData.collector_name,
-        created_at: new Date(),
-        is_active: true,
-      };
-
-      console.log(`✅ User ${user.name} created successfully`);
-      return user;
-    } catch (error) {
-      console.error("❌ User creation failed:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get all users (Admin only)
-   */
-  async getAllUsers(): Promise<User[]> {
-    if (!this.isAdmin()) {
-      throw new Error("Only administrators can view all users");
-    }
-
-    if (!isFirebaseAvailable || !db) {
-      // Return mock users in demo mode
-      return mockUsers.map((mockUser) => ({
-        id: mockUser.id,
-        username: mockUser.username,
-        name: mockUser.name,
-        role: mockUser.role,
-        access_scope: mockUser.access_scope || [],
-        collector_name: mockUser.collector_name,
-        created_at: mockUser.created_at,
-        last_login: mockUser.last_login,
-        is_active: mockUser.is_active,
-      }));
-    }
-
-    try {
       const usersRef = collection(db, "users");
       const querySnapshot = await getDocs(usersRef);
+      const employees: Array<{ id: string; name: string; role: string }> = [];
 
-      const users: User[] = [];
       querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        users.push({
-          id: doc.id,
-          username: data.username,
-          name: data.name,
-          role: data.role,
-          access_scope: data.access_scope || [],
-          collector_name: data.collector_name,
-          created_at: data.created_at.toDate(),
-          last_login: data.last_login?.toDate(),
-          is_active: data.is_active,
-        });
+        const userData = doc.data();
+        if (userData.is_active !== false) {
+          // Include active users
+          employees.push({
+            id: doc.id,
+            name: userData.name || userData.username,
+            role: userData.role,
+          });
+        }
       });
 
-      return users;
+      return employees;
     } catch (error) {
-      console.error("❌ Failed to get users:", error);
-      throw error;
+      console.error("Failed to get all employees:", error);
+      // Fallback to mock data
+      return mockUsers.map((user) => ({
+        id: user.id,
+        name: user.name,
+        role: user.role,
+      }));
     }
   }
 
   /**
-   * Save user to local storage
+   * Save user to localStorage
    */
   private saveUserToStorage(user: User): void {
     try {
-      localStorage.setItem(
-        "agv_user",
-        JSON.stringify({
-          ...user,
-          created_at: user.created_at.toISOString(),
-          last_login: user.last_login?.toISOString(),
-        }),
-      );
+      localStorage.setItem("agv_user", JSON.stringify(user));
     } catch (error) {
-      console.warn("Failed to save user to storage:", error);
+      console.warn("Failed to save user to localStorage:", error);
     }
   }
 
   /**
-   * Load user from local storage
+   * Load user from localStorage
    */
   private loadUserFromStorage(): void {
     try {
       const storedUser = localStorage.getItem("agv_user");
       if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        this.currentUser = {
-          ...userData,
-          created_at: new Date(userData.created_at),
-          last_login: userData.last_login
-            ? new Date(userData.last_login)
-            : undefined,
-        };
+        this.currentUser = JSON.parse(storedUser);
+        console.log("✅ Restored user session:", this.currentUser?.name);
       }
     } catch (error) {
-      console.warn("Failed to load user from storage:", error);
-      this.clearUserFromStorage();
-    }
-  }
-
-  /**
-   * Clear user from local storage
-   */
-  private clearUserFromStorage(): void {
-    try {
+      console.warn("Failed to load user from localStorage:", error);
       localStorage.removeItem("agv_user");
-    } catch (error) {
-      console.warn("Failed to clear user from storage:", error);
     }
   }
 
   /**
-   * Seed default admin user (for initial setup)
+   * Create a new user (admin only)
    */
-  async seedDefaultAdmin(): Promise<void> {
-    if (!isFirebaseAvailable || !db) {
-      console.log("🔄 Firebase not available, using mock admin user");
-      return;
-    }
-
+  async createUser(userData: {
+    username: string;
+    password: string;
+    name: string;
+    role: "admin" | "employee";
+    collector_name?: string;
+    email?: string;
+  }): Promise<string> {
     try {
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("role", "==", "admin"));
-      const adminUsers = await getDocs(q);
-
-      if (adminUsers.empty) {
-        console.log("🌱 Creating default admin user...");
-
-        const saltRounds = 12;
-        const password_hash = await bcrypt.hash("admin123", saltRounds);
-
-        await addDoc(usersRef, {
-          username: "admin",
-          password_hash,
-          name: "System Administrator",
-          role: "admin",
-          collector_name: null,
-          access_scope: [],
-          created_at: Timestamp.now(),
-          is_active: true,
-        });
-
-        console.log(
-          "✅ Default admin user created (username: admin, password: admin123)",
-        );
+      if (!this.isAdmin()) {
+        throw new Error("Only administrators can create users");
       }
+
+      if (!isFirebaseAvailable() || !db) {
+        throw new Error("Firebase not available for user creation");
+      }
+
+      // Hash password
+      const password_hash = await bcrypt.hash(userData.password, 12);
+
+      // Create user document
+      const usersRef = collection(db, "users");
+      const docRef = await addDoc(usersRef, {
+        username: userData.username,
+        password_hash,
+        name: userData.name,
+        role: userData.role,
+        collector_name: userData.collector_name || null,
+        email: userData.email || null,
+        access_scope: [],
+        created_at: Timestamp.now(),
+        is_active: true,
+      });
+
+      console.log("✅ User created successfully:", userData.name);
+      return docRef.id;
     } catch (error) {
-      console.error("❌ Failed to seed default admin:", error);
+      console.error("❌ Failed to create user:", error);
+      throw error;
     }
   }
 
   /**
-   * Static method to seed demo users (for DataSeeder)
+   * Update user information (admin only)
    */
-  static async seedDemoUsers(): Promise<void> {
-    if (!isFirebaseAvailable || !db) {
-      console.log("🔄 Firebase not available, using mock users for demo");
-      return;
-    }
-
-    const instance = new AuthService();
-    await instance.seedDefaultAdmin();
-
-    // Add demo employee user
+  async updateUser(
+    userId: string,
+    updates: {
+      name?: string;
+      role?: "admin" | "employee";
+      collector_name?: string;
+      email?: string;
+      is_active?: boolean;
+    },
+  ): Promise<void> {
     try {
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("username", "==", "employee"));
-      const employeeUsers = await getDocs(q);
-
-      if (employeeUsers.empty) {
-        console.log("🌱 Creating demo employee user...");
-
-        const saltRounds = 12;
-        const password_hash = await bcrypt.hash("employee123", saltRounds);
-
-        await addDoc(usersRef, {
-          username: "employee",
-          password_hash,
-          name: "Demo Employee",
-          role: "employee",
-          collector_name: "John Collector",
-          access_scope: [],
-          created_at: Timestamp.now(),
-          is_active: true,
-        });
-
-        console.log(
-          "✅ Demo employee user created (username: employee, password: employee123)",
-        );
+      if (!this.isAdmin()) {
+        throw new Error("Only administrators can update users");
       }
-    } catch (error) {
-      console.error("❌ Failed to seed demo employee:", error);
-    }
-  }
 
-  /**
-   * Static method to check Firebase status
-   */
-  static getFirebaseStatus(): boolean {
-    return isFirebaseAvailable && !!db;
+      if (!isFirebaseAvailable() || !db) {
+        throw new Error("Firebase not available for user updates");
+      }
+
+      await updateDoc(doc(db, "users", userId), {
+        ...updates,
+        updated_at: Timestamp.now(),
+      });
+
+      console.log("✅ User updated successfully:", userId);
+    } catch (error) {
+      console.error("❌ Failed to update user:", error);
+      throw error;
+    }
   }
 }
 
-// Export both the class and the singleton instance
-export { AuthService };
 export const authService = new AuthService();
