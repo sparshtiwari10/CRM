@@ -55,27 +55,65 @@ export default function Customers() {
         setIsLoading(true);
         let customerData: Customer[];
 
+        console.log("🔄 Loading customers...");
+        console.log("👤 Current user:", {
+          name: user?.name,
+          role: user?.role,
+          collector_name: user?.collector_name,
+          isAdmin: isAdmin,
+        });
+
         if (isAdmin) {
+          console.log("👑 Admin user - loading all customers");
           customerData = await CustomerService.getAllCustomers();
         } else {
           // For employees, get customers assigned to them
           // Use collector_name if available, otherwise fall back to name
           const collectorName = user?.collector_name || user?.name || "";
-          console.log(`🔍 Loading customers for employee: ${collectorName}`);
+          console.log(
+            `🔍 Employee user - loading customers for collector: "${collectorName}"`,
+          );
           customerData =
             await CustomerService.getCustomersByCollector(collectorName);
+          console.log(
+            `📊 Found ${customerData.length} customers assigned to ${collectorName}`,
+          );
+
+          // Debug: Show which customers were found
+          if (customerData.length > 0) {
+            console.log(
+              "📋 Assigned customers:",
+              customerData.map((c) => ({
+                name: c.name,
+                collectorName: c.collectorName,
+                vcNumber: c.vcNumber,
+              })),
+            );
+          } else {
+            console.warn("⚠️ No customers found for this employee. Check:");
+            console.warn(
+              "  1. Customer assignment: ensure customers have collectorName set to:",
+              collectorName,
+            );
+            console.warn(
+              "  2. Employee profile: ensure collector_name is set correctly",
+            );
+          }
         }
 
         // Only update state if component is still mounted
         if (mounted) {
           setCustomers(customerData);
+          console.log(
+            `✅ Successfully loaded ${customerData.length} customers`,
+          );
         }
       } catch (error) {
-        console.error("Error loading customers:", error);
+        console.error("❌ Error loading customers:", error);
         if (mounted) {
           toast({
             title: "Error",
-            description: "Failed to load customers",
+            description: "Failed to load customers. Check console for details.",
             variant: "destructive",
           });
         }
@@ -90,19 +128,21 @@ export default function Customers() {
       loadCustomers();
     }
 
-    // Cleanup function
     return () => {
       mounted = false;
     };
-  }, [user, isAdmin, toast]);
+  }, [isAdmin, toast, user]);
 
-  // Filter customers based on search and filters
+  // Filter customers based on search term and filters
   const filteredCustomers = customers.filter((customer) => {
+    const searchTerm_lower = searchTerm.toLowerCase();
     const matchesSearch =
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      !searchTerm ||
+      customer.name.toLowerCase().includes(searchTerm_lower) ||
       customer.phoneNumber.includes(searchTerm) ||
       customer.vcNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.address.toLowerCase().includes(searchTerm.toLowerCase());
+      customer.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.collectorName.toLowerCase().includes(searchTerm_lower);
 
     const matchesStatus =
       statusFilter === "all" ||
@@ -144,242 +184,125 @@ export default function Customers() {
   ).filter(Boolean);
 
   const handleAdd = () => {
-    if (isSaving) return; // Prevent opening modal while saving
     setEditingCustomer(null);
     setIsModalOpen(true);
   };
 
   const handleEdit = (customer: Customer) => {
-    if (isSaving) return; // Prevent opening modal while saving
     setEditingCustomer(customer);
     setIsModalOpen(true);
   };
 
-  const handleView = (customer: Customer) => {
-    if (isSaving) return; // Prevent opening modal while saving
-    // For now, view opens edit modal (read-only for employees)
-    setEditingCustomer(customer);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = (open: boolean) => {
-    if (!open && !isSaving) {
-      setIsModalOpen(false);
-      setEditingCustomer(null);
-    }
-  };
-
-  const handleViewHistory = (customer: Customer) => {
-    console.log("View history for:", customer.name);
-    // TODO: Implement view history functionality
-  };
-
-  const handlePaymentCapture = (customer: Customer) => {
-    console.log("Payment capture for:", customer.name);
-    // TODO: Implement payment capture functionality
-  };
-
-  const handleCustomerUpdate = async (
-    customerId: string,
-    updates: Partial<Customer>,
-  ) => {
-    try {
-      setIsSaving(true);
-      await CustomerService.updateCustomer(customerId, updates);
-
-      setCustomers((prevCustomers) =>
-        prevCustomers.map((customer) =>
-          customer.id === customerId ? { ...customer, ...updates } : customer,
-        ),
-      );
-
-      toast({
-        title: "Customer Updated",
-        description: "Customer information has been successfully updated.",
-      });
-    } catch (error) {
-      console.error("Update error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update customer. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDeleteClick = (customer: Customer) => {
+  const handleDelete = (customer: Customer) => {
     setDeleteCustomer(customer);
   };
 
   const handleDeleteConfirm = async () => {
-    if (deleteCustomer) {
+    if (!deleteCustomer) return;
+
+    try {
       setIsSaving(true);
-      try {
-        await CustomerService.deleteCustomer(deleteCustomer.id);
-        setCustomers((prev) => prev.filter((c) => c.id !== deleteCustomer.id));
-        toast({
-          title: "Customer Deleted",
-          description: `${deleteCustomer.name} has been successfully deleted.`,
-        });
-      } catch (error) {
-        console.error("Delete error:", error);
-        toast({
-          title: "Error",
-          description: "Failed to delete customer",
-          variant: "destructive",
-        });
-      } finally {
-        setIsSaving(false);
-        setDeleteCustomer(null);
-      }
+      await CustomerService.deleteCustomer(deleteCustomer.id);
+      setCustomers((prev) =>
+        prev.filter((customer) => customer.id !== deleteCustomer.id),
+      );
+      toast({
+        title: "Success",
+        description: "Customer deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete customer",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+      setDeleteCustomer(null);
     }
   };
 
-  const handleSave = async (customer: Omit<Customer, "id">) => {
-    console.log("Save started for:", customer.name);
-
-    if (isSaving) {
-      console.log("Save already in progress, ignoring");
-      return;
-    }
-
-    setIsSaving(true);
-
+  const handleSave = async (customerData: Customer) => {
     try {
-      console.log("Performing save operation...");
+      setIsSaving(true);
 
       if (editingCustomer) {
-        console.log("Updating existing customer:", editingCustomer.id);
-        const customerWithId = { ...customer, id: editingCustomer.id };
-        await CustomerService.updateCustomer(
-          editingCustomer.id,
-          customerWithId,
+        // Update existing customer
+        await CustomerService.updateCustomer(editingCustomer.id, customerData);
+        setCustomers((prev) =>
+          prev.map((customer) =>
+            customer.id === editingCustomer.id
+              ? { ...customerData, id: editingCustomer.id }
+              : customer,
+          ),
         );
-
-        setCustomers((prevCustomers) => {
-          console.log(
-            "Updating customer list, previous count:",
-            prevCustomers.length,
-          );
-          const updatedCustomers = prevCustomers.map((c) =>
-            c.id === editingCustomer.id ? { ...customerWithId } : c,
-          );
-          console.log(
-            "Updated customer list, new count:",
-            updatedCustomers.length,
-          );
-          return updatedCustomers;
-        });
-
         toast({
-          title: "Customer Updated",
-          description: `${customer.name} has been successfully updated.`,
+          title: "Success",
+          description: "Customer updated successfully",
         });
       } else {
-        console.log("Adding new customer");
-        const newId = await CustomerService.addCustomer(customer);
-        const newCustomer = { ...customer, id: newId };
-
-        setCustomers((prevCustomers) => {
-          console.log(
-            "Adding customer to list, previous count:",
-            prevCustomers.length,
-          );
-          const newList = [...prevCustomers, newCustomer];
-          console.log("New customer list count:", newList.length);
-          return newList;
-        });
-
+        // Add new customer
+        const newCustomerId = await CustomerService.addCustomer(customerData);
+        const newCustomer = { ...customerData, id: newCustomerId };
+        setCustomers((prev) => [newCustomer, ...prev]);
         toast({
-          title: "Customer Added",
-          description: `${customer.name} has been successfully added.`,
+          title: "Success",
+          description: "Customer added successfully",
         });
       }
-
-      console.log("Save operation completed successfully");
-
-      // Use setTimeout to ensure state updates are processed
-      setTimeout(() => {
-        console.log("Closing modal");
-        setIsModalOpen(false);
-        setEditingCustomer(null);
-      }, 100);
     } catch (error) {
-      console.error("Save error:", error);
       toast({
         title: "Error",
-        description: "Failed to save customer. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      console.log("Resetting saving state");
-      setIsSaving(false);
-    }
-  };
-
-  const handleActionRequest = async (request: Omit<ActionRequest, "id">) => {
-    try {
-      // Submit action request for admin approval
-      await CustomerService.addRequest(request);
-      toast({
-        title: "Request Submitted",
-        description:
-          "Your action request has been submitted for admin approval.",
-      });
-    } catch (error) {
-      console.error("Action request error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to submit request",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleImportSuccess = () => {
-    // Reload customers after import
-    const loadCustomers = async () => {
-      try {
-        const customerData = isAdmin
-          ? await CustomerService.getAllCustomers()
-          : await CustomerService.getCustomersByCollector(user?.name || "");
-        setCustomers(customerData);
-      } catch (error) {
-        console.error("Error reloading customers:", error);
-      }
-    };
-    loadCustomers();
-  };
-
-  const handleCsvImport = async (importedCustomers: Customer[]) => {
-    try {
-      setIsSaving(true);
-
-      // Save imported customers
-      for (const customer of importedCustomers) {
-        await CustomerService.addCustomer(customer);
-      }
-
-      // Reload customer list
-      await handleImportSuccess();
-
-      toast({
-        title: "Import Successful",
-        description: `Successfully imported ${importedCustomers.length} customers.`,
-      });
-    } catch (error) {
-      console.error("Error importing customers:", error);
-      toast({
-        title: "Import Failed",
-        description: "An error occurred while importing customers.",
+        description: editingCustomer
+          ? "Failed to update customer"
+          : "Failed to add customer",
         variant: "destructive",
       });
     } finally {
       setIsSaving(false);
     }
   };
+
+  const handleStatusChange = async (
+    customerId: string,
+    newStatus: "active" | "inactive" | "demo",
+  ) => {
+    try {
+      const customer = customers.find((c) => c.id === customerId);
+      if (!customer) return;
+
+      await CustomerService.updateCustomer(customerId, { status: newStatus });
+
+      setCustomers((prev) =>
+        prev.map((c) =>
+          c.id === customerId ? { ...c, status: newStatus } : c,
+        ),
+      );
+
+      toast({
+        title: "Status Updated",
+        description: `Customer status changed to ${newStatus}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update customer status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImportSuccess = (importedCustomers: Customer[]) => {
+    setCustomers((prev) => [...importedCustomers, ...prev]);
+    setShowImportExport(false);
+    toast({
+      title: "Import Successful",
+      description: `${importedCustomers.length} customers imported successfully`,
+    });
+  };
+
+  // For employees, don't allow accessing all customers functionality
+  const showOnlyMyCustomers = !isAdmin;
 
   return (
     <DashboardLayout title="Customer Management">
@@ -391,46 +314,40 @@ export default function Customers() {
               Customer Management
             </h2>
             <p className="text-sm lg:text-base text-muted-foreground">
-              {isAdmin
-                ? "Manage customers with enhanced billing tracking and invoice history"
-                : "View customers assigned to you"}
+              {showOnlyMyCustomers
+                ? `Managing customers assigned to you (${filteredCustomers.length} customers)`
+                : `Manage all customers and their connections (${filteredCustomers.length} customers)`}
             </p>
           </div>
 
-          {/* Admin Actions */}
-          {isAdmin && (
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            {isAdmin && (
               <Button
                 variant="outline"
                 onClick={() => setShowImportExport(true)}
-                disabled={isSaving}
                 className="text-sm"
               >
                 <Upload className="mr-2 h-4 w-4" />
-                Import/Export CSV
+                Import/Export
               </Button>
-              <Button
-                onClick={handleAdd}
-                disabled={isSaving}
-                className="text-sm"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Customer
-              </Button>
-            </div>
-          )}
+            )}
+            <Button onClick={handleAdd} className="text-sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Customer
+            </Button>
+          </div>
         </div>
 
         {/* Search and Filters */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+            <div className="flex flex-col lg:flex-row gap-4">
               {/* Search */}
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Search by name, phone, VC number, or address..."
+                    placeholder="Search customers by name, phone, address, VC number, or employee..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -440,11 +357,11 @@ export default function Customers() {
 
               {/* Status Filter */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                   <SelectItem value="demo">Demo</SelectItem>
@@ -498,79 +415,60 @@ export default function Customers() {
           </div>
         </div>
 
-        {/* Enhanced Customer Table */}
-        {isLoading ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <div className="text-muted-foreground">Loading customers...</div>
-            </CardContent>
-          </Card>
-        ) : (
-          <CustomerTable
-            customers={filteredCustomers}
-            searchTerm={searchTerm}
-            onEdit={handleEdit}
-            onDelete={handleDeleteClick}
-            onView={handleView}
-            onViewHistory={handleViewHistory}
-            onPaymentCapture={handlePaymentCapture}
-            onCustomerUpdate={handleCustomerUpdate}
-          />
-        )}
+        {/* Customer Table */}
+        <CustomerTable
+          customers={filteredCustomers}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onStatusChange={handleStatusChange}
+          isLoading={isLoading}
+        />
 
         {/* Customer Modal */}
-        {isAdmin && (
-          <CustomerModal
-            key={editingCustomer?.id || "new"}
-            open={isModalOpen}
-            onOpenChange={handleCloseModal}
-            customer={editingCustomer}
-            onSave={handleSave}
-            isSaving={isSaving}
-          />
-        )}
+        <CustomerModal
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          customer={editingCustomer}
+          onSave={handleSave}
+          isLoading={isSaving}
+        />
 
-        {/* Delete Confirmation Dialog */}
-        {isAdmin && (
-          <AlertDialog
-            open={!!deleteCustomer}
-            onOpenChange={() => setDeleteCustomer(null)}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete{" "}
-                  <strong>{deleteCustomer?.name}</strong>? This action cannot be
-                  undone and will permanently remove all customer data, billing
-                  records, and payment history.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={isSaving}>
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteConfirm}
-                  disabled={isSaving}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  {isSaving ? "Deleting..." : "Delete Customer"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-
-        {/* CSV Import/Export Modal */}
+        {/* Import/Export Modal */}
         {isAdmin && (
           <CustomerImportExport
             open={showImportExport}
             onOpenChange={setShowImportExport}
             customers={customers}
-            onImport={handleCsvImport}
+            onImportSuccess={handleImportSuccess}
           />
         )}
+
+        {/* Delete Confirmation */}
+        <AlertDialog
+          open={!!deleteCustomer}
+          onOpenChange={() => setDeleteCustomer(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{deleteCustomer?.name}"? This
+                action cannot be undone and will remove all customer data
+                including billing history.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                disabled={isSaving}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isSaving ? "Deleting..." : "Delete Customer"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
