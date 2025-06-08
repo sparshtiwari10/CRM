@@ -546,36 +546,153 @@ function CustomerModal({
                   <Label>Active Customer</Label>
                 </div>
 
-                {/* Display Additional VC Numbers when multiple connections are selected */}
+                {/* Secondary Connections Configuration */}
                 {formData.numberOfConnections > 1 && (
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <Label className="text-sm font-medium">
-                      All VC Numbers
+                      Secondary Connections
                     </Label>
-                    <div className="bg-gray-50 p-3 rounded-lg space-y-2">
-                      {formData.connections.length > 0 ? (
-                        formData.connections.map((connection, index) => (
-                          <div
-                            key={connection.id || index}
-                            className="flex justify-between items-center"
-                          >
-                            <span className="text-sm text-gray-600">
-                              {connection.isPrimary
-                                ? "Primary"
-                                : `Secondary ${index}`}
-                              :
-                            </span>
-                            <span className="font-mono text-sm text-blue-600">
-                              {connection.vcNumber}
-                            </span>
+                    {formData.connections.slice(1).map((connection, index) => (
+                      <Card
+                        key={connection.id || `secondary-${index}`}
+                        className="p-4"
+                      >
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-sm text-gray-700">
+                            Secondary Connection {index + 1}
+                          </h4>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor={`secondary-vc-${index}`}>
+                                VC Number *
+                              </Label>
+                              <Input
+                                id={`secondary-vc-${index}`}
+                                value={connection.vcNumber}
+                                onChange={(e) =>
+                                  handleSecondaryConnectionChange(
+                                    index + 1,
+                                    "vcNumber",
+                                    e.target.value,
+                                  )
+                                }
+                                disabled={isSaving}
+                                placeholder="Enter VC Number"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`secondary-desc-${index}`}>
+                                Description
+                              </Label>
+                              <Input
+                                id={`secondary-desc-${index}`}
+                                value={connection.description || ""}
+                                onChange={(e) =>
+                                  handleSecondaryConnectionChange(
+                                    index + 1,
+                                    "description",
+                                    e.target.value,
+                                  )
+                                }
+                                disabled={isSaving}
+                                placeholder="Connection description"
+                              />
+                            </div>
                           </div>
-                        ))
-                      ) : (
-                        <div className="text-sm text-gray-500 text-center py-2">
-                          Additional VC numbers will be generated automatically
+
+                          <div className="space-y-3">
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                checked={connection.isCustomPlan}
+                                onCheckedChange={(checked) =>
+                                  handleSecondaryConnectionChange(
+                                    index + 1,
+                                    "isCustomPlan",
+                                    checked,
+                                  )
+                                }
+                                disabled={isSaving}
+                              />
+                              <Label className="text-sm">Use Custom Plan</Label>
+                            </div>
+
+                            {!connection.isCustomPlan ? (
+                              <div>
+                                <Label htmlFor={`secondary-package-${index}`}>
+                                  Select Package *
+                                </Label>
+                                <Select
+                                  value={connection.planName}
+                                  onValueChange={(value) =>
+                                    handleSecondaryPackageChange(
+                                      index + 1,
+                                      value,
+                                    )
+                                  }
+                                  disabled={isSaving}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Choose a package" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {mockPackages.map((pkg) => (
+                                      <SelectItem key={pkg.id} value={pkg.name}>
+                                        {pkg.name} - ₹{pkg.price}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label
+                                    htmlFor={`secondary-custom-name-${index}`}
+                                  >
+                                    Custom Plan Name *
+                                  </Label>
+                                  <Input
+                                    id={`secondary-custom-name-${index}`}
+                                    value={connection.planName}
+                                    onChange={(e) =>
+                                      handleSecondaryConnectionChange(
+                                        index + 1,
+                                        "planName",
+                                        e.target.value,
+                                      )
+                                    }
+                                    disabled={isSaving}
+                                    placeholder="Plan name"
+                                  />
+                                </div>
+                                <div>
+                                  <Label
+                                    htmlFor={`secondary-custom-price-${index}`}
+                                  >
+                                    Price (₹) *
+                                  </Label>
+                                  <Input
+                                    id={`secondary-custom-price-${index}`}
+                                    type="number"
+                                    value={connection.planPrice}
+                                    onChange={(e) =>
+                                      handleSecondaryConnectionChange(
+                                        index + 1,
+                                        "planPrice",
+                                        parseFloat(e.target.value) || 0,
+                                      )
+                                    }
+                                    disabled={isSaving}
+                                    placeholder="0"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      </Card>
+                    ))}
                   </div>
                 )}
               </div>
