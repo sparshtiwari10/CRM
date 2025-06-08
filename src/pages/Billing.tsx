@@ -781,13 +781,13 @@ export default function Billing() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       Loading billing records...
                     </TableCell>
                   </TableRow>
                 ) : filteredBillingRecords.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       No billing records found for today and yesterday
                     </TableCell>
                   </TableRow>
