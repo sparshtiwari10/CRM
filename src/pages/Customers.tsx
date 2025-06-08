@@ -66,37 +66,74 @@ export default function Customers() {
         if (isAdmin) {
           console.log("👑 Admin user - loading all customers");
           customerData = await CustomerService.getAllCustomers();
+
+          // Debug: Show all customers and their assignments
+          if (customerData.length > 0) {
+            console.log("📋 All customers loaded:");
+            customerData.forEach((c) => {
+              console.log(
+                `  - ${c.name} → assigned to: "${c.collectorName}" (VC: ${c.vcNumber})`,
+              );
+            });
+
+            // Show unique employee assignments
+            const uniqueEmployees = [
+              ...new Set(customerData.map((c) => c.collectorName)),
+            ].filter(Boolean);
+            console.log(
+              "👥 Employees with customers assigned:",
+              uniqueEmployees,
+            );
+          }
         } else {
           // For employees, get customers assigned to them
           // Use collector_name if available, otherwise fall back to name
           const collectorName = user?.collector_name || user?.name || "";
           console.log(
-            `🔍 Employee user - loading customers for collector: "${collectorName}"`,
+            `🔍 Employee user - looking for customers assigned to: "${collectorName}"`,
           );
+
+          // First, get ALL customers to debug assignment
+          const allCustomers = await CustomerService.getAllCustomers();
+          console.log("🔍 DEBUG - All customers in system:");
+          allCustomers.forEach((c) => {
+            const matches = c.collectorName === collectorName;
+            console.log(
+              `  - ${c.name} → "${c.collectorName}" ${matches ? "✅ MATCH" : "❌ no match"}`,
+            );
+          });
+
           customerData =
             await CustomerService.getCustomersByCollector(collectorName);
           console.log(
-            `📊 Found ${customerData.length} customers assigned to ${collectorName}`,
+            `📊 Found ${customerData.length} customers assigned to "${collectorName}"`,
           );
 
           // Debug: Show which customers were found
           if (customerData.length > 0) {
-            console.log(
-              "📋 Assigned customers:",
-              customerData.map((c) => ({
-                name: c.name,
-                collectorName: c.collectorName,
-                vcNumber: c.vcNumber,
-              })),
-            );
+            console.log("📋 Assigned customers:");
+            customerData.forEach((c) => {
+              console.log(`  - ${c.name} (${c.vcNumber})`);
+            });
           } else {
-            console.warn("⚠️ No customers found for this employee. Check:");
+            console.warn("⚠️ No customers found for this employee. Diagnosis:");
+            console.warn(`  1. Employee looking for: "${collectorName}"`);
+            console.warn("  2. Available customers and their assignments:");
+            allCustomers.forEach((c) => {
+              console.warn(
+                `     - ${c.name} → assigned to: "${c.collectorName}"`,
+              );
+            });
+            console.warn("  3. Troubleshooting steps:");
             console.warn(
-              "  1. Customer assignment: ensure customers have collectorName set to:",
+              "     a) Check customer assignment: ensure customers have collectorName exactly matching:",
               collectorName,
             );
             console.warn(
-              "  2. Employee profile: ensure collector_name is set correctly",
+              "     b) Check employee profile: ensure collector_name is set correctly in Firebase",
+            );
+            console.warn(
+              "     c) Create/edit customers and assign them to this employee",
             );
           }
         }
@@ -226,6 +263,11 @@ export default function Customers() {
     try {
       setIsSaving(true);
 
+      console.log(
+        "💾 Saving customer with collectorName:",
+        customerData.collectorName,
+      );
+
       if (editingCustomer) {
         // Update existing customer
         await CustomerService.updateCustomer(editingCustomer.id, customerData);
@@ -240,6 +282,10 @@ export default function Customers() {
           title: "Success",
           description: "Customer updated successfully",
         });
+        console.log(
+          "✅ Customer updated with new assignment:",
+          customerData.collectorName,
+        );
       } else {
         // Add new customer
         const newCustomerId = await CustomerService.addCustomer(customerData);
@@ -249,8 +295,13 @@ export default function Customers() {
           title: "Success",
           description: "Customer added successfully",
         });
+        console.log(
+          "✅ New customer created and assigned to:",
+          customerData.collectorName,
+        );
       }
     } catch (error) {
+      console.error("❌ Failed to save customer:", error);
       toast({
         title: "Error",
         description: editingCustomer
@@ -337,6 +388,33 @@ export default function Customers() {
             </Button>
           </div>
         </div>
+
+        {/* Customer Assignment Debug Info (only for employees with no customers) */}
+        {!isAdmin && customers.length === 0 && !isLoading && (
+          <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
+            <CardContent className="pt-6">
+              <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                <div className="font-medium mb-2">
+                  🔍 No customers assigned to you
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div>
+                    Your employee name:{" "}
+                    <code className="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">
+                      {user?.collector_name || user?.name}
+                    </code>
+                  </div>
+                  <div>To see customers here:</div>
+                  <div>1. Admin must create/edit customers</div>
+                  <div>
+                    2. In the "Employee" field, select your name exactly
+                  </div>
+                  <div>3. Save the customer - it will then appear here</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Search and Filters */}
         <Card>

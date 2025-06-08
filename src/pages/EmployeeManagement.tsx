@@ -243,15 +243,21 @@ export default function EmployeeManagement() {
     if (!deleteUser) return;
 
     try {
-      setIsUpdating(deleteUser.id);
-
       console.log(`🔄 Deleting user from Firebase: ${deleteUser.name}`);
+
+      // Set updating state BEFORE async operation
+      setIsUpdating(deleteUser.id);
 
       // Actually delete the user from Firebase
       await authService.deleteUser(deleteUser.id);
 
       // Remove from local state only after successful Firebase deletion
-      setUsers((prev) => prev.filter((user) => user.id !== deleteUser.id));
+      // Use functional update to avoid stale closure
+      setUsers((prevUsers) => {
+        const newUsers = prevUsers.filter((user) => user.id !== deleteUser.id);
+        console.log(`📊 Users after deletion: ${newUsers.length} remaining`);
+        return newUsers;
+      });
 
       toast({
         title: "User Deleted",
@@ -259,10 +265,8 @@ export default function EmployeeManagement() {
       });
 
       console.log(`✅ Successfully deleted user: ${deleteUser.name}`);
-
-      setDeleteUser(null);
     } catch (error: any) {
-      console.error("Failed to delete user:", error);
+      console.error("❌ Failed to delete user:", error);
       toast({
         title: "Delete Failed",
         description:
@@ -270,7 +274,10 @@ export default function EmployeeManagement() {
         variant: "destructive",
       });
     } finally {
+      // Always reset state in finally block
+      console.log("🔄 Resetting deletion state...");
       setIsUpdating(null);
+      setDeleteUser(null);
     }
   };
 
@@ -283,7 +290,6 @@ export default function EmployeeManagement() {
       username: formData.get("username") as string,
       password: formData.get("password") as string,
       role: (formData.get("role") as string) || "employee",
-      collector_name: formData.get("name") as string, // Use name as collector name for employees
     };
 
     try {
@@ -310,14 +316,18 @@ export default function EmployeeManagement() {
       console.log(`🔄 Creating new ${userData.role}: ${userData.name}`);
 
       // Create user through authentication service
+      // For employees, use their name as collector_name for customer assignment
       const newUserId = await authService.createUser({
         username: userData.username,
         password: userData.password,
         name: userData.name,
         role: userData.role as "admin" | "employee",
-        collector_name:
-          userData.role === "employee" ? userData.collector_name : null,
+        collector_name: userData.role === "employee" ? userData.name : null,
       });
+
+      console.log(
+        `🔧 Created user with collector_name: ${userData.role === "employee" ? userData.name : null}`,
+      );
 
       // Add to local state
       const newUser: User = {
@@ -335,7 +345,7 @@ export default function EmployeeManagement() {
 
       toast({
         title: "User Created",
-        description: `${userData.name} has been successfully created and can now log in.`,
+        description: `${userData.name} has been successfully created and can now log in. ${userData.role === "employee" ? "Customers can be assigned to this employee." : ""}`,
       });
 
       console.log(`✅ Successfully created ${userData.role}: ${userData.name}`);
@@ -543,12 +553,17 @@ export default function EmployeeManagement() {
                                 size="sm"
                                 disabled={isUpdating === user.id}
                               >
-                                <MoreHorizontal className="h-4 w-4" />
+                                {isUpdating === user.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <MoreHorizontal className="h-4 w-4" />
+                                )}
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
                                 onClick={() => setChangePasswordUser(user)}
+                                disabled={isUpdating === user.id}
                               >
                                 <KeyRound className="mr-2 h-4 w-4" />
                                 Change Password
@@ -556,6 +571,7 @@ export default function EmployeeManagement() {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => setToggleStatusUser(user)}
+                                disabled={isUpdating === user.id}
                               >
                                 {user.is_active ? (
                                   <>
@@ -593,11 +609,13 @@ export default function EmployeeManagement() {
         {/* Change Password Dialog */}
         <Dialog
           open={!!changePasswordUser}
-          onOpenChange={() => {
-            setChangePasswordUser(null);
-            setNewPassword("");
-            setConfirmPassword("");
-            setPasswordError("");
+          onOpenChange={(open) => {
+            if (!open) {
+              setChangePasswordUser(null);
+              setNewPassword("");
+              setConfirmPassword("");
+              setPasswordError("");
+            }
           }}
         >
           <DialogContent className="sm:max-w-[425px]">
@@ -667,9 +685,14 @@ export default function EmployeeManagement() {
                   !confirmPassword
                 }
               >
-                {isUpdating === changePasswordUser?.id
-                  ? "Changing..."
-                  : "Change Password"}
+                {isUpdating === changePasswordUser?.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Changing...
+                  </>
+                ) : (
+                  "Change Password"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -678,7 +701,7 @@ export default function EmployeeManagement() {
         {/* Toggle Status Confirmation Dialog */}
         <AlertDialog
           open={!!toggleStatusUser}
-          onOpenChange={() => setToggleStatusUser(null)}
+          onOpenChange={(open) => !open && setToggleStatusUser(null)}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -692,16 +715,28 @@ export default function EmployeeManagement() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isUpdating === toggleStatusUser?.id}>
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleToggleStatus}
+                disabled={isUpdating === toggleStatusUser?.id}
                 className={
                   toggleStatusUser?.is_active
                     ? "bg-red-600 hover:bg-red-700"
                     : "bg-green-600 hover:bg-green-700"
                 }
               >
-                {toggleStatusUser?.is_active ? "Deactivate" : "Activate"}
+                {isUpdating === toggleStatusUser?.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : toggleStatusUser?.is_active ? (
+                  "Deactivate"
+                ) : (
+                  "Activate"
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -710,7 +745,11 @@ export default function EmployeeManagement() {
         {/* Delete User Confirmation Dialog */}
         <AlertDialog
           open={!!deleteUser}
-          onOpenChange={() => !isUpdating && setDeleteUser(null)}
+          onOpenChange={(open) => {
+            if (!open && !isUpdating) {
+              setDeleteUser(null);
+            }
+          }}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -749,8 +788,9 @@ export default function EmployeeManagement() {
             <DialogHeader>
               <DialogTitle>Add New User</DialogTitle>
               <DialogDescription>
-                Create a new user account (Admin or Employee/Collector). They
-                will be able to log in with these credentials.
+                Create a new user account (Admin or Employee/Collector).
+                Employee accounts will be able to have customers assigned to
+                them.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddUser}>
