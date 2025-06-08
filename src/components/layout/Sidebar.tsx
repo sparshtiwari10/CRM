@@ -83,7 +83,7 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
                 "group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                 isActive
                   ? "bg-blue-600 text-white shadow-sm"
-                  : "text-gray-700 hover:bg-white hover:text-blue-600 hover:shadow-sm",
+                  : "text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 hover:shadow-sm",
               )}
             >
               <Icon
@@ -91,7 +91,7 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
                   "mr-3 h-5 w-5 flex-shrink-0 transition-colors",
                   isActive
                     ? "text-white"
-                    : "text-gray-400 group-hover:text-blue-600",
+                    : "text-gray-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400",
                 )}
               />
               {item.name}
