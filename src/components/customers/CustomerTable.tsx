@@ -371,7 +371,7 @@ export default function CustomerTable({
               <TableHead className="text-right">Previous Outstanding</TableHead>
               <TableHead className="text-right">Current Outstanding</TableHead>
               <TableHead>Bill Due Date</TableHead>
-              <TableHead>Collector</TableHead>
+              <TableHead>Employee</TableHead>
               <TableHead>VC Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
