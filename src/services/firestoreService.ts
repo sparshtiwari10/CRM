@@ -486,23 +486,38 @@ class FirestoreService {
       }
 
       const requestsRef = collection(db, "requests");
-      const requestData: FirestoreRequest = {
-        customer_id: request.customerId,
-        customer_name: request.customerName,
-        employee_id: currentUser.id,
-        employee_name: currentUser.name,
-        action_type: request.actionType,
-        current_plan: request.currentPlan,
-        requested_plan: request.requestedPlan,
-        reason: request.reason,
+
+      // Build request data with proper undefined handling
+      const requestData: any = {
+        customer_id: request.customerId || "",
+        customer_name: request.customerName || "",
+        employee_id: currentUser.id || "",
+        employee_name: currentUser.name || "",
+        action_type: request.actionType || "",
+        current_plan: request.currentPlan || "",
+        reason: request.reason || "",
         status: "pending",
         request_date: Timestamp.now(),
         created_at: Timestamp.now(),
         updated_at: Timestamp.now(),
       };
 
+      // Only add requested_plan if it's not undefined or empty
+      if (request.requestedPlan && request.requestedPlan.trim() !== "") {
+        requestData.requested_plan = request.requestedPlan;
+      }
+
+      // Sanitize data to remove any remaining undefined values
+      this.sanitizeFirestoreData(requestData);
+
+      console.log("🔧 Adding request to Firestore:", {
+        customer_name: requestData.customer_name,
+        action_type: requestData.action_type,
+        has_requested_plan: !!requestData.requested_plan,
+      });
+
       const docRef = await addDoc(requestsRef, requestData);
-      console.log(`✅ Request submitted successfully`);
+      console.log(`✅ Request submitted successfully with ID: ${docRef.id}`);
 
       return docRef.id;
     } catch (error) {
