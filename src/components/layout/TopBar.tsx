@@ -37,7 +37,7 @@ export function TopBar({ title }: TopBarProps) {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 lg:px-6">
+    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-16 flex items-center justify-between px-4 lg:px-6">
       {/* Left side - Title and Search */}
       <div className="flex items-center space-x-4 flex-1">
         {/* Page Title */}
