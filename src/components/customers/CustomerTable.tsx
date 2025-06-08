@@ -352,8 +352,8 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                       variant={customer.isActive ? "default" : "secondary"}
                       className={cn(
                         customer.isActive
-                          ? "bg-green-100 text-green-800 hover:bg-green-200"
-                          : "bg-gray-100 text-gray-800 hover:bg-gray-200",
+                          ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-900/30"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80",
                       )}
                     >
                       {customer.isActive ? "Active" : "Inactive"}
