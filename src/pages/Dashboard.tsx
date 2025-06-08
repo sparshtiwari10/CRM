@@ -541,11 +541,13 @@ export default function Dashboard() {
               <div className="text-2xl lg:text-3xl font-bold text-green-600">
                 ₹{todayTotal.toFixed(2)}
               </div>
-              <p className="text-xs lg:text-sm text-gray-600 mt-1">
+              <p className="text-xs lg:text-sm text-muted-foreground mt-1">
                 {todayPayments.length} invoices generated today
               </p>
               <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
-                <div className="text-xs text-gray-500">Status breakdown:</div>
+                <div className="text-xs text-muted-foreground">
+                  Status breakdown:
+                </div>
                 <div className="flex space-x-2 lg:space-x-4 text-xs">
                   <span className="text-green-600">
                     Paid:{" "}
@@ -565,7 +567,7 @@ export default function Dashboard() {
 
           <Card className="compact-mobile">
             <CardHeader className="pb-2 lg:pb-3">
-              <CardTitle className="text-base lg:text-lg font-medium text-gray-900 flex items-center space-x-2">
+              <CardTitle className="text-base lg:text-lg font-medium text-foreground flex items-center space-x-2">
                 <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600" />
                 <span>Yesterday's Billing</span>
               </CardTitle>
@@ -574,7 +576,7 @@ export default function Dashboard() {
               <div className="text-2xl lg:text-3xl font-bold text-blue-600">
                 ₹{yesterdayTotal.toFixed(2)}
               </div>
-              <p className="text-xs lg:text-sm text-gray-600 mt-1">
+              <p className="text-xs lg:text-sm text-muted-foreground mt-1">
                 {yesterdayPayments.length} invoices generated yesterday
               </p>
               <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
