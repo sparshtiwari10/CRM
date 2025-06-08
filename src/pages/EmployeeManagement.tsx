@@ -75,8 +75,19 @@ export default function EmployeeManagement() {
         // Get all users from the authentication service
         const allUsers = await authService.getAllUsers();
 
-        // Filter to get only employees
-        const employeeUsers = allUsers.filter(
+        // Show ALL users (both admins and employees) since admins can also collect payments
+        setEmployees(allUsers);
+
+        if (allUsers.length === 0) {
+          console.warn("⚠️ No users found in Firebase");
+          toast({
+            title: "No Users Found",
+            description: "No user accounts found. You can create new users below.",
+            variant: "destructive",
+          });
+        } else {
+          console.log(`✅ Loaded ${allUsers.length} users (admins + employees):`, allUsers);
+        }
           (user) => user.role === "employee",
         );
 
@@ -219,7 +230,7 @@ export default function EmployeeManagement() {
       (event.target as HTMLFormElement).reset();
 
       toast({
-        title: "Employee Created",
+        title: "User Created",
         description: `${employeeData.name} has been successfully created and can now log in.`,
       });
     } catch (error: any) {
@@ -252,10 +263,10 @@ export default function EmployeeManagement() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
             <h2 className="text-xl lg:text-2xl font-bold text-foreground">
-              Employee Management
+              User Management
             </h2>
             <p className="text-sm lg:text-base text-muted-foreground">
-              Manage employee accounts and permissions
+              Manage all user accounts (Admins & Employees/Collectors)
             </p>
           </div>
 
@@ -264,7 +275,7 @@ export default function EmployeeManagement() {
             className="text-sm"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Add Employee
+            Add User
           </Button>
         </div>
 
@@ -273,7 +284,7 @@ export default function EmployeeManagement() {
           <CardContent className="pt-6">
             <div className="relative">
               <Input
-                placeholder="Search employees by name, role, or ID..."
+                placeholder="Search users by name, role, or ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -289,7 +300,7 @@ export default function EmployeeManagement() {
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
           <div className="text-sm text-blue-800 dark:text-blue-200">
             <span className="font-medium">
-              Showing {filteredEmployees.length} of {employees.length} employees
+              Showing {filteredEmployees.length} of {employees.length} users
             </span>
             {searchTerm && (
               <span className="ml-2">• Search: "{searchTerm}"</span>
@@ -317,11 +328,11 @@ export default function EmployeeManagement() {
                       <TableCell colSpan={5} className="text-center py-8">
                         <div className="text-muted-foreground">
                           <UserX className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <div className="font-medium">No employees found</div>
+                          <div className="font-medium">No users found</div>
                           <div className="text-sm">
                             {searchTerm
                               ? "Try adjusting your search criteria"
-                              : "No employees have been created yet"}
+                              : "No user accounts have been created yet"}
                           </div>
                         </div>
                       </TableCell>
@@ -423,10 +434,9 @@ export default function EmployeeManagement() {
         >
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Add New Employee</DialogTitle>
+              <DialogTitle>Add New User</DialogTitle>
               <DialogDescription>
-                Create a new employee account. They will be able to log in with
-                these credentials.
+                Create a new user account (Admin or Employee/Collector). They will be able to log in with these credentials.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddEmployee}>
@@ -479,7 +489,7 @@ export default function EmployeeManagement() {
                     className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     defaultValue="employee"
                   >
-                    <option value="employee">Employee</option>
+                    <option value="employee">Employee/Collector</option>
                     <option value="admin">Administrator</option>
                   </select>
                 </div>
@@ -492,7 +502,7 @@ export default function EmployeeManagement() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Create Employee</Button>
+                <Button type="submit">Create User</Button>
               </DialogFooter>
             </form>
           </DialogContent>
