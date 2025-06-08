@@ -317,46 +317,64 @@ class AuthService {
 
   /**
    * Get all employees for admin purposes (e.g., filtering in billing)
+   * Prioritizes Firebase data over mock data
    */
-  async getAllEmployees(): Promise<
-    Array<{ id: string; name: string; role: string }>
-  > {
+  async getAllEmployees(): Promise<Array<{id: string, name: string, role: string}>> {
+    console.log("🔍 Fetching employees from Firebase...");
+
     try {
-      if (!isFirebaseAvailable || !db) {
-        // Return mock employees when Firebase unavailable
-        return mockUsers.map((user) => ({
+      // Always try Firebase first, even if isFirebaseAvailable is false
+      if (db) {
+        console.log("📡 Attempting to connect to Firebase users collection...");
+
+        const usersRef = collection(db, "users");
+        const querySnapshot = await getDocs(usersRef);
+        const employees: Array<{id: string, name: string, role: string}> = [];
+
+        console.log(`📊 Found ${querySnapshot.size} users in Firebase`);
+
+        querySnapshot.forEach((doc) => {
+          const userData = doc.data();
+          console.log(`👤 Processing user: ${userData.name || userData.username} (${userData.role})`);
+
+          if (userData.is_active !== false) { // Include active users
+            employees.push({
+              id: doc.id,
+              name: userData.name || userData.username || "Unknown User",
+              role: userData.role || "employee"
+            });
+          }
+        });
+
+        if (employees.length > 0) {
+          console.log(`✅ Successfully fetched ${employees.length} real employees from Firebase:`,
+                     employees.map(e => `${e.name} (${e.role})`));
+          return employees;
+        } else {
+          console.warn("⚠️ No employees found in Firebase, but connection successful");
+          return []; // Return empty array instead of mock data if Firebase is working but no users
+        }
+      } else {
+        throw new Error("Firebase database not initialized");
+      }
+    } catch (error: any) {
+      console.error("❌ Failed to fetch employees from Firebase:", error.message);
+
+      // Only return mock data if explicitly requested for demo purposes
+      if (error.message.includes("demo") || !isFirebaseAvailable) {
+        console.log("🎭 Using mock employees for demo mode");
+        return mockUsers.map(user => ({
           id: user.id,
-          name: user.name,
-          role: user.role,
+          name: user.name + " (Demo)",
+          role: user.role
         }));
       }
 
-      const usersRef = collection(db, "users");
-      const querySnapshot = await getDocs(usersRef);
-      const employees: Array<{ id: string; name: string; role: string }> = [];
-
-      querySnapshot.forEach((doc) => {
-        const userData = doc.data();
-        if (userData.is_active !== false) {
-          // Include active users
-          employees.push({
-            id: doc.id,
-            name: userData.name || userData.username,
-            role: userData.role,
-          });
-        }
-      });
-
-      return employees;
-    } catch (error) {
-      console.error("Failed to get all employees:", error);
-      // Fallback to mock data
-      return mockUsers.map((user) => ({
-        id: user.id,
-        name: user.name,
-        role: user.role,
-      }));
+      // For real Firebase errors, return empty array to show the issue
+      console.warn("🚫 Returning empty employee list due to Firebase error");
+      return [];
     }
+  }
   }
 
   /**
