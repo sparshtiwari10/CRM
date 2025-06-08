@@ -147,32 +147,48 @@ src/
   const collectorName = user?.collector_name || user?.name || "";
   ```
 
-#### **`Dashboard.tsx`** 📊 **[ENHANCED - EMPLOYEE-SPECIFIC DATA]**
+#### **`Dashboard.tsx`** 📊 **[ENHANCED - VC STATISTICS & ROLE-BASED]**
 
-- **Purpose**: Main dashboard with role-specific content and employee-specific collections
-- **Features**:
-  - **Role-based Data Loading**: Admin sees all customers, employees see only assigned customers
-  - **Employee-Specific Collections**: Today's and yesterday's collection amounts based on employee's customers only
-  - **Customer Statistics**: Count by status (Active, Inactive, Demo) for assigned customers
-  - **Collection Summary Cards**: Separate cards for today's and yesterday's collections with employee-specific totals
-  - **Quick Action Buttons**: Customer/billing management, invoice generation
-  - **Recent Activity Feed**: Shows recent customers assigned to the logged-in employee
-  - **Firebase Connection Monitoring**: Real-time connection status
+- **Purpose**: Main dashboard with role-specific content, VC statistics for admins, and employee-specific collections
+- **Admin Dashboard Features**:
+  - **VC Number Statistics**: Count of Total, Active, and Inactive VC numbers across all customers
+  - **VC-Based Revenue**: Monthly revenue calculated from active VC connections
+  - **System-Wide Data**: Admin sees all customers and VC connections
+  - **Clean Interface**: Removed system overview and quick actions for focused admin view
 - **Employee Dashboard Features**:
+  - **Employee-Specific Data**: Only assigned customers and their collections
+  - **Personal Collection Summary**: Today's and yesterday's collection amounts
+  - **Customer Statistics**: Count by status for assigned customers only
+  - **Collection Cards**: Green card for today, blue card for yesterday
+  - **Quick Actions**: Customer/billing management, invoice generation
+  - **Recent Activity Feed**: Shows recent customers assigned to the logged-in employee
+- **VC Statistics Calculation**:
 
   ```typescript
-  // Employee-specific data loading
-  const employeeName = user.collector_name || user.name;
-  customersData = await CustomerService.getCustomersByCollector(employeeName);
+  // Admin VC count calculation
+  const calculateVCStats = () => {
+    let activeVCs = 0,
+      inactiveVCs = 0;
 
-  // Collection calculations based on employee's customers only
-  todayTotal = employeeCustomers.reduce(
-    (sum, payment) => sum + payment.amount,
-    0,
-  );
+    customers.forEach((customer) => {
+      // Count primary VC
+      if (customer.status === "active") activeVCs++;
+      else inactiveVCs++;
+
+      // Count secondary VCs
+      customer.connections?.forEach((conn) => {
+        if (!conn.isPrimary) {
+          if (conn.status === "active") activeVCs++;
+          else inactiveVCs++;
+        }
+      });
+    });
+
+    return { activeVCs, inactiveVCs, totalVCs: activeVCs + inactiveVCs };
+  };
   ```
 
-- **Collection Display**: Green card for today's collection, blue card for yesterday's collection
+- **Role-Based UI**: Completely different dashboard layouts for admin vs employee users
 
 #### **`Billing.tsx`** 💰
 
