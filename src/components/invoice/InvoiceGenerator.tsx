@@ -242,11 +242,15 @@ export function InvoiceGenerator({
       // Save the billing record
       await CustomerService.addBillingRecord(billingRecord);
 
-      // Update customer's current outstanding by deducting the invoice amount
+      // Update customer's current outstanding and add invoice to history
       const updatedCustomer = {
         ...selectedCustomer,
         currentOutstanding:
           selectedCustomer.currentOutstanding - invoiceData.amount,
+        invoiceHistory: [
+          ...(selectedCustomer.invoiceHistory || []),
+          billingRecord,
+        ],
       };
 
       // Save the updated customer data
