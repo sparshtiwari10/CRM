@@ -118,19 +118,29 @@ export default function Customers() {
   ).filter(Boolean);
 
   const handleAdd = () => {
+    if (isSaving) return; // Prevent opening modal while saving
     setEditingCustomer(null);
     setIsModalOpen(true);
   };
 
   const handleEdit = (customer: Customer) => {
+    if (isSaving) return; // Prevent opening modal while saving
     setEditingCustomer(customer);
     setIsModalOpen(true);
   };
 
   const handleView = (customer: Customer) => {
+    if (isSaving) return; // Prevent opening modal while saving
     // For now, view opens edit modal (read-only for employees)
     setEditingCustomer(customer);
     setIsModalOpen(true);
+  };
+
+  const handleCloseModal = (open: boolean) => {
+    if (!open && !isSaving) {
+      setIsModalOpen(false);
+      setEditingCustomer(null);
+    }
   };
 
   const handleDeleteClick = (customer: Customer) => {
@@ -410,7 +420,7 @@ export default function Customers() {
           <CustomerModal
             key={editingCustomer?.id || "new"}
             open={isModalOpen}
-            onOpenChange={setIsModalOpen}
+            onOpenChange={handleCloseModal}
             customer={editingCustomer}
             onSave={handleSave}
             isSaving={isSaving}
