@@ -238,77 +238,157 @@ export default function Dashboard() {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-          {/* Total Customers */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Customers
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-2xl font-bold text-foreground">
-                {totalCustomers}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {activeCustomers} active, {inactiveCustomers} inactive
-              </p>
-            </CardContent>
-          </Card>
+          {isAdmin ? (
+            // Admin view - VC number statistics
+            <>
+              {/* Total VC Numbers */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total VC Numbers
+                  </CardTitle>
+                  <Tv className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-2xl font-bold text-foreground">
+                    {totalVCs}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    All VC numbers in system
+                  </p>
+                </CardContent>
+              </Card>
 
-          {/* Monthly Revenue */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Monthly Revenue
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-2xl font-bold text-foreground">
-                {formatCurrency(monthlyRevenue)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                From {totalCustomers} active subscriptions
-              </p>
-            </CardContent>
-          </Card>
+              {/* Active VC Numbers */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Active VC Numbers
+                  </CardTitle>
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-2xl font-bold text-green-600">
+                    {activeVCs}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Currently active connections
+                  </p>
+                </CardContent>
+              </Card>
 
-          {/* Pending Payments */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pending Payments
-              </CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-2xl font-bold text-foreground">
-                {pendingCustomers}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {overdueCustomers} overdue accounts
-              </p>
-            </CardContent>
-          </Card>
+              {/* Inactive VC Numbers */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Inactive VC Numbers
+                  </CardTitle>
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-2xl font-bold text-red-600">
+                    {inactiveVCs}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Deactivated connections
+                  </p>
+                </CardContent>
+              </Card>
 
-          {/* New Customers */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                New This Month
-              </CardTitle>
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-2xl font-bold text-foreground">
-                {newCustomersThisMonth}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                New customer registrations
-              </p>
-            </CardContent>
-          </Card>
+              {/* Monthly Revenue */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Monthly Revenue
+                  </CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-2xl font-bold text-foreground">
+                    {formatCurrency(monthlyRevenue)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    From {activeVCs} active VCs
+                  </p>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            // Employee view - existing cards
+            <>
+              {/* Total Customers */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    My Customers
+                  </CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-2xl font-bold text-foreground">
+                    {totalCustomers}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {activeCustomers} active, {inactiveCustomers} inactive
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Monthly Revenue */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Monthly Revenue
+                  </CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-2xl font-bold text-foreground">
+                    {formatCurrency(monthlyRevenue)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    From {totalCustomers} assigned customers
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Pending Payments */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Pending Payments
+                  </CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-2xl font-bold text-foreground">
+                    {pendingCustomers}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {overdueCustomers} overdue accounts
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* New Customers */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    New This Month
+                  </CardTitle>
+                  <UserPlus className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-2xl font-bold text-foreground">
+                    {newCustomersThisMonth}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    New customer registrations
+                  </p>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
         {/* Payment Summary Cards (Employee View) */}
