@@ -572,10 +572,11 @@ export default function EmployeeManagement() {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => setDeleteUser(user)}
+                                disabled={isUpdating === user.id}
                                 className="text-red-600"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Remove
+                                Delete User
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
