@@ -13,14 +13,13 @@
 - **Date**: Current Session
 - **Type**: Feature Implementation & Automation
 - **Changes Implemented**:
-
-  1. **Request Form Search Functionality**: Added customer search in ActionRequestModal similar to invoice generator
-  2. **VC Number Selection**: Added VC number selection for both primary and secondary connections
-  3. **Request Type Clarification**: Activation/deactivation requests now specifically refer to VC status changes
-  4. **VC Status Management**: Enhanced VC status handling for secondary connections
-  5. **Admin Dashboard VC Counts**: Added Active/Inactive VC number statistics for admins
-  6. **Dashboard Cleanup**: Removed system overview and quick actions from admin dashboard
-
+  1. **VC Status Change Functionality**: Admins can now change VC status for both primary and secondary VCs
+  2. **Individual VC Status Management**: Each secondary VC has its own status control independent of primary VC
+  3. **Automated Request Approval**: When admins approve VC activation/deactivation requests, VC status automatically changes
+  4. **Auto-Select VC Number**: When customer has only one VC, it's automatically selected in request form
+  5. **Enhanced Customer Table**: Expanded view shows individual VC status controls for all connections
+  6. **Request-Driven Status Changes**: VC status changes through approved requests with proper audit trail
+  7. **Current Outstanding Calculation**: Only active VCs contribute to current outstanding on bill due date
 - **Technical Details**:
 
   - **ActionRequestModal**: Complete rewrite with search functionality
