@@ -481,10 +481,10 @@ if (userData.is_active === false) {
 **Common Causes & Solutions**:
 
 1. **Firestore Query Issues**:
-
-   - **Cause**: Using `where()` + `orderBy()` requires composite index
-   - **Solution**: Removed orderBy from employee queries, sort in memory instead
-
+   - **Cause**: Using `where()` + `orderBy()` requires composite index for customers, billing, and requests
+   - **Solution**: Removed orderBy from all employee queries, sort in memory instead
+   - **Affected Queries**: Customer lists, billing records, request management
+   - **Performance**: In-memory sorting maintains performance while avoiding index requirements
 2. **Missing collector_name Field**:
 
    - **Cause**: Employee created without proper `collector_name` field
