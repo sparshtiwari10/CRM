@@ -12,35 +12,7 @@ import {
 } from "firebase/firestore";
 import bcrypt from "bcryptjs";
 
-// Minimal mock users for absolute fallback only (demo mode)
-const mockUsers = [
-  {
-    id: "admin-demo",
-    username: "admin",
-    password_hash:
-      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy", // admin123
-    name: "System Administrator (Demo)",
-    role: "admin" as const,
-    collector_name: null,
-    access_scope: [],
-    created_at: new Date("2024-01-01"),
-    last_login: new Date(),
-    is_active: true,
-  },
-  {
-    id: "employee-demo",
-    username: "employee",
-    password_hash:
-      "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj85/2hHxtIy", // employee123
-    name: "Demo Employee",
-    role: "employee" as const,
-    collector_name: "Demo Employee",
-    access_scope: [],
-    created_at: new Date("2024-01-01"),
-    last_login: new Date(),
-    is_active: true,
-  },
-];
+// No demo users - all authentication must use real Firebase accounts
 
 export interface User {
   id: string;
@@ -50,6 +22,7 @@ export interface User {
   access_scope?: string[];
   email?: string;
   avatar?: string;
+  is_active?: boolean;
 }
 
 export interface LoginCredentials {
@@ -70,21 +43,14 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<User> {
     try {
-      if (isFirebaseAvailable && db) {
-        // Try Firebase with a quick timeout, fallback to mock on any issue
-        try {
-          return await this.loginWithFirebaseTimeout(credentials);
-        } catch (firebaseError: any) {
-          console.warn(
-            "Firebase login failed, falling back to mock authentication:",
-            firebaseError.message,
-          );
-          return await this.loginWithMockData(credentials);
-        }
-      } else {
-        // Use mock data when Firebase is unavailable
-        return await this.loginWithMockData(credentials);
+      if (!isFirebaseAvailable || !db) {
+        throw new Error(
+          "Authentication service is not available. Please check your connection and try again.",
+        );
       }
+
+      // Only use Firebase authentication - no demo fallback
+      return await this.loginWithFirebaseTimeout(credentials);
     } catch (error) {
       console.error("❌ Login failed:", error);
       throw error;
@@ -173,7 +139,7 @@ class AuthService {
       }
 
       // Check if user is active
-      if (!userData.is_active) {
+      if (userData.is_active === false) {
         throw new Error(
           "Account is deactivated. Please contact administrator.",
         );
@@ -203,50 +169,6 @@ class AuthService {
       console.error("❌ Firebase authentication failed:", error.message);
       throw error;
     }
-  }
-
-  /**
-   * Login with mock data (fallback)
-   */
-  private async loginWithMockData(
-    credentials: LoginCredentials,
-  ): Promise<User> {
-    // Find user in mock data
-    const mockUser = mockUsers.find(
-      (user) => user.username === credentials.username,
-    );
-
-    if (!mockUser) {
-      throw new Error("Invalid username or password");
-    }
-
-    // Verify password (simple comparison for demo)
-    const isValidPassword = await bcrypt.compare(
-      credentials.password,
-      mockUser.password_hash,
-    );
-
-    if (!isValidPassword) {
-      throw new Error("Invalid username or password");
-    }
-
-    if (!mockUser.is_active) {
-      throw new Error("Account is deactivated. Please contact administrator.");
-    }
-
-    const user: User = {
-      id: mockUser.id,
-      name: mockUser.name,
-      role: mockUser.role,
-      collector_name: mockUser.collector_name,
-      access_scope: mockUser.access_scope,
-    };
-
-    this.currentUser = user;
-    this.saveUserToStorage(user);
-
-    console.log("✅ Mock authentication successful:", user.name);
-    return user;
   }
 
   /**
@@ -294,7 +216,7 @@ class AuthService {
    * Only falls back to mock data in demo mode or complete Firebase failure
    */
   async getAllEmployees(): Promise<
-    Array<{ id: string; name: string; role: string }>
+    Array<{ id: string; name: string; role: string; is_active: boolean }>
   > {
     console.log(
       "🔍 Fetching employees from Firebase (prioritizing real data)...",
@@ -334,14 +256,13 @@ class AuthService {
             `👤 Processing user: ${userName} (${userRole}) - Active: ${userData.is_active !== false}`,
           );
 
-          // Include all active users (both admin and employee)
-          if (userData.is_active !== false) {
-            employees.push({
-              id: doc.id,
-              name: userName,
-              role: userRole,
-            });
-          }
+          // Include all users (both admin and employee) with their active status
+          employees.push({
+            id: doc.id,
+            name: userName,
+            role: userRole,
+            is_active: userData.is_active !== false, // Default to true if not set
+          });
         });
 
         console.log(
@@ -378,17 +299,7 @@ class AuthService {
         console.log("🌐 Network/connection issue detected");
       }
 
-      // Only use mock data if specifically in demo mode OR if Firebase is completely unavailable
-      if (!isFirebaseAvailable || error.message.includes("demo")) {
-        console.log("🎭 Falling back to demo employees (mock data)");
-        return mockUsers.map((user) => ({
-          id: user.id,
-          name: user.name,
-          role: user.role,
-        }));
-      }
-
-      // For other Firebase errors, return empty array to encourage creating real accounts
+      // No demo fallback - encourage creating real accounts
       console.warn(
         "🚫 Returning empty employee list - please create employee accounts in Firebase",
       );
@@ -401,7 +312,7 @@ class AuthService {
    * Alias for getAllEmployees for backward compatibility
    */
   async getAllUsers(): Promise<
-    Array<{ id: string; name: string; role: string }>
+    Array<{ id: string; name: string; role: string; is_active: boolean }>
   > {
     return this.getAllEmployees();
   }
