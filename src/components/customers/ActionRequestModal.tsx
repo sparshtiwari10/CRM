@@ -126,9 +126,11 @@ export function ActionRequestModal({
   // Reset form when modal opens
   useEffect(() => {
     if (open) {
+      const autoSelectedVC = customer?.vcNumber || "";
+
       form.reset({
         customerId: customer?.id || "",
-        vcNumber: "",
+        vcNumber: autoSelectedVC,
         actionType: defaultActionType,
         requestedPlan: "",
         reason: "",
@@ -138,6 +140,16 @@ export function ActionRequestModal({
       setShowCustomerSearch(!customer); // Show search if no pre-selected customer
     }
   }, [open, defaultActionType, form, customer]);
+
+  // Auto-select VC when customer is selected and has only one VC
+  useEffect(() => {
+    if (selectedCustomer) {
+      const vcNumbers = getVCNumbers();
+      if (vcNumbers.length === 1) {
+        form.setValue("vcNumber", vcNumbers[0].value);
+      }
+    }
+  }, [selectedCustomer, form]);
 
   const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer);

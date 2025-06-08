@@ -312,16 +312,44 @@ src/
   const activeEmployees = allUsers.filter((user) => user.is_active);
   ```
 
-#### **`CustomerTable.tsx`** 📋 **[UPDATED - TERMINOLOGY]**
+#### **`CustomerTable.tsx`** 📋 **[ENHANCED - VC STATUS MANAGEMENT]**
 
-- **Purpose**: Enhanced customer display with role-based access
+- **Purpose**: Enhanced customer display with individual VC status control
 - **Features**:
-  - **Column**: "Employee" (renamed from "Collector")
-  - Expandable rows for detailed VC information
-  - Per-VC financial breakdown
-  - Status management with audit logging
-  - Invoice history integration
-  - Mobile-responsive card layout
+  - **Primary VC Status Control**: Admin dropdown in main table to change primary VC status
+  - **Secondary VC Status Control**: Individual status dropdowns for each secondary VC in expanded view
+  - **Expandable Customer History**: Complete customer timeline with invoice and request history
+  - **Invoice History**: Shows last 10 invoices with amounts, due dates, payment status, and generation details
+  - **Request History**: Displays VC activation/deactivation requests with approval status and timestamps
+  - **Role-Based Status Management**: Admins can change VC status, employees see read-only status badges
+  - **Current Outstanding Calculation**: Only active VCs contribute to outstanding amounts
+  - **Status Change Audit**: All VC status changes logged with admin details and timestamps
+  - **VC-Specific Actions**: Employee request buttons for VC activation/deactivation per VC
+  - **Lazy History Loading**: Invoice and request histories loaded only when customer row is expanded
+- **VC Status Implementation**:
+
+  ```typescript
+  // Primary VC status change
+  const handlePrimaryVCStatusChange = async (customer, newStatus) => {
+    const updatedCustomer = {
+      status: newStatus,
+      isActive: newStatus === "active" || newStatus === "demo",
+      statusLogs: [...customer.statusLogs, statusLog],
+    };
+    await onCustomerUpdate(customer.id, updatedCustomer);
+  };
+
+  // Secondary VC status change
+  const handleSecondaryVCStatusChange = async (
+    customer,
+    connectionIndex,
+    newStatus,
+  ) => {
+    const updatedConnections = [...customer.connections];
+    updatedConnections[connectionIndex] = { ...connection, status: newStatus };
+    await onCustomerUpdate(customer.id, { connections: updatedConnections });
+  };
+  ```
 
 #### **`CustomerImportExport.tsx`** 📤 **[UPDATED - HEADERS]**
 
