@@ -188,27 +188,12 @@ function CustomerModal({
       const updated = { ...prev, [field]: value };
 
       // If VC number is changed and we have connections, update the primary connection
-      if (field === 'vcNumber' && prev.connections.length > 0) {
+      if (field === "vcNumber" && prev.connections.length > 0) {
         const newConnections = [...prev.connections];
         if (newConnections[0]) {
           newConnections[0] = { ...newConnections[0], vcNumber: value };
           updated.connections = newConnections;
         }
-      }
-        prev.numberOfConnections > 1 &&
-        prev.connections.length > 1
-      ) {
-        const newConnections = prev.connections.map((conn, index) => {
-          if (index === 0) {
-            // Primary connection uses the main VC number
-            return { ...conn, vcNumber: value };
-          } else {
-            // Secondary connections use suffixes
-            const suffix = index === 1 ? "SEC" : `SEC${index - 1}`;
-            return { ...conn, vcNumber: `${value}-${suffix}` };
-          }
-        });
-        updated.connections = newConnections;
       }
 
       return updated;
@@ -378,7 +363,8 @@ function CustomerModal({
           newErrors[`secondaryVc${i}`] = `Secondary VC Number ${i} is required`;
         }
         if (!connection.planName.trim()) {
-          newErrors[`secondaryPlan${i}`] = `Secondary connection ${i} plan is required`;
+          newErrors[`secondaryPlan${i}`] =
+            `Secondary connection ${i} plan is required`;
         }
       }
     }
