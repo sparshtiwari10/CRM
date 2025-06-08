@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import CustomerModal from "@/components/customers/CustomerModal";
-import { CustomerTable } from "@/components/customers/CustomerTable";
+import CustomerTable from "@/components/customers/CustomerTable";
 import { CustomerImportExport } from "@/components/customers/CustomerImportExport";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
