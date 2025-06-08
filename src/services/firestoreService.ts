@@ -106,11 +106,9 @@ class FirestoreService {
         q = query(customersRef, orderBy("name"));
       } else {
         // Employees can only see customers assigned to them
-        q = query(
-          customersRef,
-          where("collector_name", "==", currentUser.collector_name),
-          orderBy("name"),
-        );
+        // Use collector_name OR name for compatibility (no orderBy to avoid composite index)
+        const employeeName = currentUser.collector_name || currentUser.name;
+        q = query(customersRef, where("collector_name", "==", employeeName));
       }
 
       const querySnapshot = await getDocs(q);
@@ -121,7 +119,14 @@ class FirestoreService {
         customers.push(this.convertFirestoreCustomerToCustomer(doc.id, data));
       });
 
-      console.log(`✅ Loaded ${customers.length} customers`);
+      // Sort in memory for employees since we can't use orderBy with where clause
+      if (currentUser.role !== "admin") {
+        customers.sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      console.log(
+        `✅ Loaded ${customers.length} customers for ${currentUser.role === "admin" ? "admin" : `employee: ${currentUser.collector_name || currentUser.name}`}`,
+      );
       return customers;
     } catch (error) {
       console.error("❌ Failed to load customers:", error);
