@@ -599,10 +599,10 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-t-lg border-b">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">
+                  <h3 className="font-semibold text-foreground">
                     {customer.name}
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {customer.phoneNumber}
                   </p>
                 </div>
@@ -611,8 +611,8 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                     variant={customer.isActive ? "default" : "secondary"}
                     className={cn(
                       customer.isActive
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800",
+                        ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+                        : "bg-muted text-muted-foreground",
                     )}
                   >
                     {customer.isActive ? "Active" : "Inactive"}
