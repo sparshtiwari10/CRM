@@ -367,19 +367,19 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => onEdit(customer)}
-                            className="h-8 px-3"
+                            className="h-8 w-8 p-0"
+                            title="Edit Customer"
                           >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setDeleteCustomer(customer)}
-                            className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
+                            title="Delete Customer"
                           >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </>
                       ) : (
@@ -388,10 +388,10 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => handleGenericActionRequest(customer)}
-                            className="h-8 px-3"
+                            className="h-8 w-8 p-0"
+                            title="Request Action"
                           >
-                            <RefreshCw className="h-4 w-4 mr-1" />
-                            Request
+                            <RefreshCw className="h-4 w-4" />
                           </Button>
                         )
                       )}
