@@ -7,6 +7,14 @@ export interface Connection {
   isPrimary: boolean;
   connectionIndex: number;
   description?: string;
+  // Enhanced VC-level fields
+  status: CustomerStatus; // Individual VC status
+  packageAmount: number; // Monthly package amount for this VC
+  previousOutstanding: number; // Previous outstanding for this VC
+  currentOutstanding: number; // Current outstanding for this VC
+  lastBillingDate?: string; // Last billing date for this VC
+  activationDate?: string; // When this VC was activated
+  deactivationDate?: string; // When this VC was deactivated (if inactive)
 }
 
 export type CustomerStatus = "active" | "inactive" | "demo";
