@@ -256,10 +256,19 @@ export function CustomerImportExport({
             lastPaymentDate: new Date().toISOString().split("T")[0],
           };
 
+          // Secondary connection data
+          const secondaryData: any = {};
+
           headers.forEach((header, i) => {
             const fieldName = headerMap[header as keyof typeof headerMap];
             if (fieldName && values[i] !== undefined) {
               let value = values[i];
+
+              // Handle secondary connection fields separately
+              if (fieldName.startsWith("secondary")) {
+                secondaryData[fieldName] = value;
+                return;
+              }
 
               // Type conversion based on field
               switch (fieldName) {
@@ -281,6 +290,45 @@ export function CustomerImportExport({
               }
             }
           });
+
+          // Process secondary connections
+          const connections = [
+            // Primary connection
+            {
+              id: "conn-1",
+              vcNumber: customerData.vcNumber,
+              planName: customerData.currentPackage,
+              planPrice: customerData.packageAmount,
+              isCustomPlan: false,
+              isPrimary: true,
+              connectionIndex: 1,
+              description: "",
+            },
+          ];
+
+          // Add secondary connections
+          for (let i = 1; i <= 4; i++) {
+            const vcField = `secondaryVc${i}`;
+            const descField = `secondaryDesc${i}`;
+            const planField = `secondaryPlan${i}`;
+            const priceField = `secondaryPrice${i}`;
+
+            if (secondaryData[vcField] && secondaryData[vcField].trim()) {
+              connections.push({
+                id: `conn-${i + 1}`,
+                vcNumber: secondaryData[vcField].trim(),
+                planName: secondaryData[planField] || "",
+                planPrice: parseFloat(secondaryData[priceField]) || 0,
+                isCustomPlan: false,
+                isPrimary: false,
+                connectionIndex: i + 1,
+                description: secondaryData[descField] || "",
+              });
+            }
+          }
+
+          customerData.connections = connections;
+          customerData.numberOfConnections = connections.length;
 
           // Validation
           if (
