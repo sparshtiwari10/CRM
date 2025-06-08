@@ -186,7 +186,11 @@ export default function Customers() {
 
       if (editingCustomer) {
         console.log("Updating existing customer:", editingCustomer.id);
-        await CustomerService.updateCustomer(customer.id, customer);
+        const customerWithId = { ...customer, id: editingCustomer.id };
+        await CustomerService.updateCustomer(
+          editingCustomer.id,
+          customerWithId,
+        );
 
         setCustomers((prevCustomers) => {
           console.log(
@@ -194,7 +198,7 @@ export default function Customers() {
             prevCustomers.length,
           );
           const updatedCustomers = prevCustomers.map((c) =>
-            c.id === customer.id ? { ...customer } : c,
+            c.id === editingCustomer.id ? { ...customerWithId } : c,
           );
           console.log(
             "Updated customer list, new count:",
