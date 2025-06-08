@@ -523,16 +523,16 @@ function CustomerModal({
                 </div>
 
                 {/* Display Additional VC Numbers when multiple connections are selected */}
-                {formData.numberOfConnections > 1 &&
-                  formData.connections.length > 1 && (
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">
-                        All VC Numbers
-                      </Label>
-                      <div className="bg-gray-50 p-3 rounded-lg space-y-2">
-                        {formData.connections.map((connection, index) => (
+                {formData.numberOfConnections > 1 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      All VC Numbers
+                    </Label>
+                    <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+                      {formData.connections.length > 0 ? (
+                        formData.connections.map((connection, index) => (
                           <div
-                            key={connection.id}
+                            key={connection.id || index}
                             className="flex justify-between items-center"
                           >
                             <span className="text-sm text-gray-600">
@@ -545,10 +545,15 @@ function CustomerModal({
                               {connection.vcNumber}
                             </span>
                           </div>
-                        ))}
-                      </div>
+                        ))
+                      ) : (
+                        <div className="text-sm text-gray-500 text-center py-2">
+                          Additional VC numbers will be generated automatically
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
