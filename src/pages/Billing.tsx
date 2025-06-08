@@ -640,10 +640,10 @@ export default function Billing() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-gray-900">
-              Billing & Invoices
+            <h2 className="text-xl lg:text-2xl font-bold text-foreground">
+              Billing & Payments
             </h2>
-            <p className="text-sm lg:text-base text-gray-600">
+            <p className="text-sm lg:text-base text-muted-foreground">
               View billing records for today and yesterday
             </p>
           </div>
@@ -675,7 +675,7 @@ export default function Billing() {
               <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
                 <div className="text-xs text-gray-500">Status breakdown:</div>
                 <div className="flex space-x-2 lg:space-x-4 text-xs">
-                  <span className="text-green-600">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     Paid:{" "}
                     {todayRecords.filter((r) => r.status === "Paid").length}
                   </span>
