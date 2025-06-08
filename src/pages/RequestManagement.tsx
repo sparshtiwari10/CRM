@@ -424,9 +424,23 @@ export default function RequestManagement() {
                       <TableCell className="font-medium">
                         {request.customerName}
                       </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {request.vcNumber}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline">
                           {getActionTypeLabel(request.actionType)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            request.currentStatus === "active"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {request.currentStatus || "unknown"}
                         </Badge>
                       </TableCell>
                       {isAdmin && <TableCell>{request.employeeName}</TableCell>}
