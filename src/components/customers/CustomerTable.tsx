@@ -10,6 +10,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ChevronDown,
   ChevronRight,
   Edit,
@@ -26,6 +33,8 @@ import {
   FileText,
   Power,
   PowerOff,
+  Clock,
+  User,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -37,7 +46,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Customer, Invoice } from "@/types";
+import {
+  Customer,
+  Invoice,
+  CustomerStatus,
+  StatusLog,
+  BillingRecord,
+} from "@/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -47,117 +62,33 @@ import { ActionRequestModal } from "./ActionRequestModal";
 interface CustomerTableProps {
   customers: Customer[];
   searchTerm: string;
+  onEdit: (customer: Customer) => void;
+  onDelete: (customer: Customer) => void;
   onView: (customer: Customer) => void;
   onViewHistory: (customer: Customer) => void;
-  onEdit: (customer: Customer) => void;
-  onDelete: (customerId: string) => void;
   onPaymentCapture: (customer: Customer) => void;
-  onActionRequest: (request: Omit<ActionRequest, "id">) => void;
+  onCustomerUpdate?: (customerId: string, updates: Partial<Customer>) => void;
 }
 
-// Utility functions
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-  }).format(amount);
-};
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString("en-IN");
-};
-
-const formatAddress = (address: string) => {
-  return address.length > 50 ? address.substring(0, 50) + "..." : address;
-};
-
-const formatDueDate = (dayOfMonth: number) => {
-  return `${dayOfMonth}${dayOfMonth === 1 ? "st" : dayOfMonth === 2 ? "nd" : dayOfMonth === 3 ? "rd" : "th"} of every month`;
-};
-
-const isOverdue = (billDueDate: number) => {
-  const today = new Date();
-  const currentDay = today.getDate();
-  return currentDay > billDueDate;
-};
-
-export const CustomerTable: React.FC<CustomerTableProps> = ({
+export default function CustomerTable({
   customers,
   searchTerm,
-  onView,
-  onViewHistory,
   onEdit,
   onDelete,
+  onView,
+  onViewHistory,
   onPaymentCapture,
-  onActionRequest,
-}) => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
-  const [actionRequestCustomer, setActionRequestCustomer] =
-    useState<Customer | null>(null);
-  const [actionType, setActionType] = useState<
-    "activation" | "deactivation" | "plan_change"
-  >("activation");
-
+  onCustomerUpdate,
+}: CustomerTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [expandedInvoices, setExpandedInvoices] = useState<Set<string>>(
-    new Set(),
+  const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<ActionRequest | null>(
+    null,
   );
 
-  const isAdmin = user?.role === "admin";
+  const { isAdmin, user } = useAuth();
+  const { toast } = useToast();
 
-  // Permission check for employee access
-  const canAccessCustomer = useCallback(
-    (customerId: string) => {
-      if (isAdmin) return true;
-      if (user?.role === "employee") {
-        const customer = customers.find((c) => c.id === customerId);
-        return customer?.collectorName === user.name;
-      }
-      return false;
-    },
-    [isAdmin, user, customers],
-  );
-
-  // Filter customers based on search term and permissions
-  const filteredCustomers = useMemo(() => {
-    let filtered = customers;
-
-    // Apply search filter
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((customer) => {
-        // Search across all relevant fields
-        const searchableText = [
-          customer.name,
-          customer.phoneNumber,
-          customer.email,
-          customer.address,
-          customer.vcNumber,
-          customer.currentPackage,
-          customer.collectorName,
-          // Include VC numbers from connections
-          ...(customer.connections?.map((c) => c.vcNumber) || []),
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        return searchableText.includes(searchLower);
-      });
-    }
-
-    // Apply permission filter for employees
-    if (!isAdmin && user?.role === "employee") {
-      filtered = filtered.filter(
-        (customer) => customer.collectorName === user.name,
-      );
-    }
-
-    return filtered;
-  }, [customers, searchTerm, isAdmin, user]);
-
-  // Toggle row expansion
   const toggleRowExpansion = useCallback((customerId: string) => {
     setExpandedRows((prev) => {
       const newSet = new Set(prev);
@@ -170,66 +101,143 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
     });
   }, []);
 
-  // Toggle invoice expansion
-  const toggleInvoiceExpansion = useCallback((customerId: string) => {
-    setExpandedInvoices((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(customerId)) {
-        newSet.delete(customerId);
-      } else {
-        newSet.add(customerId);
-      }
-      return newSet;
-    });
-  }, []);
+  // Handle status change
+  const handleStatusChange = useCallback(
+    async (customer: Customer, newStatus: CustomerStatus) => {
+      if (!isAdmin || !onCustomerUpdate || !user) return;
 
-  const handleDeleteConfirm = () => {
-    if (deleteCustomer) {
-      onDelete(deleteCustomer.id);
-      setDeleteCustomer(null);
+      try {
+        const statusLog: StatusLog = {
+          id: `log_${Date.now()}`,
+          previousStatus: customer.status,
+          newStatus,
+          changedBy: user.name,
+          changedDate: new Date().toISOString(),
+          reason: `Status changed from ${customer.status} to ${newStatus}`,
+        };
+
+        const updatedCustomer: Partial<Customer> = {
+          status: newStatus,
+          isActive: newStatus === "active",
+          statusLogs: [...(customer.statusLogs || []), statusLog],
+        };
+
+        await onCustomerUpdate(customer.id, updatedCustomer);
+
+        toast({
+          title: "Status Updated",
+          description: `Customer status changed to ${newStatus}`,
+        });
+      } catch (error) {
+        console.error("Failed to update customer status:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update customer status",
+          variant: "destructive",
+        });
+      }
+    },
+    [isAdmin, onCustomerUpdate, user, toast],
+  );
+
+  const enrichedCustomers = useMemo(() => {
+    return customers.map((customer) => ({
+      ...customer,
+      // Ensure status exists, fallback to active based on isActive
+      status: customer.status || (customer.isActive ? "active" : "inactive"),
+    }));
+  }, [customers]);
+
+  const filteredCustomers = useMemo(() => {
+    if (!searchTerm) return enrichedCustomers;
+
+    const term = searchTerm.toLowerCase();
+    return enrichedCustomers.filter(
+      (customer) =>
+        customer.name.toLowerCase().includes(term) ||
+        customer.phoneNumber.includes(term) ||
+        customer.address.toLowerCase().includes(term) ||
+        customer.vcNumber.toLowerCase().includes(term) ||
+        customer.collectorName.toLowerCase().includes(term) ||
+        customer.email?.toLowerCase().includes(term),
+    );
+  }, [enrichedCustomers, searchTerm]);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+    }).format(amount);
+  };
+
+  const formatAddress = (address: string) => {
+    // Truncate long addresses for better display
+    return address.length > 50 ? address.substring(0, 50) + "..." : address;
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString("en-IN");
+    } catch {
+      return dateString;
     }
   };
 
-  const handleActionRequest = (request: Omit<ActionRequest, "id">) => {
-    onActionRequest(request);
-    setActionRequestCustomer(null);
-    setActionType("activation");
-
-    toast({
-      title: "Request submitted",
-      description: "Your action request has been submitted for admin approval.",
-    });
+  const formatDueDate = (day: number) => {
+    return `${day}${day === 1 ? "st" : day === 2 ? "nd" : day === 3 ? "rd" : "th"} of every month`;
   };
 
-  const handleActivationRequest = (customer: Customer) => {
-    setActionType("activation");
-    setActionRequestCustomer(customer);
+  const getStatusBadgeVariant = (status: CustomerStatus) => {
+    switch (status) {
+      case "active":
+        return "default";
+      case "inactive":
+        return "secondary";
+      case "demo":
+        return "outline";
+      default:
+        return "secondary";
+    }
   };
 
-  const handleDeactivationRequest = (customer: Customer) => {
-    setActionType("deactivation");
-    setActionRequestCustomer(customer);
+  const getStatusBadgeColor = (status: CustomerStatus) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200";
+      case "inactive":
+        return "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200";
+      case "demo":
+        return "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200";
+      default:
+        return "bg-muted text-muted-foreground";
+    }
   };
 
-  const handlePlanChangeRequest = (customer: Customer) => {
-    setActionType("plan_change");
-    setActionRequestCustomer(customer);
+  const requestPermission = (action: string, customer: Customer) => {
+    const request: ActionRequest = {
+      id: `req_${Date.now()}`,
+      type: action as "edit" | "delete",
+      resourceId: customer.id,
+      resourceType: "customer",
+      resourceName: customer.name,
+      requestedBy: user?.name || "Employee",
+      requestedAt: new Date().toISOString(),
+      status: "pending",
+      reason: `Request to ${action} customer: ${customer.name}`,
+    };
+
+    setSelectedRequest(request);
   };
 
-  const handleGenericActionRequest = (customer: Customer) => {
-    setActionType("activation"); // Default action type
-    setActionRequestCustomer(customer);
-  };
-
-  // Use filtered customers directly
-  const enrichedCustomers = filteredCustomers;
-
-  if (enrichedCustomers.length === 0) {
+  if (filteredCustomers.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        {searchTerm
-          ? "No customers found matching your search."
-          : "No customers found."}
+      <div className="text-center py-8 text-muted-foreground">
+        <div className="text-lg font-medium">No customers found</div>
+        <div className="text-sm">
+          {searchTerm
+            ? "Try adjusting your search criteria"
+            : "No customers have been added yet"}
+        </div>
       </div>
     );
   }
@@ -255,9 +263,9 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {enrichedCustomers.map((customer) => (
+            {filteredCustomers.map((customer) => (
               <React.Fragment key={customer.id}>
-                <TableRow className="hover:bg-gray-50">
+                <TableRow className="hover:bg-muted/50">
                   <TableCell>
                     <Button
                       variant="ghost"
@@ -275,11 +283,11 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                   <TableCell>
                     <div className="space-y-1">
                       <div className="font-medium">{customer.name}</div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {customer.phoneNumber}
                       </div>
                       {customer.email && (
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-muted-foreground/70">
                           {customer.email}
                         </div>
                       )}
@@ -291,73 +299,75 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="space-y-1">
-                      <div className="font-medium">
-                        {customer.currentPackage}
-                      </div>
-                      {customer.connections &&
-                        customer.connections.length > 1 && (
-                          <div className="text-xs text-blue-600">
-                            {customer.connections.length} connections
-                          </div>
-                        )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(customer.packageAmount)}
+                    <div className="text-sm">{customer.currentPackage}</div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <span
+                    <div className="font-medium">
+                      {formatCurrency(customer.packageAmount)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div
                       className={cn(
                         "font-medium",
                         customer.previousOutstanding > 0
-                          ? "text-red-600"
+                          ? "text-red-600 dark:text-red-400"
                           : customer.previousOutstanding < 0
-                            ? "text-green-600"
-                            : "text-gray-600",
+                            ? "text-green-600 dark:text-green-400"
+                            : "text-muted-foreground",
                       )}
                     >
                       {formatCurrency(customer.previousOutstanding)}
-                    </span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <span
+                    <div
                       className={cn(
                         "font-medium",
                         customer.currentOutstanding > 0
-                          ? "text-red-600"
+                          ? "text-red-600 dark:text-red-400"
                           : customer.currentOutstanding < 0
-                            ? "text-green-600"
-                            : "text-gray-600",
+                            ? "text-green-600 dark:text-green-400"
+                            : "text-muted-foreground",
                       )}
                     >
                       {formatCurrency(customer.currentOutstanding)}
-                    </span>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
                       {formatDueDate(customer.billDueDate)}
                     </div>
-                    {isOverdue(customer.billDueDate) && (
-                      <Badge variant="destructive" className="mt-1 text-xs">
-                        Overdue
-                      </Badge>
-                    )}
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">{customer.collectorName}</div>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={customer.isActive ? "default" : "secondary"}
-                      className={cn(
-                        customer.isActive
-                          ? "bg-green-100 text-green-800 hover:bg-green-200"
-                          : "bg-gray-100 text-gray-800 hover:bg-gray-200",
-                      )}
-                    >
-                      {customer.isActive ? "Active" : "Inactive"}
-                    </Badge>
+                    {isAdmin ? (
+                      <Select
+                        value={customer.status}
+                        onValueChange={(value: CustomerStatus) =>
+                          handleStatusChange(customer, value)
+                        }
+                      >
+                        <SelectTrigger className="w-24 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                          <SelectItem value="demo">Demo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge
+                        variant={getStatusBadgeVariant(customer.status)}
+                        className={cn(getStatusBadgeColor(customer.status))}
+                      >
+                        {customer.status.charAt(0).toUpperCase() +
+                          customer.status.slice(1)}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end space-x-2">
@@ -367,8 +377,6 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => onEdit(customer)}
-                            className="h-8 w-8 p-0"
-                            title="Edit Customer"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -376,207 +384,244 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => setDeleteCustomer(customer)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
-                            title="Delete Customer"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </>
                       ) : (
-                        canAccessCustomer(customer.id) && (
+                        <>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleGenericActionRequest(customer)}
-                            className="h-8 w-8 p-0"
-                            title="Request Action"
+                            onClick={() => requestPermission("edit", customer)}
+                            title="Request Edit Permission"
                           >
-                            <RefreshCw className="h-4 w-4" />
+                            <Edit className="h-4 w-4" />
                           </Button>
-                        )
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              requestPermission("delete", customer)
+                            }
+                            title="Request Delete Permission"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </TableCell>
                 </TableRow>
 
-                {/* Expandable Row Content */}
+                {/* Expanded Row Content */}
                 {expandedRows.has(customer.id) && (
                   <TableRow>
-                    <TableCell colSpan={11} className="bg-gray-50 p-6">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Left Column - Customer Info & VC Numbers */}
+                    <TableCell colSpan={11} className="p-0">
+                      <div className="p-4 bg-muted/30 dark:bg-muted/20">
                         <div className="space-y-4">
-                          {/* VC Numbers Section */}
-                          {customer.connections &&
-                          customer.connections.length > 0 ? (
-                            <div className="bg-white p-4 rounded-lg border">
-                              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-                                <CreditCard className="h-4 w-4 mr-2" />
-                                VC Numbers & Connections
-                              </h4>
-                              <div className="space-y-2">
-                                {customer.connections.map((connection) => (
-                                  <div
-                                    key={connection.id}
-                                    className="flex justify-between items-center p-2 bg-gray-50 rounded"
-                                  >
-                                    <div>
-                                      <div className="font-mono text-sm text-blue-600">
-                                        {connection.vcNumber}
-                                      </div>
-                                      <div className="text-xs text-gray-500">
+                          {/* Service Details - Moved to top */}
+                          <div>
+                            <h4 className="font-medium text-foreground mb-2 flex items-center">
+                              <Package className="h-4 w-4 mr-2" />
+                              Service Details
+                            </h4>
+                            <div className="bg-card dark:bg-card/50 p-3 rounded-lg space-y-2 border border-border">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">
+                                  Package:
+                                </span>
+                                <span className="font-medium text-foreground">
+                                  {customer.currentPackage}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">
+                                  Collector:
+                                </span>
+                                <span className="text-foreground">
+                                  {customer.collectorName}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">
+                                  Bill Due Date:
+                                </span>
+                                <span className="text-foreground">
+                                  {formatDueDate(customer.billDueDate)}
+                                </span>
+                              </div>
+                              {customer.connections &&
+                                customer.connections.length > 0 && (
+                                  <div className="border-t border-border pt-2">
+                                    <div className="text-sm text-muted-foreground mb-1">
+                                      VC Numbers:
+                                    </div>
+                                    {customer.connections.map((connection) => (
+                                      <div
+                                        key={connection.id}
+                                        className="text-base font-mono text-blue-600 dark:text-blue-400 font-semibold"
+                                      >
+                                        {connection.vcNumber} (
                                         {connection.isPrimary
                                           ? "Primary"
-                                          : `Secondary ${connection.connectionIndex - 1}`}
+                                          : "Secondary"}
+                                        )
                                       </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <div className="text-sm font-medium">
-                                        {connection.planName}
-                                      </div>
-                                      <div className="text-xs text-gray-500">
-                                        {formatCurrency(connection.planPrice)}
-                                      </div>
-                                    </div>
+                                    ))}
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="bg-white p-4 rounded-lg border">
-                              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-                                <CreditCard className="h-4 w-4 mr-2" />
-                                VC Number
-                              </h4>
-                              <div className="font-mono text-blue-600">
-                                {customer.vcNumber}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Additional Actions for Employees */}
-                          {!isAdmin && canAccessCustomer(customer.id) && (
-                            <div className="bg-white p-4 rounded-lg border">
-                              <h4 className="font-medium text-gray-900 mb-3">
-                                Action Requests
-                              </h4>
-                              <div className="flex flex-wrap gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleActivationRequest(customer)
-                                  }
-                                  className="h-8 px-3"
-                                  disabled={customer.isActive}
-                                >
-                                  <Power className="h-3 w-3 mr-1" />
-                                  Activate
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleDeactivationRequest(customer)
-                                  }
-                                  className="h-8 px-3"
-                                  disabled={!customer.isActive}
-                                >
-                                  <PowerOff className="h-3 w-3 mr-1" />
-                                  Deactivate
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    handlePlanChangeRequest(customer)
-                                  }
-                                  className="h-8 px-3"
-                                >
-                                  <RefreshCw className="h-3 w-3 mr-1" />
-                                  Change Plan
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Right Column - Invoice History */}
-                        <div className="bg-white p-4 rounded-lg border">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-medium text-gray-900 flex items-center">
-                              <FileText className="h-4 w-4 mr-2" />
-                              Recent Invoices
-                            </h4>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onView(customer)}
-                                className="h-7 px-2 text-xs"
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onViewHistory(customer)}
-                                className="h-7 px-2 text-xs"
-                              >
-                                <History className="h-3 w-3 mr-1" />
-                                History
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onPaymentCapture(customer)}
-                                className="h-7 px-2 text-xs"
-                              >
-                                <CreditCard className="h-3 w-3 mr-1" />
-                                Payment
-                              </Button>
+                                )}
                             </div>
                           </div>
 
-                          {customer.invoiceHistory &&
-                          customer.invoiceHistory.length > 0 ? (
-                            <div className="space-y-2 max-h-64 overflow-y-auto">
-                              {customer.invoiceHistory
-                                .slice(-5)
-                                .reverse()
-                                .map((invoice) => (
-                                  <div
-                                    key={invoice.id}
-                                    className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm"
-                                  >
-                                    <div>
-                                      <div className="font-medium">
-                                        #{invoice.invoiceNumber}
-                                      </div>
-                                      <div className="text-xs text-gray-500">
-                                        {formatDate(invoice.issueDate)}
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <div className="font-medium">
-                                        {formatCurrency(invoice.amount)}
-                                      </div>
-                                      {invoice.vcNumbers &&
-                                        invoice.vcNumbers.length > 0 && (
-                                          <div className="text-xs text-blue-600">
-                                            {invoice.vcNumbers.join(", ")}
+                          {/* Financial Summary */}
+                          <div>
+                            <h4 className="font-medium text-foreground mb-2 flex items-center">
+                              <IndianRupee className="h-4 w-4 mr-2" />
+                              Financial Summary
+                            </h4>
+                            <div className="bg-card dark:bg-card/50 p-3 rounded-lg space-y-2 border border-border">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">
+                                  Package Amount:
+                                </span>
+                                <span className="font-medium text-foreground">
+                                  {formatCurrency(customer.packageAmount)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">
+                                  Previous Outstanding:
+                                </span>
+                                <span
+                                  className={cn(
+                                    "font-medium",
+                                    customer.previousOutstanding > 0
+                                      ? "text-red-600 dark:text-red-400"
+                                      : customer.previousOutstanding < 0
+                                        ? "text-green-600 dark:text-green-400"
+                                        : "text-muted-foreground",
+                                  )}
+                                >
+                                  {formatCurrency(customer.previousOutstanding)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm border-t border-border pt-2">
+                                <span className="font-medium text-foreground">
+                                  Current Outstanding:
+                                </span>
+                                <span
+                                  className={cn(
+                                    "font-medium",
+                                    customer.currentOutstanding > 0
+                                      ? "text-red-600 dark:text-red-400"
+                                      : customer.currentOutstanding < 0
+                                        ? "text-green-600 dark:text-green-400"
+                                        : "text-muted-foreground",
+                                  )}
+                                >
+                                  {formatCurrency(customer.currentOutstanding)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Status Change Log - Admin Only */}
+                          {isAdmin &&
+                            customer.statusLogs &&
+                            customer.statusLogs.length > 0 && (
+                              <div>
+                                <h4 className="font-medium text-foreground mb-2 flex items-center">
+                                  <Clock className="h-4 w-4 mr-2" />
+                                  Status Change Log
+                                </h4>
+                                <div className="bg-card dark:bg-card/50 p-3 rounded-lg border border-border">
+                                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                                    {customer.statusLogs
+                                      .slice()
+                                      .reverse()
+                                      .map((log) => (
+                                        <div
+                                          key={log.id}
+                                          className="flex items-start justify-between p-2 bg-muted/50 dark:bg-muted/30 rounded-md"
+                                        >
+                                          <div className="flex-1">
+                                            <div className="text-sm font-medium text-foreground">
+                                              {log.previousStatus} →{" "}
+                                              {log.newStatus}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground mt-1 flex items-center">
+                                              <User className="h-3 w-3 mr-1" />
+                                              Changed by {log.changedBy}
+                                            </div>
                                           </div>
-                                        )}
-                                    </div>
+                                          <div className="text-xs text-muted-foreground ml-4">
+                                            {formatDate(log.changedDate)}
+                                          </div>
+                                        </div>
+                                      ))}
                                   </div>
-                                ))}
-                            </div>
-                          ) : (
-                            <div className="text-center py-4 text-gray-500 text-sm">
-                              No invoice history available
-                            </div>
-                          )}
+                                </div>
+                              </div>
+                            )}
+
+                          {/* Recent Invoices */}
+                          <div>
+                            <h4 className="font-medium text-foreground mb-2 flex items-center">
+                              <FileText className="h-4 w-4 mr-2" />
+                              Recent Invoices
+                            </h4>
+                            {customer.invoiceHistory &&
+                            customer.invoiceHistory.length > 0 ? (
+                              <div className="space-y-2">
+                                {customer.invoiceHistory
+                                  .slice(-3)
+                                  .reverse()
+                                  .map((invoice) => (
+                                    <div
+                                      key={invoice.id}
+                                      className="bg-card dark:bg-card/50 p-3 rounded-lg border border-border"
+                                    >
+                                      <div className="flex justify-between items-start">
+                                        <div>
+                                          <div className="font-medium text-sm text-foreground">
+                                            #{invoice.invoiceNumber}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {formatDate(invoice.generatedDate)}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {invoice.billingMonth}{" "}
+                                            {invoice.billingYear}
+                                          </div>
+                                          {invoice.allVcNumbers &&
+                                            invoice.allVcNumbers.length > 0 && (
+                                              <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                                VC:{" "}
+                                                {invoice.allVcNumbers.join(
+                                                  ", ",
+                                                )}
+                                              </div>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="font-medium text-sm text-foreground">
+                                            {formatCurrency(invoice.amount)}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            By {invoice.generatedBy}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            ) : (
+                              <div className="bg-card dark:bg-card/50 p-3 rounded-lg text-center text-muted-foreground text-sm border border-border">
+                                No recent invoices
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
@@ -590,33 +635,48 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
 
       {/* Mobile Cards */}
       <div className="md:hidden space-y-4">
-        {enrichedCustomers.map((customer) => (
+        {filteredCustomers.map((customer) => (
           <div
             key={customer.id}
-            className="bg-white rounded-lg border shadow-sm"
+            className="bg-card dark:bg-card/80 rounded-lg border border-border shadow-sm"
           >
-            {/* Card Header with gradient */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-t-lg border-b">
+            {/* Card Header */}
+            <div className="p-4 border-b border-border">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">
+                  <h3 className="font-semibold text-foreground">
                     {customer.name}
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {customer.phoneNumber}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Badge
-                    variant={customer.isActive ? "default" : "secondary"}
-                    className={cn(
-                      customer.isActive
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800",
-                    )}
-                  >
-                    {customer.isActive ? "Active" : "Inactive"}
-                  </Badge>
+                  {isAdmin ? (
+                    <Select
+                      value={customer.status}
+                      onValueChange={(value: CustomerStatus) =>
+                        handleStatusChange(customer, value)
+                      }
+                    >
+                      <SelectTrigger className="w-20 h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="demo">Demo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge
+                      variant={getStatusBadgeVariant(customer.status)}
+                      className={cn(getStatusBadgeColor(customer.status))}
+                    >
+                      {customer.status.charAt(0).toUpperCase() +
+                        customer.status.slice(1)}
+                    </Badge>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -638,28 +698,25 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
               {/* Quick Info Grid */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                     Package
                   </div>
-                  <div className="font-medium text-sm">
+                  <div className="text-sm font-medium text-foreground">
                     {customer.currentPackage}
-                  </div>
-                  <div className="text-xs text-green-600 font-medium">
-                    {formatCurrency(customer.packageAmount)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                     Outstanding
                   </div>
                   <div
                     className={cn(
-                      "font-medium text-sm",
+                      "text-sm font-medium",
                       customer.currentOutstanding > 0
-                        ? "text-red-600"
+                        ? "text-red-600 dark:text-red-400"
                         : customer.currentOutstanding < 0
-                          ? "text-green-600"
-                          : "text-gray-600",
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-muted-foreground",
                     )}
                   >
                     {formatCurrency(customer.currentOutstanding)}
@@ -667,146 +724,42 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {isAdmin ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onEdit(customer)}
-                      className="w-10 h-10 p-0"
-                      title="Edit Customer"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDeleteCustomer(customer)}
-                      className="w-10 h-10 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      title="Delete Customer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </>
-                ) : (
-                  canAccessCustomer(customer.id) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleGenericActionRequest(customer)}
-                      className="w-10 h-10 p-0"
-                      title="Request Action"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
-                  )
-                )}
-              </div>
-
-              {/* Expandable Content */}
+              {/* Expanded Content */}
               {expandedRows.has(customer.id) && (
-                <div className="space-y-4 pt-4 border-t">
-                  {/* Contact Information */}
+                <div className="space-y-3 pt-3 border-t border-border">
+                  {/* Service Details - Moved to top for mobile too */}
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                      <Phone className="h-4 w-4 mr-2" />
-                      Contact Information
-                    </h4>
-                    <div className="bg-gray-50 p-3 rounded-lg space-y-2">
-                      <div className="flex items-center text-sm">
-                        <MapPin className="h-3 w-3 mr-2 text-gray-400" />
-                        <span>{formatAddress(customer.address)}</span>
-                      </div>
-                      {customer.email && (
-                        <div className="flex items-center text-sm">
-                          <Mail className="h-3 w-3 mr-2 text-gray-400" />
-                          <span>{customer.email}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Financial Summary */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                      <IndianRupee className="h-4 w-4 mr-2" />
-                      Financial Summary
-                    </h4>
-                    <div className="bg-gray-50 p-3 rounded-lg space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Package Amount:</span>
-                        <span className="font-medium">
-                          {formatCurrency(customer.packageAmount)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Previous Outstanding:</span>
-                        <span
-                          className={cn(
-                            "font-medium",
-                            customer.previousOutstanding > 0
-                              ? "text-red-600"
-                              : customer.previousOutstanding < 0
-                                ? "text-green-600"
-                                : "text-gray-600",
-                          )}
-                        >
-                          {formatCurrency(customer.previousOutstanding)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm border-t pt-2">
-                        <span className="font-medium">
-                          Current Outstanding:
-                        </span>
-                        <span
-                          className={cn(
-                            "font-medium",
-                            customer.currentOutstanding > 0
-                              ? "text-red-600"
-                              : customer.currentOutstanding < 0
-                                ? "text-green-600"
-                                : "text-gray-600",
-                          )}
-                        >
-                          {formatCurrency(customer.currentOutstanding)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Service Details */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center">
+                    <h4 className="font-medium text-foreground mb-2 flex items-center">
                       <Package className="h-4 w-4 mr-2" />
                       Service Details
                     </h4>
-                    <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+                    <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span>Package:</span>
-                        <span className="font-medium">
-                          {customer.currentPackage}
+                        <span className="text-muted-foreground">
+                          Collector:
+                        </span>
+                        <span className="text-foreground">
+                          {customer.collectorName}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span>Collector:</span>
-                        <span>{customer.collectorName}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Bill Due Date:</span>
-                        <span>{formatDueDate(customer.billDueDate)}</span>
+                        <span className="text-muted-foreground">
+                          Bill Due Date:
+                        </span>
+                        <span className="text-foreground">
+                          {formatDueDate(customer.billDueDate)}
+                        </span>
                       </div>
                       {customer.connections &&
                         customer.connections.length > 0 && (
-                          <div className="border-t pt-2">
-                            <div className="text-xs text-gray-500 mb-1">
+                          <div className="border-t border-border pt-2">
+                            <div className="text-sm text-muted-foreground mb-1">
                               VC Numbers:
                             </div>
                             {customer.connections.map((connection) => (
                               <div
                                 key={connection.id}
-                                className="text-xs font-mono text-blue-600"
+                                className="text-base font-mono text-blue-600 dark:text-blue-400 font-semibold"
                               >
                                 {connection.vcNumber} (
                                 {connection.isPrimary ? "Primary" : "Secondary"}
@@ -818,9 +771,95 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                     </div>
                   </div>
 
+                  {/* Financial Summary */}
+                  <div>
+                    <h4 className="font-medium text-foreground mb-2 flex items-center">
+                      <IndianRupee className="h-4 w-4 mr-2" />
+                      Financial Summary
+                    </h4>
+                    <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Package Amount:
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {formatCurrency(customer.packageAmount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Previous Outstanding:
+                        </span>
+                        <span
+                          className={cn(
+                            "font-medium",
+                            customer.previousOutstanding > 0
+                              ? "text-red-600 dark:text-red-400"
+                              : customer.previousOutstanding < 0
+                                ? "text-green-600 dark:text-green-400"
+                                : "text-muted-foreground",
+                          )}
+                        >
+                          {formatCurrency(customer.previousOutstanding)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm border-t border-border pt-2">
+                        <span className="font-medium text-foreground">
+                          Current Outstanding:
+                        </span>
+                        <span
+                          className={cn(
+                            "font-medium",
+                            customer.currentOutstanding > 0
+                              ? "text-red-600 dark:text-red-400"
+                              : customer.currentOutstanding < 0
+                                ? "text-green-600 dark:text-green-400"
+                                : "text-muted-foreground",
+                          )}
+                        >
+                          {formatCurrency(customer.currentOutstanding)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Change Log - Admin Only */}
+                  {isAdmin &&
+                    customer.statusLogs &&
+                    customer.statusLogs.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-foreground mb-2 flex items-center">
+                          <Clock className="h-4 w-4 mr-2" />
+                          Status Change Log
+                        </h4>
+                        <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg">
+                          <div className="space-y-2 max-h-24 overflow-y-auto">
+                            {customer.statusLogs
+                              .slice()
+                              .reverse()
+                              .slice(0, 2) // Show only last 2 on mobile
+                              .map((log) => (
+                                <div
+                                  key={log.id}
+                                  className="text-xs p-2 bg-card dark:bg-card/50 rounded border border-border"
+                                >
+                                  <div className="font-medium text-foreground">
+                                    {log.previousStatus} → {log.newStatus}
+                                  </div>
+                                  <div className="text-muted-foreground mt-1">
+                                    By {log.changedBy} •{" "}
+                                    {formatDate(log.changedDate)}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                   {/* Recent Invoices */}
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center">
+                    <h4 className="font-medium text-foreground mb-2 flex items-center">
                       <FileText className="h-4 w-4 mr-2" />
                       Recent Invoices
                     </h4>
@@ -828,31 +867,31 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                     customer.invoiceHistory.length > 0 ? (
                       <div className="space-y-2">
                         {customer.invoiceHistory
-                          .slice(-3)
+                          .slice(-2)
                           .reverse()
                           .map((invoice) => (
                             <div
                               key={invoice.id}
-                              className="bg-gray-50 p-3 rounded-lg"
+                              className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg"
                             >
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <div className="font-medium text-sm">
+                                  <div className="font-medium text-sm text-foreground">
                                     #{invoice.invoiceNumber}
                                   </div>
-                                  <div className="text-xs text-gray-500">
-                                    {formatDate(invoice.issueDate)}
+                                  <div className="text-xs text-muted-foreground">
+                                    {formatDate(invoice.generatedDate)}
                                   </div>
-                                  {invoice.vcNumbers &&
-                                    invoice.vcNumbers.length > 0 && (
-                                      <div className="text-xs text-blue-600 mt-1">
-                                        VC: {invoice.vcNumbers.join(", ")}
-                                      </div>
-                                    )}
+                                  <div className="text-xs text-muted-foreground">
+                                    {invoice.billingMonth} {invoice.billingYear}
+                                  </div>
                                 </div>
                                 <div className="text-right">
-                                  <div className="font-medium text-sm">
+                                  <div className="font-medium text-sm text-foreground">
                                     {formatCurrency(invoice.amount)}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    By {invoice.generatedBy}
                                   </div>
                                 </div>
                               </div>
@@ -860,100 +899,66 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                           ))}
                       </div>
                     ) : (
-                      <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500 text-sm">
+                      <div className="bg-muted/50 dark:bg-muted/30 p-3 rounded-lg text-center text-muted-foreground text-sm">
                         No recent invoices
                       </div>
                     )}
                   </div>
 
-                  {/* Quick Actions */}
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onView(customer)}
-                      className="flex-1"
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onViewHistory(customer)}
-                      className="flex-1"
-                    >
-                      <History className="h-4 w-4 mr-1" />
-                      History
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onPaymentCapture(customer)}
-                      className="flex-1"
-                    >
-                      <CreditCard className="h-4 w-4 mr-1" />
-                      Payment
-                    </Button>
+                  {/* Actions for mobile */}
+                  <div className="flex space-x-2">
+                    {isAdmin ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onEdit(customer)}
+                          className="flex-1"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteCustomer(customer)}
+                          className="flex-1"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => requestPermission("edit", customer)}
+                          className="flex-1"
+                          title="Request Edit Permission"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-1" />
+                          Request Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => requestPermission("delete", customer)}
+                          className="flex-1"
+                          title="Request Delete Permission"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-1" />
+                          Request Delete
+                        </Button>
+                      </>
+                    )}
                   </div>
-
-                  {/* Employee Action Requests */}
-                  {!isAdmin && canAccessCustomer(customer.id) && (
-                    <div className="pt-2 border-t">
-                      <h5 className="text-sm font-medium text-gray-700 mb-2">
-                        Action Requests
-                      </h5>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleActivationRequest(customer)}
-                          disabled={customer.isActive}
-                          className="flex-1"
-                        >
-                          <Power className="h-3 w-3 mr-1" />
-                          Activate
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeactivationRequest(customer)}
-                          disabled={!customer.isActive}
-                          className="flex-1"
-                        >
-                          <PowerOff className="h-3 w-3 mr-1" />
-                          Deactivate
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePlanChangeRequest(customer)}
-                          className="flex-1"
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Change Plan
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
           </div>
         ))}
       </div>
-
-      {/* Action Request Modal */}
-      <ActionRequestModal
-        open={!!actionRequestCustomer}
-        onOpenChange={() => {
-          setActionRequestCustomer(null);
-          setActionType("activation");
-        }}
-        customer={actionRequestCustomer}
-        onSubmit={handleActionRequest}
-        defaultActionType={actionType}
-      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog
@@ -965,20 +970,42 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
             <AlertDialogTitle>Delete Customer</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete {deleteCustomer?.name}? This
-              action cannot be undone.
+              action cannot be undone and will remove all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteConfirm}
+              onClick={() => {
+                if (deleteCustomer) {
+                  onDelete(deleteCustomer);
+                  setDeleteCustomer(null);
+                }
+              }}
               className="bg-red-600 hover:bg-red-700"
             >
-              Delete
+              Delete Customer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Action Request Modal */}
+      {selectedRequest && (
+        <ActionRequestModal
+          request={selectedRequest}
+          isOpen={!!selectedRequest}
+          onClose={() => setSelectedRequest(null)}
+          onSubmit={(request) => {
+            console.log("Request submitted:", request);
+            setSelectedRequest(null);
+            toast({
+              title: "Request Submitted",
+              description: "Your request has been sent to an administrator.",
+            });
+          }}
+        />
+      )}
     </>
   );
-};
+}

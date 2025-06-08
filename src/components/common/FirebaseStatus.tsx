@@ -200,7 +200,7 @@ export function FirebaseStatus() {
 
             {connectionStatus && (
               <div className="space-y-2">
-                <div className="text-xs font-medium text-gray-700">
+                <div className="text-xs font-medium text-foreground">
                   Connection Status:
                 </div>
                 <div className="space-y-1 text-xs">
@@ -238,7 +238,7 @@ export function FirebaseStatus() {
 
             {connectivityCheck && (
               <div className="space-y-2">
-                <div className="text-xs font-medium text-gray-700">
+                <div className="text-xs font-medium text-foreground">
                   Connectivity Status:
                 </div>
                 <div className="space-y-1 text-xs">
@@ -267,10 +267,10 @@ export function FirebaseStatus() {
                 </div>
 
                 <div className="mt-3">
-                  <div className="text-xs font-medium text-gray-700 mb-1">
+                  <div className="text-xs font-medium text-foreground mb-1">
                     Suggestions:
                   </div>
-                  <div className="text-xs space-y-1 text-gray-600">
+                  <div className="text-xs space-y-1 text-muted-foreground">
                     {getNetworkTroubleshooting(connectivityCheck).map(
                       (suggestion, index) => (
                         <div key={index}>{suggestion}</div>
@@ -323,7 +323,7 @@ export function FirebaseStatus() {
               </Button>
             </div>
 
-            <div className="text-xs text-gray-500 text-center">
+            <div className="text-xs text-muted-foreground text-center">
               Demo mode includes all features except data persistence
             </div>
           </CardContent>

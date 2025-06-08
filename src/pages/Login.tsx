@@ -106,12 +106,12 @@ export default function Login() {
             <div className="h-12 w-12 rounded-lg bg-blue-600 flex items-center justify-center">
               <Shield className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">AGV</h1>
+            <h1 className="text-3xl font-bold text-foreground">AGV</h1>
           </div>
-          <h2 className="text-xl font-semibold text-gray-700">
+          <h2 className="text-xl font-semibold text-muted-foreground">
             Cable TV Management System
           </h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Secure access for employees and administrators
           </p>
           {/* Firebase Connection Status */}
@@ -170,9 +170,9 @@ export default function Login() {
                     disabled={isLoading}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-500" />
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <Eye className="h-4 w-4 text-gray-500" />
+                      <Eye className="h-4 w-4 text-muted-foreground" />
                     )}
                   </Button>
                 </div>
@@ -202,12 +202,12 @@ export default function Login() {
         {/* Demo Login Section */}
         <Card className="shadow-lg border-dashed border-2 border-gray-300">
           <CardHeader>
-            <CardTitle className="text-center text-lg text-gray-600">
+            <CardTitle className="text-center text-lg text-muted-foreground">
               Demo Access
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-sm text-gray-500 text-center">
+            <p className="text-sm text-muted-foreground text-center">
               Try the system with demo credentials
             </p>
 
@@ -233,7 +233,7 @@ export default function Login() {
               </Button>
             </div>
 
-            <div className="text-xs text-gray-500 space-y-1">
+            <div className="text-xs text-muted-foreground space-y-1">
               <div>
                 <strong>Admin:</strong> username: admin, password: admin123
               </div>
@@ -246,7 +246,7 @@ export default function Login() {
         </Card>
 
         {/* Security Notice */}
-        <div className="text-center text-xs text-gray-500 space-y-1">
+        <div className="text-center text-xs text-muted-foreground space-y-1">
           <p>🔒 This system is for authorized personnel only</p>
           <p>All login attempts are monitored and logged</p>
         </div>

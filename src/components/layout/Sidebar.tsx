@@ -55,15 +55,13 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
           <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
             <Package className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-white">
-            AGV
-          </span>
+          <span className="text-xl font-bold text-foreground">AGV</span>
         </div>
       </div>
 
       {/* Role indicator */}
       <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
-        <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           {isAdmin ? "Administrator" : "Employee Portal"}
         </div>
       </div>
@@ -83,7 +81,7 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
                 "group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                 isActive
                   ? "bg-blue-600 text-white shadow-sm"
-                  : "text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 hover:shadow-sm",
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-sm",
               )}
             >
               <Icon
@@ -91,7 +89,7 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
                   "mr-3 h-5 w-5 flex-shrink-0 transition-colors",
                   isActive
                     ? "text-white"
-                    : "text-gray-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400",
+                    : "text-muted-foreground group-hover:text-accent-foreground",
                 )}
               />
               {item.name}
@@ -102,7 +100,7 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
 
       {/* Footer */}
       <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-        <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+        <div className="text-xs text-muted-foreground text-center">
           © 2024 CableTV Operator
         </div>
       </div>

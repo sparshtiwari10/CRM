@@ -309,10 +309,10 @@ export default function Billing() {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-2xl font-bold text-foreground">
                 Billing & Invoice Management
               </h2>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Manage invoices and billing records
               </p>
             </div>
@@ -332,7 +332,7 @@ export default function Billing() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
                   Invoices Generated Today
                 </CardTitle>
                 <FileText className="h-4 w-4 text-blue-600" />
@@ -341,7 +341,7 @@ export default function Billing() {
                 <div className="text-2xl font-bold text-blue-600">
                   {todayRecords.length}
                 </div>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-muted-foreground">
                   Total: ₹{todayTotal.toFixed(2)}
                 </p>
               </CardContent>
@@ -349,7 +349,7 @@ export default function Billing() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
                   Active Invoices
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-green-600" />
@@ -358,7 +358,9 @@ export default function Billing() {
                 <div className="text-2xl font-bold text-green-600">
                   {filteredBillingRecords.length}
                 </div>
-                <p className="text-xs text-gray-600">In current period</p>
+                <p className="text-xs text-muted-foreground">
+                  In current period
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -382,7 +384,7 @@ export default function Billing() {
                       >
                         <div>
                           <div className="font-medium">{emp.employeeName}</div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted-foreground">
                             {emp.count} invoices
                           </div>
                         </div>
@@ -394,12 +396,12 @@ export default function Billing() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-center text-gray-500 py-4">
+                    <p className="text-center text-muted-foreground py-4">
                       No billing today
                     </p>
                   )}
-                  <div className="pt-3 border-t border-green-200 bg-green-100 rounded-lg p-3">
-                    <div className="flex justify-between font-bold text-green-800">
+                  <div className="pt-3 border-t border-green-200 dark:border-green-800 bg-green-100 dark:bg-green-900/20 rounded-lg p-3">
+                    <div className="flex justify-between font-bold text-green-800 dark:text-green-200">
                       <span>Today's Total:</span>
                       <span>₹{todayTotal.toFixed(2)}</span>
                     </div>
@@ -421,28 +423,28 @@ export default function Billing() {
                     yesterdayEmployeeBilling.map((emp) => (
                       <div
                         key={emp.employeeId}
-                        className="flex items-center justify-between p-3 bg-blue-50 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
                       >
                         <div>
                           <div className="font-medium">{emp.employeeName}</div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted-foreground">
                             {emp.count} invoices
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold text-blue-700">
+                          <div className="font-bold text-blue-700 dark:text-blue-300">
                             ₹{emp.total.toFixed(2)}
                           </div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-center text-gray-500 py-4">
+                    <p className="text-center text-muted-foreground py-4">
                       No billing yesterday
                     </p>
                   )}
-                  <div className="pt-3 border-t border-blue-200 bg-blue-100 rounded-lg p-3">
-                    <div className="flex justify-between font-bold text-blue-800">
+                  <div className="pt-3 border-t border-blue-200 dark:border-blue-800 bg-blue-100 dark:bg-blue-900/20 rounded-lg p-3">
+                    <div className="flex justify-between font-bold text-blue-800 dark:text-blue-200">
                       <span>Yesterday's Total:</span>
                       <span>₹{yesterdayTotal.toFixed(2)}</span>
                     </div>

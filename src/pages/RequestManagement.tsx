@@ -291,10 +291,10 @@ export default function RequestManagement() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-foreground">
               Request Management
             </h2>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               {isAdmin
                 ? "Review and manage employee action requests"
                 : "View your request status and submit new requests"}
@@ -312,7 +312,7 @@ export default function RequestManagement() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Pending Requests
               </CardTitle>
               <Clock className="h-4 w-4 text-yellow-600" />
@@ -321,13 +321,13 @@ export default function RequestManagement() {
               <div className="text-2xl font-bold text-yellow-600">
                 {pendingCount}
               </div>
-              <p className="text-xs text-gray-600">Awaiting review</p>
+              <p className="text-xs text-muted-foreground">Awaiting review</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Approved Requests
               </CardTitle>
               <Check className="h-4 w-4 text-green-600" />
@@ -336,13 +336,15 @@ export default function RequestManagement() {
               <div className="text-2xl font-bold text-green-600">
                 {approvedCount}
               </div>
-              <p className="text-xs text-gray-600">Successfully approved</p>
+              <p className="text-xs text-muted-foreground">
+                Successfully approved
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Rejected Requests
               </CardTitle>
               <X className="h-4 w-4 text-red-600" />
@@ -351,7 +353,7 @@ export default function RequestManagement() {
               <div className="text-2xl font-bold text-red-600">
                 {rejectedCount}
               </div>
-              <p className="text-xs text-gray-600">Rejected requests</p>
+              <p className="text-xs text-muted-foreground">Rejected requests</p>
             </CardContent>
           </Card>
         </div>

@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import CustomerModal from "@/components/customers/CustomerModal";
-import { CustomerTable } from "@/components/customers/CustomerTable";
+import CustomerTable from "@/components/customers/CustomerTable";
 import { CustomerImportExport } from "@/components/customers/CustomerImportExport";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
@@ -140,6 +140,46 @@ export default function Customers() {
     if (!open && !isSaving) {
       setIsModalOpen(false);
       setEditingCustomer(null);
+    }
+  };
+
+  const handleViewHistory = (customer: Customer) => {
+    console.log("View history for:", customer.name);
+    // TODO: Implement view history functionality
+  };
+
+  const handlePaymentCapture = (customer: Customer) => {
+    console.log("Payment capture for:", customer.name);
+    // TODO: Implement payment capture functionality
+  };
+
+  const handleCustomerUpdate = async (
+    customerId: string,
+    updates: Partial<Customer>,
+  ) => {
+    try {
+      setIsSaving(true);
+      await CustomerService.updateCustomer(customerId, updates);
+
+      setCustomers((prevCustomers) =>
+        prevCustomers.map((customer) =>
+          customer.id === customerId ? { ...customer, ...updates } : customer,
+        ),
+      );
+
+      toast({
+        title: "Customer Updated",
+        description: "Customer information has been successfully updated.",
+      });
+    } catch (error) {
+      console.error("Update error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update customer. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -271,14 +311,6 @@ export default function Customers() {
     }
   };
 
-  const handleViewHistory = (customer: Customer) => {
-    // For now, redirect to billing page or open billing modal
-    toast({
-      title: "Feature Coming Soon",
-      description: "Full billing history view will be available soon.",
-    });
-  };
-
   const handleImportSuccess = () => {
     // Reload customers after import
     const loadCustomers = async () => {
@@ -328,10 +360,10 @@ export default function Customers() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-gray-900">
+            <h2 className="text-xl lg:text-2xl font-bold text-foreground">
               Customer Management
             </h2>
-            <p className="text-sm lg:text-base text-gray-600">
+            <p className="text-sm lg:text-base text-muted-foreground">
               {isAdmin
                 ? "Manage customers with enhanced billing tracking and invoice history"
                 : "View customers assigned to you"}
@@ -440,11 +472,13 @@ export default function Customers() {
         ) : (
           <CustomerTable
             customers={filteredCustomers}
+            searchTerm={searchTerm}
             onEdit={handleEdit}
             onDelete={handleDeleteClick}
             onView={handleView}
-            onActionRequest={handleActionRequest}
             onViewHistory={handleViewHistory}
+            onPaymentCapture={handlePaymentCapture}
+            onCustomerUpdate={handleCustomerUpdate}
           />
         )}
 

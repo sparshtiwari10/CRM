@@ -31,8 +31,8 @@ export function PackageMetrics({
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500 mb-1">Customers</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-xs text-muted-foreground mb-1">Customers</p>
+                <p className="text-xl font-bold text-foreground">
                   {customerCount}
                 </p>
               </div>
@@ -47,8 +47,10 @@ export function PackageMetrics({
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500 mb-1">Monthly Revenue</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-xs text-muted-foreground mb-1">
+                  Monthly Revenue
+                </p>
+                <p className="text-xl font-bold text-foreground">
                   ${monthlyRevenue.toFixed(2)}
                 </p>
               </div>
@@ -63,18 +65,18 @@ export function PackageMetrics({
       {/* Secondary Metrics */}
       <div className="grid grid-cols-1 gap-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600 flex items-center">
+          <span className="text-muted-foreground flex items-center">
             <TrendingUp className="h-3 w-3 mr-1" />
             Yearly Revenue:
           </span>
-          <span className="font-medium text-gray-900">
+          <span className="font-medium text-foreground">
             ${yearlyRevenue.toLocaleString()}
           </span>
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Revenue per Customer:</span>
-          <span className="font-medium text-gray-900">
+          <span className="text-muted-foreground">Revenue per Customer:</span>
+          <span className="font-medium text-foreground">
             ${avgRevenuePerCustomer.toFixed(2)}/mo
           </span>
         </div>

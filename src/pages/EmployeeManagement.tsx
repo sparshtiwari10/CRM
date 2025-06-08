@@ -238,10 +238,10 @@ export default function EmployeeManagement() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-foreground">
               Employee Management
             </h2>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Manage employee accounts and permissions
             </p>
           </div>
@@ -255,14 +255,16 @@ export default function EmployeeManagement() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total Employees
               </CardTitle>
-              <UserCheck className="h-4 w-4 text-gray-600" />
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{employees.length}</div>
-              <p className="text-xs text-gray-600">{activeEmployees} active</p>
+              <p className="text-xs text-muted-foreground">
+                {activeEmployees} active
+              </p>
             </CardContent>
           </Card>
 
@@ -277,7 +279,7 @@ export default function EmployeeManagement() {
               <div className="text-2xl font-bold text-green-600">
                 {activeEmployees}
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 {employees.length - activeEmployees} inactive
               </p>
             </CardContent>
@@ -285,14 +287,14 @@ export default function EmployeeManagement() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Assigned Customers
               </CardTitle>
-              <UserCheck className="h-4 w-4 text-gray-600" />
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalCustomersAssigned}</div>
-              <p className="text-xs text-gray-600">Total assignments</p>
+              <p className="text-xs text-muted-foreground">Total assignments</p>
             </CardContent>
           </Card>
         </div>

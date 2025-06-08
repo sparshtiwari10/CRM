@@ -9,6 +9,17 @@ export interface Connection {
   description?: string;
 }
 
+export type CustomerStatus = "active" | "inactive" | "demo";
+
+export interface StatusLog {
+  id: string;
+  previousStatus: CustomerStatus;
+  newStatus: CustomerStatus;
+  changedBy: string; // Admin who changed the status
+  changedDate: string;
+  reason?: string;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -22,6 +33,8 @@ export interface Customer {
   collectorName: string; // Employee assigned to this customer
   portalBill?: number; // Admin-only field
   isActive: boolean;
+  status: CustomerStatus; // New status field
+  statusLogs?: StatusLog[]; // Status change history for admins
   activationDate?: string;
   deactivationDate?: string;
   // New fields for multiple connections and custom plans
