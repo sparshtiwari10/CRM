@@ -122,6 +122,19 @@ function CustomerModal({
 
       setFormData(newFormData);
       setShowCustomPlan(!!customer?.customPlan);
+
+      // Generate connections if they don't exist or count doesn't match
+      if (
+        customer &&
+        (!customer.connections ||
+          customer.connections.length === 0 ||
+          customer.connections.length !== (customer.numberOfConnections || 1))
+      ) {
+        // Use setTimeout to ensure the formData is set before generating connections
+        setTimeout(() => {
+          handleConnectionsChange(customer.numberOfConnections || 1);
+        }, 0);
+      }
       setErrors({});
       setIsInitialized(true);
     } else {
