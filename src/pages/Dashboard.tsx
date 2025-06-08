@@ -28,15 +28,31 @@ export default function Dashboard() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { toast } = useToast();
 
-  // Load customers data
+  // Load customers data - filter by employee if not admin
   useEffect(() => {
     const loadCustomers = async () => {
       try {
         setIsLoading(true);
-        const customersData = await CustomerService.getAllCustomers();
+        let customersData;
+
+        if (isAdmin) {
+          // Admin sees all customers
+          customersData = await CustomerService.getAllCustomers();
+        } else if (user?.collector_name || user?.name) {
+          // Employee sees only their assigned customers
+          const employeeName = user.collector_name || user.name;
+          customersData =
+            await CustomerService.getCustomersByCollector(employeeName);
+          console.log(
+            `📊 Dashboard: Loaded ${customersData.length} customers for employee: ${employeeName}`,
+          );
+        } else {
+          customersData = [];
+        }
+
         setCustomers(customersData);
       } catch (error) {
         console.error("Failed to load customers:", error);
@@ -46,8 +62,10 @@ export default function Dashboard() {
       }
     };
 
-    loadCustomers();
-  }, []);
+    if (user) {
+      loadCustomers();
+    }
+  }, [isAdmin, user]);
 
   // Calculate real statistics from customers data
   const totalCustomers = customers.length;
