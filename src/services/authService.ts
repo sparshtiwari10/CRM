@@ -318,31 +318,28 @@ class AuthService {
   /**
    * Get all employees for admin purposes (e.g., filtering in billing)
    */
-  static async getAllEmployees(): Promise<
-    Array<{ id: string; name: string; role: string }>
-  > {
+  async getAllEmployees(): Promise<Array<{id: string, name: string, role: string}>> {
     try {
       if (!isFirebaseAvailable() || !db) {
         // Return mock employees when Firebase unavailable
-        return mockUsers.map((user) => ({
+        return mockUsers.map(user => ({
           id: user.id,
           name: user.name,
-          role: user.role,
+          role: user.role
         }));
       }
 
       const usersRef = collection(db, "users");
       const querySnapshot = await getDocs(usersRef);
-      const employees: Array<{ id: string; name: string; role: string }> = [];
+      const employees: Array<{id: string, name: string, role: string}> = [];
 
       querySnapshot.forEach((doc) => {
         const userData = doc.data();
-        if (userData.is_active !== false) {
-          // Include active users
+        if (userData.is_active !== false) { // Include active users
           employees.push({
             id: doc.id,
             name: userData.name || userData.username,
-            role: userData.role,
+            role: userData.role
           });
         }
       });
@@ -351,12 +348,13 @@ class AuthService {
     } catch (error) {
       console.error("Failed to get all employees:", error);
       // Fallback to mock data
-      return mockUsers.map((user) => ({
+      return mockUsers.map(user => ({
         id: user.id,
         name: user.name,
-        role: user.role,
+        role: user.role
       }));
     }
+  }
   }
 
   /**
