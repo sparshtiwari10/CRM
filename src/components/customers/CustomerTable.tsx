@@ -675,19 +675,19 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                       variant="outline"
                       size="sm"
                       onClick={() => onEdit(customer)}
-                      className="flex-1 min-w-0"
+                      className="w-10 h-10 p-0"
+                      title="Edit Customer"
                     >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
+                      <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setDeleteCustomer(customer)}
-                      className="flex-1 min-w-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="w-10 h-10 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      title="Delete Customer"
                     >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </>
                 ) : (
@@ -696,10 +696,10 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                       variant="outline"
                       size="sm"
                       onClick={() => handleGenericActionRequest(customer)}
-                      className="flex-1"
+                      className="w-10 h-10 p-0"
+                      title="Request Action"
                     >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Request Action
+                      <RefreshCw className="h-4 w-4" />
                     </Button>
                   )
                 )}
