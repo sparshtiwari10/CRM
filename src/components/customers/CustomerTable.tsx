@@ -567,14 +567,20 @@ export default function CustomerTable({
                             <div className="bg-card dark:bg-card/50 p-2 rounded-lg space-y-2 border border-border">
                               <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Package:</span>
+                                  <span className="text-muted-foreground">
+                                    Package:
+                                  </span>
                                   <span className="font-medium text-foreground">
                                     {customer.currentPackage}
                                   </span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Collector:</span>
-                                  <span className="text-foreground">{customer.collectorName}</span>
+                                  <span className="text-muted-foreground">
+                                    Collector:
+                                  </span>
+                                  <span className="text-foreground">
+                                    {customer.collectorName}
+                                  </span>
                                 </div>
                               </div>
                               {customer.connections &&
@@ -584,22 +590,82 @@ export default function CustomerTable({
                                       VC Numbers:
                                     </div>
                                     <div className="flex flex-wrap gap-1">
-                                      {customer.connections.map((connection) => (
-                                        <Badge
-                                          key={connection.id}
-                                          variant="outline"
-                                          className="text-sm font-mono"
-                                        >
-                                          {connection.vcNumber}
-                                        </Badge>
-                                      ))}
+                                      {customer.connections.map(
+                                        (connection) => (
+                                          <Badge
+                                            key={connection.id}
+                                            variant="outline"
+                                            className="text-sm font-mono"
+                                          >
+                                            {connection.vcNumber}
+                                          </Badge>
+                                        ),
+                                      )}
                                     </div>
                                   </div>
                                 )}
                             </div>
                           </div>
 
-                          {/* Recent Invoices - Enhanced with Firestore data */}
+                          {/* Financial Summary - Compact */}
+                          <div>
+                            <h4 className="font-medium text-foreground mb-2 flex items-center">
+                              <IndianRupee className="h-4 w-4 mr-2" />
+                              Financial Summary
+                            </h4>
+                            <div className="bg-card dark:bg-card/50 p-2 rounded-lg border border-border">
+                              <div className="grid grid-cols-3 gap-4 text-sm">
+                                <div className="text-center">
+                                  <div className="text-xs text-muted-foreground">
+                                    Package Amount
+                                  </div>
+                                  <div className="font-medium text-foreground">
+                                    {formatCurrency(customer.packageAmount)}
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-xs text-muted-foreground">
+                                    Previous O/S
+                                  </div>
+                                  <div
+                                    className={cn(
+                                      "font-medium",
+                                      customer.previousOutstanding > 0
+                                        ? "text-red-600 dark:text-red-400"
+                                        : customer.previousOutstanding < 0
+                                          ? "text-green-600 dark:text-green-400"
+                                          : "text-muted-foreground",
+                                    )}
+                                  >
+                                    {formatCurrency(
+                                      customer.previousOutstanding,
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-xs text-muted-foreground">
+                                    Current O/S
+                                  </div>
+                                  <div
+                                    className={cn(
+                                      "font-medium",
+                                      customer.calculatedOutstanding > 0
+                                        ? "text-red-600 dark:text-red-400"
+                                        : customer.calculatedOutstanding < 0
+                                          ? "text-green-600 dark:text-green-400"
+                                          : "text-muted-foreground",
+                                    )}
+                                  >
+                                    {formatCurrency(
+                                      customer.calculatedOutstanding,
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Recent Invoices - Enhanced with Firestore data and fallback */}
                           <div>
                             <h4 className="font-medium text-foreground mb-2 flex items-center">
                               <FileText className="h-4 w-4 mr-2" />
@@ -607,7 +673,10 @@ export default function CustomerTable({
                             </h4>
                             {(() => {
                               // Use Firestore data if available, otherwise fallback to customer's invoice history
-                              const invoices = customerInvoices[customer.id] || customer.invoiceHistory || [];
+                              const invoices =
+                                customerInvoices[customer.id] ||
+                                customer.invoiceHistory ||
+                                [];
                               return invoices.length > 0 ? (
                                 <div className="space-y-1">
                                   {invoices.slice(0, 3).map((invoice) => (
@@ -622,11 +691,15 @@ export default function CustomerTable({
                                               #{invoice.invoiceNumber}
                                             </span>
                                             <span className="text-xs text-muted-foreground">
-                                              {formatDate(invoice.generatedDate || invoice.issueDate)}
+                                              {formatDate(
+                                                invoice.generatedDate ||
+                                                  (invoice as any).issueDate,
+                                              )}
                                             </span>
                                           </div>
                                           <div className="text-xs text-muted-foreground">
-                                            {invoice.billingMonth && invoice.billingYear
+                                            {invoice.billingMonth &&
+                                            invoice.billingYear
                                               ? `${invoice.billingMonth} ${invoice.billingYear}`
                                               : "Invoice"}
                                           </div>
@@ -649,55 +722,6 @@ export default function CustomerTable({
                                 </div>
                               );
                             })()}
-                          <div>
-                            <h4 className="font-medium text-foreground mb-2 flex items-center">
-                              <FileText className="h-4 w-4 mr-2" />
-                              Recent Invoices
-                            </h4>
-                            {customerInvoices[customer.id] &&
-                            customerInvoices[customer.id].length > 0 ? (
-                              <div className="space-y-1">
-                                {customerInvoices[customer.id].map(
-                                  (invoice) => (
-                                    <div
-                                      key={invoice.id}
-                                      className="bg-card dark:bg-card/50 p-2 rounded border border-border"
-                                    >
-                                      <div className="flex justify-between items-center">
-                                        <div className="flex-1">
-                                          <div className="flex items-center space-x-2">
-                                            <span className="font-medium text-sm text-foreground">
-                                              #{invoice.invoiceNumber}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">
-                                              {formatDate(
-                                                invoice.generatedDate,
-                                              )}
-                                            </span>
-                                          </div>
-                                          <div className="text-xs text-muted-foreground">
-                                            {invoice.billingMonth}{" "}
-                                            {invoice.billingYear}
-                                          </div>
-                                        </div>
-                                        <div className="text-right">
-                                          <div className="font-medium text-sm text-foreground">
-                                            {formatCurrency(invoice.amount)}
-                                          </div>
-                                          <div className="text-xs text-muted-foreground">
-                                            {invoice.generatedBy}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ),
-                                )}
-                              </div>
-                            ) : (
-                              <div className="bg-card dark:bg-card/50 p-2 rounded text-center text-muted-foreground text-sm border border-border">
-                                No recent invoices
-                              </div>
-                            )}
                           </div>
 
                           {/* Status Change Log - Admin Only - Compact */}
@@ -858,14 +882,17 @@ export default function CustomerTable({
                     </div>
                   )}
 
-                  {/* Recent Invoices - Mobile */}
+                  {/* Recent Invoices - Mobile with fallback */}
                   <div>
                     <div className="text-sm font-medium text-foreground mb-1">
                       Recent Invoices
                     </div>
                     {(() => {
                       // Use Firestore data if available, otherwise fallback to customer's invoice history
-                      const invoices = customerInvoices[customer.id] || customer.invoiceHistory || [];
+                      const invoices =
+                        customerInvoices[customer.id] ||
+                        customer.invoiceHistory ||
+                        [];
                       return invoices.length > 0 ? (
                         <div className="space-y-1">
                           {invoices.slice(0, 2).map((invoice) => (
@@ -879,7 +906,10 @@ export default function CustomerTable({
                                     #{invoice.invoiceNumber}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {formatDate(invoice.generatedDate || invoice.issueDate)}
+                                    {formatDate(
+                                      invoice.generatedDate ||
+                                        (invoice as any).issueDate,
+                                    )}
                                   </div>
                                 </div>
                                 <div className="text-right">
