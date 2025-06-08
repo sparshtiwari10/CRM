@@ -105,6 +105,15 @@ export default function CustomerTable({
   const [requestActionType, setRequestActionType] = useState<
     "activation" | "deactivation" | "plan_change"
   >("activation");
+  const [customerInvoices, setCustomerInvoices] = useState<
+    Record<string, BillingRecord[]>
+  >({});
+  const [customerRequests, setCustomerRequests] = useState<
+    Record<string, ActionRequest[]>
+  >({});
+  const [loadingHistories, setLoadingHistories] = useState<Set<string>>(
+    new Set(),
+  );
 
   const { user, isAdmin } = useAuth();
   const { toast } = useToast();
