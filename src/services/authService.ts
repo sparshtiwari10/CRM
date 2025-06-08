@@ -469,6 +469,13 @@ class AuthService {
       throw error;
     }
   }
+
+  /**
+   * Alias for getAllEmployees for backward compatibility
+   */
+  async getAllUsers(): Promise<Array<{id: string, name: string, role: string}>> {
+    return this.getAllEmployees();
+  }
 }
 
 export const authService = new AuthService();
