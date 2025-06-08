@@ -195,7 +195,8 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
     setActionRequestCustomer(null);
     setActionType("activation");
 
-    toast.success("Request submitted", {
+    toast({
+      title: "Request submitted",
       description: "Your action request has been submitted for admin approval.",
     });
   };
