@@ -339,7 +339,7 @@ export default function Dashboard() {
               <CardContent>
                 <div className="space-y-4">
                   {isLoading ? (
-                    <div className="text-center py-4 text-gray-500">
+                    <div className="text-center py-4 text-muted-foreground">
                       Loading customers...
                     </div>
                   ) : recentCustomers.length > 0 ? (
@@ -350,7 +350,7 @@ export default function Dashboard() {
                       >
                         <div>
                           <p className="font-medium">{customer.name}</p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             {customer.currentPackage}
                           </p>
                         </div>
@@ -369,8 +369,8 @@ export default function Dashboard() {
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <Users className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground/70" />
                       <p>No customers yet</p>
                       <p className="text-sm">
                         Start by adding your first customer
