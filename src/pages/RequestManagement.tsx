@@ -598,6 +598,30 @@ export default function RequestManagement() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">
+                      VC Number
+                    </label>
+                    <p className="text-lg font-medium font-mono">
+                      {selectedRequest.vcNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Current VC Status
+                    </label>
+                    <div className="mt-1">
+                      <Badge
+                        variant={
+                          selectedRequest.currentStatus === "active"
+                            ? "default"
+                            : "secondary"
+                        }
+                      >
+                        {selectedRequest.currentStatus || "unknown"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
                       Action Type
                     </label>
                     <p className="text-lg font-medium">
