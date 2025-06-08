@@ -493,6 +493,7 @@ class FirestoreService {
       const requestData: any = {
         customer_id: request.customerId || "",
         customer_name: request.customerName || "",
+        vc_number: request.vcNumber || "",
         employee_id: currentUser.id || "",
         employee_name: currentUser.name || "",
         action_type: request.actionType || "",
@@ -504,7 +505,11 @@ class FirestoreService {
         updated_at: Timestamp.now(),
       };
 
-      // Only add requested_plan if it's not undefined or empty
+      // Only add optional fields if they have valid values
+      if (request.currentStatus && request.currentStatus.trim() !== "") {
+        requestData.current_status = request.currentStatus;
+      }
+
       if (request.requestedPlan && request.requestedPlan.trim() !== "") {
         requestData.requested_plan = request.requestedPlan;
       }
