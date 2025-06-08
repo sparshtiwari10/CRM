@@ -399,52 +399,42 @@ export default function Dashboard() {
               <CardContent>
                 <div className="space-y-4">
                   {isLoading ? (
-                    <div className="text-center py-4 text-gray-500">
-                      Loading payments...
+                    <div className="text-center py-4 text-muted-foreground">
+                      Loading recent activity...
                     </div>
-                  ) : recentPayments.length > 0 ? (
-                    recentPayments.map((payment) => (
-                      <div
-                        key={payment.id}
-                        className="flex items-center justify-between py-2"
-                      >
-                        <div>
-                          <p className="font-medium">{payment.customerName}</p>
-                          <p className="text-sm text-gray-500">
-                            {payment.method} •{" "}
-                            {new Date(payment.date).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">
-                            ₹{payment.amount.toLocaleString()}
-                          </p>
+                  ) : recentCustomers.length > 0 ? (
+                    <div className="space-y-3">
+                      {recentCustomers.slice(0, 5).map((customer) => (
+                        <div
+                          key={customer.id}
+                          className="flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="font-medium">{customer.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {customer.email}
+                            </p>
+                          </div>
                           <Badge
-                            variant="outline"
-                            className="bg-green-100 text-green-800"
+                            variant={
+                              customer.status === "active"
+                                ? "default"
+                                : "secondary"
+                            }
                           >
-                            {payment.status}
+                            {customer.status}
                           </Badge>
                         </div>
-                      </div>
-                    ))
+                      ))}
+                    </div>
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                      <p>No payments yet</p>
-                      <p className="text-sm">
-                        Payments will appear here once customers are added
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground/70" />
+                      <p>No customers yet</p>
+                      <p className="text-xs mt-1">
+                        Add your first customer to get started
                       </p>
                     </div>
-                  )}
-
-                  <div className="pt-4 border-t">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => navigate("/billing")}
-                    >
-                      View All Payments
                     </Button>
                   </div>
                 </div>
