@@ -77,7 +77,7 @@ export interface FirestoreRequest {
   employee_name: string;
   action_type: "activation" | "deactivation" | "plan_change";
   current_plan?: string;
-  requested_plan?: string;
+  requested_plan?: string; // Optional - only present for plan_change requests
   reason: string;
   status: "pending" | "approved" | "rejected";
   request_date: Timestamp;
