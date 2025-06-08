@@ -334,12 +334,15 @@ export default function CustomerTable({
     );
   }, [enrichedCustomers, searchTerm]);
 
-  const toggleRow = (customerId: string) => {
+  const toggleRow = async (customerId: string) => {
     const newExpanded = new Set(expandedRows);
     if (newExpanded.has(customerId)) {
       newExpanded.delete(customerId);
     } else {
       newExpanded.add(customerId);
+      // Load histories when expanding
+      loadCustomerInvoices(customerId);
+      loadCustomerRequests(customerId);
     }
     setExpandedRows(newExpanded);
   };
