@@ -43,19 +43,17 @@ export function TopBar({ title }: TopBarProps) {
         {/* Page Title */}
         {title && (
           <div className="hidden sm:block">
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {title}
-            </h1>
+            <h1 className="text-xl font-semibold text-foreground">{title}</h1>
           </div>
         )}
 
         {/* Search */}
         <div className="hidden md:flex items-center max-w-md flex-1">
           <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search customers, invoices..."
-              className="pl-10 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
+              className="pl-10"
             />
           </div>
         </div>
@@ -97,28 +95,34 @@ export function TopBar({ title }: TopBarProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem className="flex flex-col items-start p-3">
               <div className="font-medium text-sm">Overdue Payment Alert</div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 Michael Brown has an overdue payment of $79.99
               </div>
-              <div className="text-xs text-gray-400 mt-1">2 hours ago</div>
+              <div className="text-xs text-muted-foreground/70 mt-1">
+                2 hours ago
+              </div>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="flex flex-col items-start p-3">
               <div className="font-medium text-sm">
                 New Customer Registration
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 Lisa Anderson signed up for Basic package
               </div>
-              <div className="text-xs text-gray-400 mt-1">5 hours ago</div>
+              <div className="text-xs text-muted-foreground/70 mt-1">
+                5 hours ago
+              </div>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="flex flex-col items-start p-3">
               <div className="font-medium text-sm">System Maintenance</div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 Scheduled maintenance tonight at 2 AM EST
               </div>
-              <div className="text-xs text-gray-400 mt-1">1 day ago</div>
+              <div className="text-xs text-muted-foreground/70 mt-1">
+                1 day ago
+              </div>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -143,7 +147,7 @@ export function TopBar({ title }: TopBarProps) {
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium">{user?.name}</p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
                 <div className="flex items-center space-x-1">
                   <Badge
                     variant={isAdmin ? "default" : "secondary"}
