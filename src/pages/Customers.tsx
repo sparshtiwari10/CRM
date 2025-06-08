@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CustomerModal } from "@/components/customers/CustomerModal";
+import CustomerModal from "@/components/customers/CustomerModal";
 import { CustomerTable } from "@/components/customers/CustomerTable";
 import { CustomerImportExport } from "@/components/customers/CustomerImportExport";
 import { AuthContext } from "@/contexts/AuthContext";
@@ -118,19 +118,29 @@ export default function Customers() {
   ).filter(Boolean);
 
   const handleAdd = () => {
+    if (isSaving) return; // Prevent opening modal while saving
     setEditingCustomer(null);
     setIsModalOpen(true);
   };
 
   const handleEdit = (customer: Customer) => {
+    if (isSaving) return; // Prevent opening modal while saving
     setEditingCustomer(customer);
     setIsModalOpen(true);
   };
 
   const handleView = (customer: Customer) => {
+    if (isSaving) return; // Prevent opening modal while saving
     // For now, view opens edit modal (read-only for employees)
     setEditingCustomer(customer);
     setIsModalOpen(true);
+  };
+
+  const handleCloseModal = (open: boolean) => {
+    if (!open && !isSaving) {
+      setIsModalOpen(false);
+      setEditingCustomer(null);
+    }
   };
 
   const handleDeleteClick = (customer: Customer) => {
@@ -162,44 +172,82 @@ export default function Customers() {
   };
 
   const handleSave = async (customer: Customer) => {
+    console.log("Save started for:", customer.name);
+
+    if (isSaving) {
+      console.log("Save already in progress, ignoring");
+      return;
+    }
+
     setIsSaving(true);
+
     try {
+      console.log("Performing save operation...");
+
       if (editingCustomer) {
+        console.log("Updating existing customer:", editingCustomer.id);
         await CustomerService.updateCustomer(customer.id, customer);
-        // Use functional update to ensure we have the latest state
-        setCustomers((prev) =>
-          prev.map((c) => (c.id === customer.id ? { ...customer } : c)),
-        );
+
+        setCustomers((prevCustomers) => {
+          console.log(
+            "Updating customer list, previous count:",
+            prevCustomers.length,
+          );
+          const updatedCustomers = prevCustomers.map((c) =>
+            c.id === customer.id ? { ...customer } : c,
+          );
+          console.log(
+            "Updated customer list, new count:",
+            updatedCustomers.length,
+          );
+          return updatedCustomers;
+        });
+
         toast({
           title: "Customer Updated",
           description: `${customer.name} has been successfully updated.`,
         });
       } else {
+        console.log("Adding new customer");
         const newId = await CustomerService.addCustomer(customer);
-        setCustomers((prev) => [...prev, { ...customer, id: newId }]);
+        const newCustomer = { ...customer, id: newId };
+
+        setCustomers((prevCustomers) => {
+          console.log(
+            "Adding customer to list, previous count:",
+            prevCustomers.length,
+          );
+          const newList = [...prevCustomers, newCustomer];
+          console.log("New customer list count:", newList.length);
+          return newList;
+        });
+
         toast({
           title: "Customer Added",
           description: `${customer.name} has been successfully added.`,
         });
       }
 
-      // Close modal and reset state in the next tick to prevent state conflicts
+      console.log("Save operation completed successfully");
+
+      // Use setTimeout to ensure state updates are processed
       setTimeout(() => {
+        console.log("Closing modal");
         setIsModalOpen(false);
         setEditingCustomer(null);
-      }, 0);
+      }, 100);
     } catch (error) {
       console.error("Save error:", error);
       toast({
         title: "Error",
-        description: "Failed to save customer",
+        description: "Failed to save customer. Please try again.",
         variant: "destructive",
       });
     } finally {
+      console.log("Resetting saving state");
       setIsSaving(false);
     }
   };
-
   const handleActionRequest = async (request: Omit<ActionRequest, "id">) => {
     try {
       // Submit action request for admin approval
@@ -401,7 +449,7 @@ export default function Customers() {
           <CustomerModal
             key={editingCustomer?.id || "new"}
             open={isModalOpen}
-            onOpenChange={setIsModalOpen}
+            onOpenChange={handleCloseModal}
             customer={editingCustomer}
             onSave={handleSave}
             isSaving={isSaving}
