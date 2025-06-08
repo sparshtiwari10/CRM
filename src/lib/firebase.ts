@@ -40,25 +40,14 @@ async function initializeFirebaseWithRetry(attempt = 1): Promise<void> {
 
     app = initializeApp(firebaseConfig);
 
-    // Initialize Firestore with enhanced settings for better connectivity
+    // Initialize Firestore with standard settings first
     try {
-      db = initializeFirestore(app, {
-        experimentalForceLongPolling: true, // Better for restrictive networks
-        useFetchStreams: false, // Helps with firewall/proxy issues
-        experimentalAutoDetectLongPolling: true, // Auto-detect best connection method
-        localCache: undefined, // Disable offline cache that can cause issues
-      });
-      console.log(
-        "���� Firestore initialized with enhanced connectivity settings",
-      );
-    } catch (initError: any) {
-      console.warn(
-        "⚠️ Enhanced initialization failed, trying standard initialization",
-      );
-      console.warn("Error:", initError.message);
-
-      // Fallback to regular initialization
       db = getFirestore(app);
+      console.log("🔥 Firestore initialized successfully");
+    } catch (initError: any) {
+      console.error("❌ Firestore initialization failed:", initError.message);
+      throw initError;
+    }
     }
 
     // Test connection immediately after initialization
