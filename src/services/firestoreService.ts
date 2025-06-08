@@ -592,19 +592,20 @@ class FirestoreService {
   ): Customer {
     return {
       id,
-      name: data.name,
-      phoneNumber: data.phone,
-      address: data.address,
-      currentPackage: data.package,
-      vcNumber: data.vc_no,
-      collectorName: data.collector_name,
-      email: data.email,
-      billingStatus: data.billing_status,
+      name: data.name || "",
+      phoneNumber: data.phone || "",
+      address: data.address || "",
+      currentPackage: data.package || "",
+      vcNumber: data.vc_no || "",
+      collectorName: data.collector_name || "",
+      email: data.email || "",
+      billingStatus: data.billing_status || "Pending",
       lastPaymentDate: data.last_payment_date
-        .toDate()
-        .toISOString()
-        .split("T")[0],
-      joinDate: data.join_date.toDate().toISOString().split("T")[0],
+        ? data.last_payment_date.toDate().toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0],
+      joinDate: data.join_date
+        ? data.join_date.toDate().toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0],
       activationDate: data.activation_date
         ?.toDate()
         .toISOString()
@@ -614,9 +615,10 @@ class FirestoreService {
         .toISOString()
         .split("T")[0],
       isActive: data.status === "active",
+      status: data.status || "active",
       portalBill: data.bill_amount || 0,
-      numberOfConnections: data.number_of_connections,
-      connections: data.connections,
+      numberOfConnections: data.number_of_connections || 1,
+      connections: data.connections || [],
       customPlan: data.custom_plan,
       // Add billing fields with defaults
       packageAmount: data.bill_amount || 0,
