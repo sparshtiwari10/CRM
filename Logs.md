@@ -8,6 +8,37 @@
 
 ### **🐛 Critical Bug Fixes**
 
+#### **Request Form Submit Button and Employee Dashboard RESOLVED**
+
+- **Date**: Current Session
+- **Type**: Feature Enhancement & Bug Fix
+- **Problems**:
+  1. "Submit Request" button not working in employee request form
+  2. No customer selection available in request form - admins couldn't identify which customer request was for
+  3. Employee dashboard showing system-wide collections instead of employee-specific data
+- **Root Causes**:
+  1. ActionRequestModal expecting wrong props (`customer` & `onSubmit` vs `customers` & `onSuccess`)
+  2. Missing customer selection functionality in request form
+  3. Dashboard loading all customers for both admin and employee users
+- **Solutions Applied**:
+  - **Request Form**: Complete rewrite of ActionRequestModal component
+    - Added customer selection dropdown for employees to choose which customer
+    - Fixed prop interface to match usage in RequestManagement
+    - Added proper form validation with customer selection requirement
+    - Enhanced customer information display with VC number and package details
+    - Fixed submit functionality to properly save requests to Firebase
+  - **Employee Dashboard**: Modified to show employee-specific data only
+    - Employee dashboard now loads only customers assigned to that employee
+    - Today's and yesterday's collection calculations based on employee's customers only
+    - Added employee name in dashboard description
+    - Maintained admin functionality to see system-wide data
+- **Technical Details**:
+  - Modified `ActionRequestModal.tsx` with new schema including `customerId` field
+  - Added backward compatibility for existing usage patterns
+  - Updated Dashboard.tsx to use `CustomerService.getCustomersByCollector()` for employees
+  - Enhanced collection calculations to be employee-specific
+  - Added proper error handling and loading states
+
 #### **React setState During Render Warning RESOLVED**
 
 - **Date**: Current Session
@@ -343,13 +374,13 @@ customers: {
 
 ---
 
-## **�� Testing Coverage**
+## **🔍 Testing Coverage**
 
 ### **Manual Testing Completed**
 
 - ✅ Admin login and full functionality
 - ✅ Employee login and restricted access
-- ✅ User creation, activation, deactivation
+- �� User creation, activation, deactivation
 - ✅ Password changes for all users
 - ✅ Customer assignment and visibility
 - ✅ Dark mode compatibility
