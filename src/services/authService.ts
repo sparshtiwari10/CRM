@@ -422,6 +422,70 @@ class AuthService {
       throw error;
     }
   }
+
+  /**
+   * Change user password (admin only)
+   */
+  async changeUserPassword(userId: string, newPassword: string): Promise<void> {
+    try {
+      if (!this.isAdmin()) {
+        throw new Error("Only administrators can change user passwords");
+      }
+
+      if (!isFirebaseAvailable || !db) {
+        throw new Error("Firebase not available for password changes");
+      }
+
+      if (newPassword.length < 6) {
+        throw new Error("Password must be at least 6 characters long");
+      }
+
+      // Hash the new password
+      const password_hash = await bcrypt.hash(newPassword, 12);
+
+      // Update the user's password in Firebase
+      await updateDoc(doc(db, "users", userId), {
+        password_hash,
+        updated_at: Timestamp.now(),
+        password_changed_at: Timestamp.now(),
+        password_changed_by: this.currentUser?.id,
+      });
+
+      console.log("✅ Password changed successfully for user:", userId);
+    } catch (error) {
+      console.error("❌ Failed to change password:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user by ID (admin only)
+   */
+  async getUserById(userId: string): Promise<any> {
+    try {
+      if (!this.isAdmin()) {
+        throw new Error("Only administrators can view user details");
+      }
+
+      if (!isFirebaseAvailable || !db) {
+        throw new Error("Firebase not available");
+      }
+
+      const userDoc = await getDoc(doc(db, "users", userId));
+
+      if (!userDoc.exists()) {
+        throw new Error("User not found");
+      }
+
+      return {
+        id: userDoc.id,
+        ...userDoc.data(),
+      };
+    } catch (error) {
+      console.error("❌ Failed to get user:", error);
+      throw error;
+    }
+  }
 }
 
 export const authService = new AuthService();
