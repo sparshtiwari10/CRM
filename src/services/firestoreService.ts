@@ -196,7 +196,10 @@ class FirestoreService {
     }
   }
 
-  async updateCustomer(customerId: string, customer: Customer): Promise<void> {
+  async updateCustomer(
+    customerId: string,
+    customer: Customer | Partial<Customer>,
+  ): Promise<void> {
     try {
       const currentUser = authService.getCurrentUser();
       if (!currentUser || currentUser.role !== "admin") {
@@ -204,11 +207,48 @@ class FirestoreService {
       }
 
       const docRef = doc(db, "customers", customerId);
-      const customerData = this.convertCustomerToFirestoreCustomer(customer);
-      customerData.updated_at = Timestamp.now();
 
-      await updateDoc(docRef, customerData);
-      console.log(`✅ Customer ${customer.name} updated successfully`);
+      // For partial updates, only convert the provided fields
+      let updateData: any = {};
+
+      if (customer.name !== undefined) updateData.name = customer.name;
+      if (customer.phoneNumber !== undefined)
+        updateData.phone = customer.phoneNumber;
+      if (customer.address !== undefined) updateData.address = customer.address;
+      if (customer.currentPackage !== undefined)
+        updateData.package = customer.currentPackage;
+      if (customer.vcNumber !== undefined) updateData.vc_no = customer.vcNumber;
+      if (customer.collectorName !== undefined)
+        updateData.collector_name = customer.collectorName;
+      if (customer.previousOutstanding !== undefined)
+        updateData.prev_os = customer.previousOutstanding;
+      if (customer.packageAmount !== undefined)
+        updateData.bill_amount = customer.packageAmount;
+      if (customer.currentOutstanding !== undefined)
+        updateData.current_os = customer.currentOutstanding;
+      if (customer.email !== undefined) updateData.email = customer.email;
+      if (customer.isActive !== undefined)
+        updateData.status = customer.isActive ? "active" : "inactive";
+      if (customer.status !== undefined) {
+        updateData.status = customer.status;
+        updateData.is_active = customer.status === "active";
+      }
+      if (customer.statusLogs !== undefined)
+        updateData.status_logs = customer.statusLogs;
+      if (customer.billDueDate !== undefined)
+        updateData.bill_due_date = customer.billDueDate;
+      if (customer.numberOfConnections !== undefined)
+        updateData.number_of_connections = customer.numberOfConnections;
+      if (customer.connections !== undefined)
+        updateData.connections = customer.connections;
+      if (customer.customPlan !== undefined)
+        updateData.custom_plan = customer.customPlan;
+
+      // Always update the timestamp
+      updateData.updated_at = Timestamp.now();
+
+      await updateDoc(docRef, updateData);
+      console.log(`✅ Customer updated successfully`);
     } catch (error) {
       console.error("❌ Failed to update customer:", error);
       throw error;
