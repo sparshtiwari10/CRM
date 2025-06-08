@@ -646,8 +646,9 @@ class FirestoreService {
       join_date: customer.joinDate
         ? Timestamp.fromDate(new Date(customer.joinDate))
         : Timestamp.now(),
-      status: customer.isActive ? "active" : "inactive",
-      bill_amount: customer.portalBill || 0,
+      status: (customer.status ||
+        (customer.isActive ? "active" : "inactive")) as "active" | "inactive",
+      bill_amount: customer.packageAmount || customer.portalBill || 0,
       number_of_connections: customer.numberOfConnections || 1,
       connections: customer.connections || [],
       // Fields from original Excel/CSV structure
@@ -662,6 +663,12 @@ class FirestoreService {
       created_at: Timestamp.now(),
       updated_at: Timestamp.now(),
     };
+
+    console.log("🔧 Converting customer to Firestore:", {
+      name: sanitizedData.name,
+      collector_name: sanitizedData.collector_name,
+      status: sanitizedData.status,
+    });
 
     // Only add optional fields if they have valid values
     if (customer.email && customer.email.trim() !== "") {
