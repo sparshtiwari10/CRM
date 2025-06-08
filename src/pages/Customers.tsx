@@ -59,9 +59,11 @@ export default function Customers() {
           customerData = await CustomerService.getAllCustomers();
         } else {
           // For employees, get customers assigned to them
-          customerData = await CustomerService.getCustomersByCollector(
-            user?.name || "",
-          );
+          // Use collector_name if available, otherwise fall back to name
+          const collectorName = user?.collector_name || user?.name || "";
+          console.log(`🔍 Loading customers for employee: ${collectorName}`);
+          customerData =
+            await CustomerService.getCustomersByCollector(collectorName);
         }
 
         // Only update state if component is still mounted
