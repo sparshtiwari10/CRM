@@ -8,6 +8,24 @@
 
 ### **🐛 Critical Bug Fixes**
 
+#### **Employee Customer Assignment Issue RESOLVED**
+
+- **Date**: Current Session
+- **Type**: Critical Bug Fix
+- **Problem**: Employee could not see customers assigned to them, getting "failed to load customers" error
+- **Root Cause**: Firestore composite index requirement when using `where()` + `orderBy()` in customer queries
+- **Solution**:
+  - Removed `orderBy("name")` from employee customer queries to avoid composite index requirement
+  - Added in-memory sorting after data retrieval for employees
+  - Enhanced field mapping and null safety in customer data conversion
+  - Added comprehensive debugging logs for customer assignment troubleshooting
+  - Ensured `collector_name` field is properly set during employee creation
+- **Technical Details**:
+  - Modified `firestoreService.getAllCustomers()` and `getCustomersByCollector()` methods
+  - Fixed customer data conversion methods with proper null handling
+  - Employee creation now properly sets `collector_name = employee.name`
+  - Added console logging for customer assignment debugging
+
 #### **Website Freezing After Employee Deletion**
 
 - **Date**: Current Session
