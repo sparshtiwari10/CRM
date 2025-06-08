@@ -370,6 +370,19 @@ function CustomerModal({
       newErrors.billDueDate = "Bill due date must be between 1 and 31";
     }
 
+    // Validate secondary connections
+    if (formData.numberOfConnections > 1) {
+      for (let i = 1; i < formData.connections.length; i++) {
+        const connection = formData.connections[i];
+        if (!connection.vcNumber.trim()) {
+          newErrors[`secondaryVc${i}`] = `Secondary VC Number ${i} is required`;
+        }
+        if (!connection.planName.trim()) {
+          newErrors[`secondaryPlan${i}`] = `Secondary connection ${i} plan is required`;
+        }
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [formData, showCustomPlan]);
