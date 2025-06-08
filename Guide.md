@@ -247,6 +247,30 @@ src/
 
 ### **`src/components/customers/`**
 
+#### **`ActionRequestModal.tsx`** 🎯 **[ENHANCED - CUSTOMER SELECTION]**
+
+- **Purpose**: Employee request submission with customer selection for admin clarity
+- **Features**:
+  - **Customer Selection Dropdown**: Employees choose which customer the request is for
+  - **Action Type Selection**: Activation, deactivation, or plan change requests
+  - **Plan Change Support**: For plan change requests, shows available packages
+  - **Customer Information Display**: Shows selected customer's details (VC number, current package, status)
+  - **Form Validation**: Requires customer selection, action type, and detailed reason
+  - **Firebase Integration**: Submits requests directly to Firebase for admin review
+- **Request Flow**:
+  ```typescript
+  // Employee selects customer and submits request
+  const request = {
+    customerId: selectedCustomer.id,
+    customerName: selectedCustomer.name,
+    employeeId: user.id,
+    employeeName: user.name,
+    actionType: "activation" | "deactivation" | "plan_change",
+    reason: "Detailed reason provided by employee",
+  };
+  await CustomerService.addRequest(request);
+  ```
+
 #### **`CustomerModal.tsx`** 🎛️ **[FIXED - CONTROLLED INPUTS]**
 
 - **Purpose**: Customer creation/editing with real employee data
