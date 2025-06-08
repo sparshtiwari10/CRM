@@ -101,8 +101,8 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-gray-200 p-4">
-        <div className="text-xs text-gray-500 text-center">
+      <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+        <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
           © 2024 CableTV Operator
         </div>
       </div>
