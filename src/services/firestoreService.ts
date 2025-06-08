@@ -308,6 +308,33 @@ class FirestoreService {
     }
   }
 
+  async getBillingRecordsByCustomer(
+    customerId: string,
+  ): Promise<BillingRecord[]> {
+    try {
+      const billingRef = collection(db, "billing");
+      const q = query(
+        billingRef,
+        where("customer_id", "==", customerId),
+        orderBy("generated_date", "desc"),
+        limit(10),
+      );
+
+      const querySnapshot = await getDocs(q);
+      const records: BillingRecord[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as FirestoreBillingRecord;
+        records.push(this.convertFirestoreBillingToBillingRecord(doc.id, data));
+      });
+
+      return records;
+    } catch (error) {
+      console.error("❌ Failed to load billing records for customer:", error);
+      throw error;
+    }
+  }
+
   async addBillingRecord(record: Omit<BillingRecord, "id">): Promise<string> {
     try {
       const currentUser = authService.getCurrentUser();
