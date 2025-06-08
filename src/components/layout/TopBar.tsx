@@ -43,7 +43,9 @@ export function TopBar({ title }: TopBarProps) {
         {/* Page Title */}
         {title && (
           <div className="hidden sm:block">
-            <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+              {title}
+            </h1>
           </div>
         )}
 
