@@ -147,15 +147,32 @@ src/
   const collectorName = user?.collector_name || user?.name || "";
   ```
 
-#### **`Dashboard.tsx`** 📊
+#### **`Dashboard.tsx`** 📊 **[ENHANCED - EMPLOYEE-SPECIFIC DATA]**
 
-- **Purpose**: Main dashboard with role-specific content
+- **Purpose**: Main dashboard with role-specific content and employee-specific collections
 - **Features**:
-  - Role-based content (different for Admin vs Employee)
-  - Customer count by status (Active, Inactive, Demo)
-  - Quick action buttons for customer/billing management
-  - Recent activity feed
-  - Firebase connection monitoring
+  - **Role-based Data Loading**: Admin sees all customers, employees see only assigned customers
+  - **Employee-Specific Collections**: Today's and yesterday's collection amounts based on employee's customers only
+  - **Customer Statistics**: Count by status (Active, Inactive, Demo) for assigned customers
+  - **Collection Summary Cards**: Separate cards for today's and yesterday's collections with employee-specific totals
+  - **Quick Action Buttons**: Customer/billing management, invoice generation
+  - **Recent Activity Feed**: Shows recent customers assigned to the logged-in employee
+  - **Firebase Connection Monitoring**: Real-time connection status
+- **Employee Dashboard Features**:
+
+  ```typescript
+  // Employee-specific data loading
+  const employeeName = user.collector_name || user.name;
+  customersData = await CustomerService.getCustomersByCollector(employeeName);
+
+  // Collection calculations based on employee's customers only
+  todayTotal = employeeCustomers.reduce(
+    (sum, payment) => sum + payment.amount,
+    0,
+  );
+  ```
+
+- **Collection Display**: Green card for today's collection, blue card for yesterday's collection
 
 #### **`Billing.tsx`** 💰
 
