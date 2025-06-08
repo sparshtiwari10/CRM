@@ -8,23 +8,29 @@
 
 ### **🐛 Critical Bug Fixes**
 
-#### **Employee Customer Assignment Issue RESOLVED**
+#### **Firestore Composite Index Issues RESOLVED**
 
 - **Date**: Current Session
 - **Type**: Critical Bug Fix
-- **Problem**: Employee could not see customers assigned to them, getting "failed to load customers" error
-- **Root Cause**: Firestore composite index requirement when using `where()` + `orderBy()` in customer queries
+- **Problem**: Multiple Firestore query failures requiring composite indexes:
+  - Employee customers: "failed to load customers" error
+  - Employee billing: "failed to load billing records" error
+  - Employee requests: potential query failures
+- **Root Cause**: Firestore composite index requirement when using `where()` + `orderBy()` in queries
 - **Solution**:
-  - Removed `orderBy("name")` from employee customer queries to avoid composite index requirement
-  - Added in-memory sorting after data retrieval for employees
+  - **Customers**: Removed `orderBy("name")` from employee customer queries
+  - **Billing**: Removed `orderBy("generated_date", "desc")` from employee billing queries
+  - **Requests**: Removed `orderBy("request_date", "desc")` from employee request queries
+  - Added in-memory sorting after data retrieval for all employee queries
   - Enhanced field mapping and null safety in customer data conversion
-  - Added comprehensive debugging logs for customer assignment troubleshooting
+  - Added comprehensive debugging logs for troubleshooting
   - Ensured `collector_name` field is properly set during employee creation
 - **Technical Details**:
-  - Modified `firestoreService.getAllCustomers()` and `getCustomersByCollector()` methods
+  - Modified `firestoreService.getAllCustomers()`, `getCustomersByCollector()`, `getAllBillingRecords()`, and `getAllRequests()` methods
   - Fixed customer data conversion methods with proper null handling
   - Employee creation now properly sets `collector_name = employee.name`
-  - Added console logging for customer assignment debugging
+  - Added console logging for assignment and query debugging
+  - Preserved admin functionality with full orderBy capability
 
 #### **Website Freezing After Employee Deletion**
 
