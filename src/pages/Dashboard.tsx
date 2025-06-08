@@ -580,7 +580,9 @@ export default function Dashboard() {
                 {yesterdayPayments.length} invoices generated yesterday
               </p>
               <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
-                <div className="text-xs text-gray-500">Status breakdown:</div>
+                <div className="text-xs text-muted-foreground">
+                  Status breakdown:
+                </div>
                 <div className="flex space-x-2 lg:space-x-4 text-xs">
                   <span className="text-green-600">
                     Paid:{" "}
