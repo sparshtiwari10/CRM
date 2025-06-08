@@ -52,9 +52,15 @@ import { User } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 
 export default function EmployeeManagement() {
-  const [employees, setEmployees] = useState<User[]>([]);
+  const [employees, setEmployees] = useState<
+    Array<{ id: string; name: string; role: string }>
+  >([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [deleteEmployee, setDeleteEmployee] = useState<User | null>(null);
+  const [deleteEmployee, setDeleteEmployee] = useState<{
+    id: string;
+    name: string;
+    role: string;
+  } | null>(null);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
