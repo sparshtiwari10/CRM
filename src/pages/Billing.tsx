@@ -384,7 +384,7 @@ export default function Billing() {
                       >
                         <div>
                           <div className="font-medium">{emp.employeeName}</div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted-foreground">
                             {emp.count} invoices
                           </div>
                         </div>
@@ -396,7 +396,7 @@ export default function Billing() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-center text-gray-500 py-4">
+                    <p className="text-center text-muted-foreground py-4">
                       No billing today
                     </p>
                   )}
@@ -423,28 +423,25 @@ export default function Billing() {
                     yesterdayEmployeeBilling.map((emp) => (
                       <div
                         key={emp.employeeId}
-                        className="flex items-center justify-between p-3 bg-blue-50 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
                       >
                         <div>
                           <div className="font-medium">{emp.employeeName}</div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted-foreground">
                             {emp.count} invoices
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold text-blue-700">
+                          <div className="font-bold text-blue-700 dark:text-blue-300">
                             ₹{emp.total.toFixed(2)}
                           </div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-center text-gray-500 py-4">
+                    <p className="text-center text-muted-foreground py-4">
                       No billing yesterday
                     </p>
-                  )}
-                  <div className="pt-3 border-t border-blue-200 dark:border-blue-800 bg-blue-100 dark:bg-blue-900/20 rounded-lg p-3">
-                    <div className="flex justify-between font-bold text-blue-800 dark:text-blue-200">
                       <span>Yesterday's Total:</span>
                       <span>₹{yesterdayTotal.toFixed(2)}</span>
                     </div>
