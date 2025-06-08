@@ -212,6 +212,23 @@ export function CustomerImportExport({
         "Join Date": "joinDate",
         "Number of Connections": "numberOfConnections",
         "Portal Bill": "portalBill",
+        // Secondary connection mappings
+        "Secondary VC 1": "secondaryVc1",
+        "Secondary Desc 1": "secondaryDesc1",
+        "Secondary Plan 1": "secondaryPlan1",
+        "Secondary Price 1": "secondaryPrice1",
+        "Secondary VC 2": "secondaryVc2",
+        "Secondary Desc 2": "secondaryDesc2",
+        "Secondary Plan 2": "secondaryPlan2",
+        "Secondary Price 2": "secondaryPrice2",
+        "Secondary VC 3": "secondaryVc3",
+        "Secondary Desc 3": "secondaryDesc3",
+        "Secondary Plan 3": "secondaryPlan3",
+        "Secondary Price 3": "secondaryPrice3",
+        "Secondary VC 4": "secondaryVc4",
+        "Secondary Desc 4": "secondaryDesc4",
+        "Secondary Plan 4": "secondaryPlan4",
+        "Secondary Price 4": "secondaryPrice4",
       };
 
       dataLines.forEach((line, index) => {
@@ -493,7 +510,7 @@ export function CustomerImportExport({
                         • CSV file with proper headers (download template below)
                       </li>
                       <li>
-                        �� Required fields: Name, Phone Number, Address, VC
+                        • Required fields: Name, Phone Number, Address, VC
                         Number
                       </li>
                       <li>• Bill Due Date must be between 1-31</li>
