@@ -48,20 +48,22 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
   const navigation = isAdmin ? adminNavigation : employeeNavigation;
 
   return (
-    <div className="flex h-full flex-col bg-gray-50 border-r border-gray-200">
+    <div className="flex h-full flex-col bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
       {/* Logo */}
-      <div className="flex h-16 items-center justify-center border-b border-gray-200 bg-white">
+      <div className="flex h-16 items-center justify-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="flex items-center space-x-2">
           <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
             <Package className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-bold text-gray-900">AGV</span>
+          <span className="text-xl font-bold text-gray-900 dark:text-white">
+            AGV
+          </span>
         </div>
       </div>
 
       {/* Role indicator */}
-      <div className="px-4 py-2 border-b border-gray-200 bg-gray-100">
-        <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
+        <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
           {isAdmin ? "Administrator" : "Employee Portal"}
         </div>
       </div>
