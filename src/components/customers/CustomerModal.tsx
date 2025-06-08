@@ -30,8 +30,13 @@ interface CustomerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   customer?: Customer | null;
-  onSave: (customer: Customer) => void;
-  isSaving?: boolean;
+  onSave: (customer: Omit<Customer, "id">) => void;
+}
+
+interface CustomPlan {
+  name: string;
+  price: number;
+  description?: string;
 }
 
 interface FormData {
@@ -46,11 +51,7 @@ interface FormData {
   portalBill: number;
   numberOfConnections: number;
   connections: Connection[];
-  customPlan: {
-    name: string;
-    price: number;
-    description: string;
-  } | null;
+  customPlan: CustomPlan | null;
   packageAmount: number;
   previousOutstanding: number;
   currentOutstanding: number;
@@ -76,26 +77,25 @@ const initialFormData: FormData = {
   billDueDate: 1,
 };
 
-function CustomerModal({
+export const CustomerModal: React.FC<CustomerModalProps> = ({
   open,
   onOpenChange,
   customer,
   onSave,
-  isSaving = false,
-}: CustomerModalProps) {
+}) => {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
-
-  // Core state
   const [formData, setFormData] = useState<FormData>(initialFormData);
-  const [showCustomPlan, setShowCustomPlan] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [availableCollectors, setAvailableCollectors] = useState<string[]>([
-    "System Administrator",
-  ]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showCustomPlan, setShowCustomPlan] = useState(false);
+  const [availableCollectors, setAvailableCollectors] = useState<string[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize form data only once when customer or open state changes
+  // Connection options
+  const connectionOptions = [1, 2, 3, 4, 5];
+
+  // Reset form when modal opens/closes
   useEffect(() => {
     if (open) {
       const newFormData = customer
@@ -135,31 +135,27 @@ function CustomerModal({
           handleConnectionsChange(customer.numberOfConnections || 1);
         }, 0);
       }
+
       setErrors({});
       setIsInitialized(true);
     } else {
-      // Reset when modal closes
       setFormData(initialFormData);
       setShowCustomPlan(false);
       setErrors({});
       setIsInitialized(false);
     }
-  }, [open, customer?.id]);
+  }, [open, customer]);
 
-  // Load collectors once when modal opens
+  // Load available collectors
   useEffect(() => {
-    let mounted = true;
+    if (open && isAdmin) {
+      let mounted = true;
 
-    if (open && !isInitialized) {
       const loadCollectors = async () => {
         try {
-          const users = await authService.getAllUsers();
-          const employees = users
-            .filter((user) => user.role === "employee" && user.is_active)
-            .map((user) => user.name);
-
           const collectors = ["System Administrator"];
-          if (employees.length > 0) {
+          const employees = await authService.getActiveEmployees();
+          if (employees && employees.length > 0) {
             collectors.push(...employees);
           }
 
@@ -377,75 +373,80 @@ function CustomerModal({
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-
       if (!validateForm()) return;
 
-      const customerData: Customer = {
-        id: customer?.id || Date.now().toString(),
+      setIsSaving(true);
+
+      // Calculate current outstanding
+      const calculatedCurrentOutstanding =
+        formData.packageAmount + formData.previousOutstanding;
+
+      const customerData: Omit<Customer, "id"> = {
         name: formData.name.trim(),
         phoneNumber: formData.phoneNumber.trim(),
+        email: formData.email.trim(),
         address: formData.address.trim(),
         vcNumber: formData.vcNumber.trim(),
         currentPackage: showCustomPlan
-          ? formData.customPlan?.name || "Custom"
+          ? formData.customPlan?.name || ""
           : formData.currentPackage,
+        packageAmount: formData.packageAmount,
         collectorName: formData.collectorName,
         isActive: formData.isActive,
         portalBill: formData.portalBill,
-        lastPaymentDate:
-          customer?.lastPaymentDate || new Date().toISOString().split("T")[0],
+        lastPaymentDate: customer?.lastPaymentDate || "",
         joinDate: customer?.joinDate || new Date().toISOString().split("T")[0],
-        activationDate: formData.isActive
-          ? customer?.activationDate || new Date().toISOString().split("T")[0]
-          : customer?.activationDate,
-        deactivationDate:
-          !formData.isActive && customer?.isActive
-            ? new Date().toISOString().split("T")[0]
-            : customer?.deactivationDate || undefined,
         numberOfConnections: formData.numberOfConnections,
         connections: formData.connections.slice(
           0,
           formData.numberOfConnections,
         ),
-        packageAmount: formData.packageAmount,
+        customPlan: showCustomPlan ? formData.customPlan : null,
+        invoiceHistory: customer?.invoiceHistory || [],
         previousOutstanding: formData.previousOutstanding,
-        currentOutstanding: formData.currentOutstanding,
+        currentOutstanding: calculatedCurrentOutstanding,
         billDueDate: formData.billDueDate,
       };
 
-      // Add optional fields
-      if (formData.email && formData.email.trim() !== "") {
-        customerData.email = formData.email.trim();
-      }
+      try {
+        onSave(customerData);
+        onOpenChange(false);
 
-      if (showCustomPlan && formData.customPlan) {
-        customerData.customPlan = formData.customPlan;
-      }
+        toast({
+          title: customer ? "Customer updated" : "Customer created",
+          description: customer
+            ? "Customer information has been updated successfully."
+            : "New customer has been created successfully.",
+        });
+      } catch (error) {
+        console.error("Error saving customer:", error);
 
-      onSave(customerData);
+        toast({
+          title: "Error",
+          description: "Failed to save customer. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSaving(false);
+      }
     },
-    [formData, showCustomPlan, customer, validateForm, onSave],
+    [
+      formData,
+      showCustomPlan,
+      customer,
+      validateForm,
+      onSave,
+      onOpenChange,
+      toast,
+    ],
   );
-
-  // Memoized options to prevent recreation
-  const connectionOptions = useMemo(
-    () => Array.from({ length: 10 }, (_, i) => i + 1),
-    [],
-  );
-
-  const billDueDateOptions = useMemo(
-    () => Array.from({ length: 31 }, (_, i) => i + 1),
-    [],
-  );
-
-  if (!open) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {customer ? `Edit Customer - ${customer.name}` : "Add New Customer"}
+            {customer ? "Edit Customer" : "Add New Customer"}
           </DialogTitle>
         </DialogHeader>
 
@@ -456,7 +457,7 @@ function CustomerModal({
               <CardTitle className="text-lg">Basic Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="name">Customer Name *</Label>
                   <Input
@@ -488,18 +489,38 @@ function CustomerModal({
                     </p>
                   )}
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Email Address</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     disabled={isSaving}
+                    className={errors.email ? "border-red-500" : ""}
                   />
+                  {errors.email && (
+                    <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="address">Address *</Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) =>
+                      handleInputChange("address", e.target.value)
+                    }
+                    disabled={isSaving}
+                    className={errors.address ? "border-red-500" : ""}
+                  />
+                  {errors.address && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.address}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -512,7 +533,6 @@ function CustomerModal({
                     }
                     disabled={isSaving}
                     className={errors.vcNumber ? "border-red-500" : ""}
-                    placeholder="e.g., VC001234"
                   />
                   {errors.vcNumber && (
                     <p className="text-red-500 text-xs mt-1">
@@ -520,23 +540,7 @@ function CustomerModal({
                     </p>
                   )}
                 </div>
-              </div>
 
-              <div>
-                <Label htmlFor="address">Address *</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => handleInputChange("address", e.target.value)}
-                  disabled={isSaving}
-                  className={errors.address ? "border-red-500" : ""}
-                />
-                {errors.address && (
-                  <p className="text-red-500 text-xs mt-1">{errors.address}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="collectorName">Collector *</Label>
                   <Select
@@ -549,7 +553,7 @@ function CustomerModal({
                     <SelectTrigger
                       className={errors.collectorName ? "border-red-500" : ""}
                     >
-                      <SelectValue placeholder="Select collector" />
+                      <SelectValue placeholder="Select a collector" />
                     </SelectTrigger>
                     <SelectContent>
                       {availableCollectors.map((collector) => (
@@ -562,6 +566,32 @@ function CustomerModal({
                   {errors.collectorName && (
                     <p className="text-red-500 text-xs mt-1">
                       {errors.collectorName}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="billDueDate">
+                    Bill Due Date (Day of Month)
+                  </Label>
+                  <Input
+                    id="billDueDate"
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={formData.billDueDate}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "billDueDate",
+                        parseInt(e.target.value) || 1,
+                      )
+                    }
+                    disabled={isSaving}
+                    className={errors.billDueDate ? "border-red-500" : ""}
+                  />
+                  {errors.billDueDate && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.billDueDate}
                     </p>
                   )}
                 </div>
@@ -603,7 +633,7 @@ function CustomerModal({
 
                 {/* Secondary Connections Configuration */}
                 {formData.numberOfConnections > 1 && (
-                  <div className="space-y-4">
+                  <div className="col-span-full space-y-4">
                     <Label className="text-sm font-medium">
                       Secondary Connections
                     </Label>
@@ -619,14 +649,26 @@ function CustomerModal({
 
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor={`secondary-vc-${index}`}>VC Number *</Label>
+                              <Label htmlFor={`secondary-vc-${index}`}>
+                                VC Number *
+                              </Label>
                               <Input
                                 id={`secondary-vc-${index}`}
                                 value={connection.vcNumber}
-                                onChange={(e) => handleSecondaryConnectionChange(index + 1, 'vcNumber', e.target.value)}
+                                onChange={(e) =>
+                                  handleSecondaryConnectionChange(
+                                    index + 1,
+                                    "vcNumber",
+                                    e.target.value,
+                                  )
+                                }
                                 disabled={isSaving}
                                 placeholder="Enter VC Number"
-                                className={errors[`secondaryVc${index + 1}`] ? "border-red-500" : ""}
+                                className={
+                                  errors[`secondaryVc${index + 1}`]
+                                    ? "border-red-500"
+                                    : ""
+                                }
                               />
                               {errors[`secondaryVc${index + 1}`] && (
                                 <p className="text-red-500 text-xs mt-1">
@@ -634,6 +676,13 @@ function CustomerModal({
                                 </p>
                               )}
                             </div>
+                            <div>
+                              <Label htmlFor={`secondary-desc-${index}`}>
+                                Description
+                              </Label>
+                              <Input
+                                id={`secondary-desc-${index}`}
+                                value={connection.description || ""}
                                 onChange={(e) =>
                                   handleSecondaryConnectionChange(
                                     index + 1,
@@ -678,7 +727,13 @@ function CustomerModal({
                                   }
                                   disabled={isSaving}
                                 >
-                                  <SelectTrigger>
+                                  <SelectTrigger
+                                    className={
+                                      errors[`secondaryPlan${index + 1}`]
+                                        ? "border-red-500"
+                                        : ""
+                                    }
+                                  >
                                     <SelectValue placeholder="Choose a package" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -689,6 +744,11 @@ function CustomerModal({
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                {errors[`secondaryPlan${index + 1}`] && (
+                                  <p className="text-red-500 text-xs mt-1">
+                                    {errors[`secondaryPlan${index + 1}`]}
+                                  </p>
+                                )}
                               </div>
                             ) : (
                               <div className="grid grid-cols-2 gap-4">
@@ -835,23 +895,14 @@ function CustomerModal({
                   )}
                 </div>
               )}
-            </CardContent>
-          </Card>
 
-          {/* Billing Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Billing Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              {/* Financial Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
                 <div>
                   <Label htmlFor="packageAmount">Package Amount (₹)</Label>
                   <Input
                     id="packageAmount"
                     type="number"
-                    step="0.01"
-                    min="0"
                     value={formData.packageAmount}
                     onChange={(e) =>
                       handleInputChange(
@@ -862,44 +913,6 @@ function CustomerModal({
                     disabled={isSaving}
                   />
                 </div>
-
-                <div>
-                  <Label htmlFor="billDueDate">Bill Due Date</Label>
-                  <Select
-                    value={formData.billDueDate.toString()}
-                    onValueChange={(value) =>
-                      handleInputChange("billDueDate", parseInt(value))
-                    }
-                    disabled={isSaving}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {billDueDateOptions.map((day) => (
-                        <SelectItem key={day} value={day.toString()}>
-                          {day}{" "}
-                          {day === 1
-                            ? "st"
-                            : day === 2
-                              ? "nd"
-                              : day === 3
-                                ? "rd"
-                                : "th"}{" "}
-                          of every month
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.billDueDate && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.billDueDate}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="previousOutstanding">
                     Previous Outstanding (₹)
@@ -907,7 +920,6 @@ function CustomerModal({
                   <Input
                     id="previousOutstanding"
                     type="number"
-                    step="0.01"
                     value={formData.previousOutstanding}
                     onChange={(e) =>
                       handleInputChange(
@@ -918,35 +930,11 @@ function CustomerModal({
                     disabled={isSaving}
                   />
                 </div>
-
-                <div>
-                  <Label htmlFor="currentOutstanding">
-                    Current Outstanding (₹)
-                  </Label>
-                  <Input
-                    id="currentOutstanding"
-                    type="number"
-                    step="0.01"
-                    value={formData.currentOutstanding}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "currentOutstanding",
-                        parseFloat(e.target.value) || 0,
-                      )
-                    }
-                    disabled={isSaving}
-                  />
-                </div>
-              </div>
-
-              {isAdmin && (
                 <div>
                   <Label htmlFor="portalBill">Portal Bill (₹)</Label>
                   <Input
                     id="portalBill"
                     type="number"
-                    step="0.01"
-                    min="0"
                     value={formData.portalBill}
                     onChange={(e) =>
                       handleInputChange(
@@ -957,31 +945,29 @@ function CustomerModal({
                     disabled={isSaving}
                   />
                 </div>
-              )}
+              </div>
             </CardContent>
           </Card>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving
-                ? "Saving..."
-                : customer
-                  ? "Update Customer"
-                  : "Add Customer"}
-            </Button>
-          </DialogFooter>
         </form>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSaving}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" onClick={handleSubmit} disabled={isSaving}>
+            {isSaving
+              ? "Saving..."
+              : customer
+                ? "Update Customer"
+                : "Add Customer"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
-
-export default CustomerModal;
+};
