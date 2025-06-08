@@ -178,8 +178,13 @@ export default function RequestManagement() {
     setIsProcessing(true);
 
     try {
+      const request = requests.find((r) => r.id === requestId);
+      if (!request) {
+        throw new Error("Request not found");
+      }
+
       const updatedRequest = {
-        ...requests.find((r) => r.id === requestId),
+        ...request,
         status: action === "approve" ? "approved" : "rejected",
         reviewDate: new Date().toISOString().split("T")[0],
         reviewedBy: user?.name || "System Administrator",
@@ -189,10 +194,70 @@ export default function RequestManagement() {
       // Save to Firebase
       await CustomerService.updateRequest(requestId, updatedRequest);
 
+      // If request is approved and it's an activation/deactivation, update VC status
+      if (
+        action === "approve" &&
+        (request.actionType === "activation" ||
+          request.actionType === "deactivation")
+      ) {
+        try {
+          // Get the customer
+          const customer = customers.find((c) => c.id === request.customerId);
+          if (customer) {
+            const newVCStatus =
+              request.actionType === "activation" ? "active" : "inactive";
+
+            console.log(
+              `🔄 Updating VC ${request.vcNumber} status to ${newVCStatus} for customer ${customer.name}`,
+            );
+
+            // Check if it's primary VC or secondary VC
+            if (request.vcNumber === customer.vcNumber) {
+              // Primary VC - update customer status
+              await CustomerService.updateCustomer(customer.id, {
+                status: newVCStatus,
+                isActive: newVCStatus === "active",
+              });
+              console.log(
+                `✅ Primary VC ${request.vcNumber} status updated to ${newVCStatus}`,
+              );
+            } else {
+              // Secondary VC - update connection status
+              const updatedConnections =
+                customer.connections?.map((conn) =>
+                  conn.vcNumber === request.vcNumber
+                    ? { ...conn, status: newVCStatus }
+                    : conn,
+                ) || [];
+
+              await CustomerService.updateCustomer(customer.id, {
+                connections: updatedConnections,
+              });
+              console.log(
+                `✅ Secondary VC ${request.vcNumber} status updated to ${newVCStatus}`,
+              );
+            }
+
+            toast({
+              title: "VC Status Updated",
+              description: `VC ${request.vcNumber} status changed to ${newVCStatus} as requested.`,
+            });
+          }
+        } catch (vcUpdateError) {
+          console.error("Failed to update VC status:", vcUpdateError);
+          toast({
+            title: "Warning",
+            description:
+              "Request approved but failed to update VC status. Please update manually.",
+            variant: "destructive",
+          });
+        }
+      }
+
       // Update local state
       setRequests((prevRequests) =>
-        prevRequests.map((request) =>
-          request.id === requestId ? updatedRequest : request,
+        prevRequests.map((req) =>
+          req.id === requestId ? updatedRequest : req,
         ),
       );
 
