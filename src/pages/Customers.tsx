@@ -328,10 +328,10 @@ export default function Customers() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-gray-900">
+            <h2 className="text-xl lg:text-2xl font-bold text-foreground">
               Customer Management
             </h2>
-            <p className="text-sm lg:text-base text-gray-600">
+            <p className="text-sm lg:text-base text-muted-foreground">
               {isAdmin
                 ? "Manage customers with enhanced billing tracking and invoice history"
                 : "View customers assigned to you"}
