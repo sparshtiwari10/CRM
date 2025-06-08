@@ -8,6 +8,32 @@
 
 ### **🐛 Critical Bug Fixes**
 
+#### **Firestore Undefined Field Error RESOLVED**
+
+- **Date**: Current Session
+- **Type**: Bug Fix
+- **Problem**: Firestore error when submitting requests: "Function addDoc() called with invalid data. Unsupported field value: undefined (found in field requested_plan)"
+- **Root Cause**: `requested_plan` field being set to `undefined` for activation/deactivation requests (only needed for plan_change requests)
+- **Firestore Rule**: Firestore doesn't accept `undefined` values in documents
+- **Solution**:
+  - Enhanced `firestoreService.addRequest()` method to handle undefined values properly
+  - Added conditional inclusion of `requested_plan` field only when it has a valid value
+  - Implemented proper data sanitization before sending to Firestore
+  - Updated ActionRequestModal to only include `requestedPlan` for plan_change actions
+- **Technical Details**:
+
+  ```typescript
+  // Before (problematic):
+  requested_plan: request.requestedPlan, // Could be undefined
+
+  // After (fixed):
+  if (request.requestedPlan && request.requestedPlan.trim() !== "") {
+    requestData.requested_plan = request.requestedPlan;
+  }
+  ```
+
+- **Additional Safeguards**: Added comprehensive data sanitization using existing `sanitizeFirestoreData()` method
+
 #### **Request Form Submit Button and Employee Dashboard RESOLVED**
 
 - **Date**: Current Session
@@ -380,7 +406,7 @@ customers: {
 
 - ✅ Admin login and full functionality
 - ✅ Employee login and restricted access
-- �� User creation, activation, deactivation
+- ✅ User creation, activation, deactivation
 - ✅ Password changes for all users
 - ✅ Customer assignment and visibility
 - ✅ Dark mode compatibility
@@ -396,7 +422,7 @@ customers: {
 
 ---
 
-## **📞 Support Information**
+## **�� Support Information**
 
 ### **Common Issues & Solutions**
 
