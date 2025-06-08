@@ -20,6 +20,9 @@
   5. **Enhanced Customer Table**: Expanded view shows individual VC status controls for all connections
   6. **Request-Driven Status Changes**: VC status changes through approved requests with proper audit trail
   7. **Current Outstanding Calculation**: Only active VCs contribute to current outstanding on bill due date
+  8. **Invoice History Restoration**: Restored invoice history in expanded customer view with loading states
+  9. **Request History Integration**: Added comprehensive request history showing activation/deactivation timeline
+  10. **Complete Customer Timeline**: Maintained history of when customer VCs were activated/deactivated through requests
 - **Technical Details**:
   - **CustomerTable Enhancement**: Complete rewrite with individual VC status management
     - Primary VC status dropdown for admins in main table view
@@ -273,7 +276,7 @@
   - Added automatic dark mode detection
   - Updated all components for theme compatibility
 
-### **🏗�� Layout Architecture Fix**
+### **🏗️ Layout Architecture Fix**
 
 - **Date**: Previous Session
 - **Type**: Critical Bug Fix
