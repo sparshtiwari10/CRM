@@ -98,20 +98,20 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Shield className="h-8 w-8 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="space-y-4 pb-6">
+          <div className="flex items-center justify-center mb-4">
+            <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center">
+              <Lock className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground">AGV</h1>
           </div>
-          <h2 className="text-xl font-semibold text-muted-foreground">
-            Cable TV Management System
-          </h2>
-          <p className="text-sm text-muted-foreground">
+          <CardTitle className="text-2xl font-bold text-center text-foreground">
+            Welcome Back
+          </CardTitle>
+          <p className="text-muted-foreground text-center">
+            Sign in to your account to continue
+          </p>
             Secure access for employees and administrators
           </p>
           {/* Firebase Connection Status */}

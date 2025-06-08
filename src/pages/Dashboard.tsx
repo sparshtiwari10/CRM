@@ -538,16 +538,16 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-2xl lg:text-3xl font-bold text-green-600">
-                ₹{todayTotal.toFixed(2)}
-              </div>
-              <p className="text-xs lg:text-sm text-muted-foreground mt-1">
+            <div className="text-2xl font-bold text-foreground">{totalCustomers}</div>
+            <p className="text-xs text-muted-foreground">
+              {activeCustomers} active, {inactiveCustomers} inactive
+            </p>
                 {todayPayments.length} invoices generated today
               </p>
               <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
-                <div className="text-xs text-muted-foreground">
-                  Status breakdown:
-                </div>
+          <div className="text-center py-8 text-muted-foreground">
+            Loading dashboard data...
+          </div>
                 <div className="flex space-x-2 lg:space-x-4 text-xs">
                   <span className="text-green-600">
                     Paid:{" "}
