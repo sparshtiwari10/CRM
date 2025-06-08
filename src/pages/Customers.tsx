@@ -126,7 +126,7 @@ export default function Customers() {
         try {
           const users = await authService.getAllEmployees();
           // Only include active employees for assignment
-          const activeUsers = users.filter(user => user.is_active);
+          const activeUsers = users.filter((user) => user.is_active);
           setAllEmployees(activeUsers);
         } catch (error) {
           console.error("Failed to load employees:", error);
@@ -473,7 +473,6 @@ export default function Customers() {
                         </SelectItem>
                       ))}
                 </SelectContent>
-              </Select>
               </Select>
             </div>
           </CardContent>
