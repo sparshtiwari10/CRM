@@ -461,39 +461,62 @@ if (userData.is_active === false) {
 
 ### **Employee Cannot See Customers**
 
-**Symptoms**: Employee logs in but sees no customers
+**Symptoms**: Employee logs in but sees no customers or gets "failed to load customers" error
 **Debug Steps**:
 
-1. Check console logs for customer assignment debugging (detailed logs now provided)
+1. Check browser console for detailed customer assignment debugging (automatically provided)
 2. Verify employee has `collector_name` set in Firebase (should equal employee name)
 3. Ensure customers have `collectorName` matching employee name exactly
 4. Check if employee status is active
 5. Look for yellow diagnostic card on empty customer page
+6. Verify Firestore query is not failing due to composite index requirements
 
-**Enhanced Debugging**:
+**Enhanced Debugging & Troubleshooting**:
 
 - **Console Logs**: Detailed customer assignment debugging automatically shown
 - **Diagnostic UI**: Yellow info card appears for employees with no customers
 - **Field Comparison**: Console shows exact field matching for troubleshooting
+- **Firestore Query Optimization**: Queries now avoid composite index requirements
 
-**Solution**:
+**Common Causes & Solutions**:
+
+1. **Firestore Query Issues**:
+
+   - **Cause**: Using `where()` + `orderBy()` requires composite index
+   - **Solution**: Removed orderBy from employee queries, sort in memory instead
+
+2. **Missing collector_name Field**:
+
+   - **Cause**: Employee created without proper `collector_name` field
+   - **Solution**: Employee creation now automatically sets `collector_name = employee.name`
+
+3. **Customer Assignment Mismatch**:
+
+   - **Cause**: Customer `collectorName` doesn't match employee `collector_name`
+   - **Solution**: When assigning customers, select exact employee name from dropdown
+
+4. **Data Conversion Issues**:
+   - **Cause**: Null/undefined values in customer data conversion
+   - **Solution**: Added comprehensive null safety in data conversion methods
+
+**Debug Console Output**:
 
 ```typescript
-// Enhanced debugging in console:
-console.log("Employee looking for:", user?.collector_name || user?.name);
-console.log("Available customers and assignments:");
-allCustomers.forEach((c) => {
-  console.log(
-    `${c.name} → "${c.collectorName}" ${c.collectorName === employeeName ? "✅" : "❌"}`,
-  );
-});
+// Example debugging output you'll see:
+console.log(
+  "🔍 Employee user - looking for customers assigned to: 'John Employee'",
+);
+console.log("📊 Found 3 customers assigned to 'John Employee'");
+console.log("✅ Successfully loaded 3 customers for employee: John Employee");
 ```
 
-**Common Fixes**:
+**Step-by-Step Fix Process**:
 
-1. **Create Employee Properly**: Ensure `collector_name` is set when creating employee
-2. **Assign Customers**: In customer modal, select exact employee name in "Employee" field
-3. **Check Spelling**: Customer `collectorName` must exactly match employee `collector_name`
+1. **Create Employee Properly**: Use Employee Management to create employee
+2. **Verify collector_name**: Check that `collector_name` equals employee name in Firebase
+3. **Assign Customers**: In customer modal, select exact employee name in "Employee" field
+4. **Test Login**: Employee should now see assigned customers
+5. **Check Console**: Look for debugging messages if issues persist
 
 ### **User Management Issues**
 
