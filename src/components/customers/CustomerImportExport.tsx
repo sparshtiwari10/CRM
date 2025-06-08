@@ -90,8 +90,8 @@ export function CustomerImportExport({
       // Convert customers to CSV rows
       const csvRows = [
         headers.join(","), // Header row
-        ...customers.map((customer) =>
-          [
+        ...customers.map((customer) => {
+          const basicFields = [
             `"${customer.name}"`,
             `"${customer.phoneNumber}"`,
             `"${customer.email || ""}"`,
@@ -108,8 +108,28 @@ export function CustomerImportExport({
             `"${customer.joinDate}"`,
             customer.numberOfConnections.toString(),
             (customer.portalBill || 0).toString(),
-          ].join(","),
-        ),
+          ];
+
+          // Add secondary connection fields (up to 4 secondary connections)
+          const secondaryFields = [];
+          const secondaryConnections = customer.connections?.slice(1) || []; // Skip primary connection
+
+          for (let i = 0; i < 4; i++) {
+            const connection = secondaryConnections[i];
+            if (connection) {
+              secondaryFields.push(
+                `"${connection.vcNumber}"`,
+                `"${connection.description || ""}"`,
+                `"${connection.planName}"`,
+                connection.planPrice.toString(),
+              );
+            } else {
+              secondaryFields.push('""', '""', '""', '""');
+            }
+          }
+
+          return [...basicFields, ...secondaryFields].join(",");
+        }),
       ];
 
       // Create and download file
@@ -473,7 +493,7 @@ export function CustomerImportExport({
                         • CSV file with proper headers (download template below)
                       </li>
                       <li>
-                        • Required fields: Name, Phone Number, Address, VC
+                        �� Required fields: Name, Phone Number, Address, VC
                         Number
                       </li>
                       <li>• Bill Due Date must be between 1-31</li>
