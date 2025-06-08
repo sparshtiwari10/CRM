@@ -62,6 +62,7 @@ import {
   CustomerStatus,
   StatusLog,
   BillingRecord,
+  Connection,
 } from "@/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -77,8 +78,11 @@ interface CustomerTableProps {
   onDelete: (customer: Customer) => void;
   onView: (customer: Customer) => void;
   onViewHistory: (customer: Customer) => void;
-  onPaymentCapture: (customer: Customer) => void;
-  onCustomerUpdate?: (customerId: string, updates: Partial<Customer>) => void;
+  onCustomerUpdate?: (
+    customerId: string,
+    updates: Partial<Customer>,
+  ) => Promise<void>;
+  isLoading?: boolean;
 }
 
 export default function CustomerTable({
@@ -88,67 +92,29 @@ export default function CustomerTable({
   onDelete,
   onView,
   onViewHistory,
-  onPaymentCapture,
   onCustomerUpdate,
+  isLoading = false,
 }: CustomerTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<ActionRequest | null>(
     null,
   );
-  const [customerInvoices, setCustomerInvoices] = useState<
-    Record<string, BillingRecord[]>
-  >({});
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestModalCustomer, setRequestModalCustomer] =
+    useState<Customer | null>(null);
+  const [requestActionType, setRequestActionType] = useState<
+    "activation" | "deactivation" | "plan_change"
+  >("activation");
 
-  const { isAdmin, user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { toast } = useToast();
 
-  // Fetch recent invoices for expanded customers
+  // Clear search results when search term changes
   useEffect(() => {
-    const fetchInvoicesForExpandedCustomers = async () => {
-      for (const customerId of expandedRows) {
-        if (!customerInvoices[customerId]) {
-          try {
-            const invoices =
-              await CustomerService.getBillingRecordsByCustomer(customerId);
-            setCustomerInvoices((prev) => ({
-              ...prev,
-              [customerId]: invoices || [], // Ensure we always have an array
-            }));
-          } catch (error) {
-            console.error(
-              "Failed to fetch invoices for customer:",
-              customerId,
-              error,
-            );
-            // Fallback to customer's existing invoice history
-            const customer = customers.find((c) => c.id === customerId);
-            const fallbackInvoices = customer?.invoiceHistory || [];
-            setCustomerInvoices((prev) => ({
-              ...prev,
-              [customerId]: fallbackInvoices,
-            }));
-          }
-        }
-      }
-    };
-
-    if (expandedRows.size > 0) {
-      fetchInvoicesForExpandedCustomers();
+    if (!searchTerm) {
+      setExpandedRows(new Set());
     }
-  }, [expandedRows, customers]);
-
-  const toggleRowExpansion = useCallback((customerId: string) => {
-    setExpandedRows((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(customerId)) {
-        newSet.delete(customerId);
-      } else {
-        newSet.add(customerId);
-      }
-      return newSet;
-    });
-  }, []);
+  }, [searchTerm]);
 
   // Calculate VC status for a customer
   const calculateVCStatus = useCallback((customer: Customer) => {
@@ -191,8 +157,8 @@ export default function CustomerTable({
     }, 0);
   }, []);
 
-  // Handle status change (now affects VC status)
-  const handleStatusChange = useCallback(
+  // Handle primary VC status change
+  const handlePrimaryVCStatusChange = useCallback(
     async (customer: Customer, newStatus: CustomerStatus) => {
       if (!isAdmin || !onCustomerUpdate || !user) return;
 
@@ -203,7 +169,7 @@ export default function CustomerTable({
           newStatus,
           changedBy: user.name,
           changedDate: new Date().toISOString(),
-          reason: `VC Status changed from ${customer.status} to ${newStatus}`,
+          reason: `Primary VC Status changed from ${customer.status} to ${newStatus}`,
         };
 
         const updatedCustomer: Partial<Customer> = {
@@ -215,14 +181,72 @@ export default function CustomerTable({
         await onCustomerUpdate(customer.id, updatedCustomer);
 
         toast({
-          title: "VC Status Updated",
-          description: `VC Status changed to ${newStatus}`,
+          title: "Primary VC Status Updated",
+          description: `Primary VC ${customer.vcNumber} status changed to ${newStatus}`,
         });
       } catch (error) {
-        console.error("Failed to update VC status:", error);
+        console.error("Failed to update primary VC status:", error);
         toast({
           title: "Error",
-          description: "Failed to update VC status",
+          description: "Failed to update primary VC status",
+          variant: "destructive",
+        });
+      }
+    },
+    [isAdmin, onCustomerUpdate, user, toast],
+  );
+
+  // Handle secondary VC status change
+  const handleSecondaryVCStatusChange = useCallback(
+    async (
+      customer: Customer,
+      connectionIndex: number,
+      newStatus: CustomerStatus,
+    ) => {
+      if (!isAdmin || !onCustomerUpdate || !user) return;
+
+      try {
+        const updatedConnections = [...(customer.connections || [])];
+        const connection = updatedConnections[connectionIndex];
+
+        if (!connection) {
+          console.error("Connection not found at index:", connectionIndex);
+          return;
+        }
+
+        const oldStatus = connection.status || customer.status;
+
+        // Update the specific connection status
+        updatedConnections[connectionIndex] = {
+          ...connection,
+          status: newStatus,
+        };
+
+        const statusLog: StatusLog = {
+          id: `log_${Date.now()}`,
+          previousStatus: oldStatus,
+          newStatus,
+          changedBy: user.name,
+          changedDate: new Date().toISOString(),
+          reason: `Secondary VC ${connection.vcNumber} status changed from ${oldStatus} to ${newStatus}`,
+        };
+
+        const updatedCustomer: Partial<Customer> = {
+          connections: updatedConnections,
+          statusLogs: [...(customer.statusLogs || []), statusLog],
+        };
+
+        await onCustomerUpdate(customer.id, updatedCustomer);
+
+        toast({
+          title: "Secondary VC Status Updated",
+          description: `Secondary VC ${connection.vcNumber} status changed to ${newStatus}`,
+        });
+      } catch (error) {
+        console.error("Failed to update secondary VC status:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update secondary VC status",
           variant: "destructive",
         });
       }
@@ -251,38 +275,23 @@ export default function CustomerTable({
         customer.address.toLowerCase().includes(term) ||
         customer.vcNumber.toLowerCase().includes(term) ||
         customer.collectorName.toLowerCase().includes(term) ||
-        customer.email?.toLowerCase().includes(term) ||
-        (customer.connections &&
-          customer.connections.some((conn) =>
-            conn.vcNumber.toLowerCase().includes(term),
-          )),
+        customer.currentPackage.toLowerCase().includes(term),
     );
   }, [enrichedCustomers, searchTerm]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-    }).format(amount);
-  };
-
-  const formatAddress = (address: string) => {
-    return address.length > 50 ? address.substring(0, 50) + "..." : address;
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleDateString("en-IN");
-    } catch {
-      return dateString;
+  const toggleRow = (customerId: string) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(customerId)) {
+      newExpanded.delete(customerId);
+    } else {
+      newExpanded.add(customerId);
     }
+    setExpandedRows(newExpanded);
   };
 
-  const formatDueDate = (day: number) => {
-    return `${day}${day === 1 ? "st" : day === 2 ? "nd" : day === 3 ? "rd" : "th"} of every month`;
-  };
-
-  const getStatusBadgeVariant = (status: CustomerStatus | string) => {
+  const getStatusBadgeVariant = (
+    status: CustomerStatus | string,
+  ): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case "active":
         return "default";
@@ -297,942 +306,713 @@ export default function CustomerTable({
     }
   };
 
-  const getStatusBadgeColor = (status: CustomerStatus | string) => {
+  const getStatusBadgeColor = (status: CustomerStatus | string): string => {
     switch (status) {
       case "active":
-        return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200";
+        return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800";
       case "inactive":
-        return "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200";
+        return "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800";
       case "demo":
-        return "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200";
+        return "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800";
       case "mixed":
-        return "bg-orange-100 dark:bg-orange-900/20 text-orange-800 dark:text-orange-200";
+        return "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800";
       default:
-        return "bg-muted text-muted-foreground";
+        return "";
     }
   };
 
-  const getStatusDisplayText = (customer: any) => {
-    if (!customer.connections || customer.connections.length <= 1) {
-      return customer.status.charAt(0).toUpperCase() + customer.status.slice(1);
+  const getStatusDisplayText = (customer: Customer): string => {
+    if (customer.vcStatus === "mixed") {
+      return "Mixed";
+    }
+    return customer.status?.charAt(0).toUpperCase() + customer.status?.slice(1);
+  };
+
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+    }).format(amount);
+  };
+
+  const formatAddress = (address: string): string => {
+    const maxLength = 40;
+    return address.length > maxLength
+      ? address.substring(0, maxLength) + "..."
+      : address;
+  };
+
+  const formatDueDate = (dueDate: number): string => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+
+    // Create due date for current month
+    const dueDateThisMonth = new Date(currentYear, currentMonth, dueDate);
+
+    // If due date has passed this month, show next month
+    if (dueDateThisMonth < currentDate) {
+      const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+      const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+      const dueDateNextMonth = new Date(nextYear, nextMonth, dueDate);
+      return dueDateNextMonth.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+      });
     }
 
-    const activeCount = customer.connections.filter(
-      (conn: any) => (conn.status || customer.status) === "active",
-    ).length;
-    const inactiveCount = customer.connections.length - activeCount;
-
-    if (activeCount === customer.connections.length) return "All Active";
-    if (inactiveCount === customer.connections.length) return "All Inactive";
-    return `${activeCount} Active, ${inactiveCount} Inactive`;
+    return dueDateThisMonth.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+    });
   };
 
-  const requestPermission = (action: string, customer: Customer) => {
-    const request: ActionRequest = {
-      id: `req_${Date.now()}`,
-      type: action as "edit" | "delete",
-      resourceId: customer.id,
-      resourceType: "customer",
-      resourceName: customer.name,
-      requestedBy: user?.name || "Employee",
-      requestedAt: new Date().toISOString(),
-      status: "pending",
-      reason: `Request to ${action} customer: ${customer.name}`,
-    };
-
-    setSelectedRequest(request);
+  const handleActionRequest = (
+    customer: Customer,
+    actionType: "activation" | "deactivation" | "plan_change",
+  ) => {
+    setRequestModalCustomer(customer);
+    setRequestActionType(actionType);
+    setShowRequestModal(true);
   };
 
-  if (filteredCustomers.length === 0) {
+  if (isLoading) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <div className="text-lg font-medium">No customers found</div>
-        <div className="text-sm">
-          {searchTerm
-            ? "Try adjusting your search criteria"
-            : "No customers have been added yet"}
+      <div className="space-y-4">
+        <div className="text-center py-8 text-muted-foreground">
+          Loading customers...
         </div>
       </div>
     );
   }
 
   return (
-    <>
-      {/* Desktop Table */}
-      <div className="hidden md:block overflow-x-auto">
+    <div className="space-y-4">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-8"></TableHead>
-              <TableHead>Customer</TableHead>
+              <TableHead>Customer Info</TableHead>
               <TableHead>Address</TableHead>
               <TableHead>Package</TableHead>
-              <TableHead className="text-right">Package Amount</TableHead>
-              <TableHead className="text-right">Previous Outstanding</TableHead>
-              <TableHead className="text-right">Current Outstanding</TableHead>
-              <TableHead>Bill Due Date</TableHead>
+              <TableHead className="text-right">Monthly Amount</TableHead>
+              <TableHead className="text-right">Previous O/S</TableHead>
+              <TableHead className="text-right">Current O/S</TableHead>
+              <TableHead>Due Date</TableHead>
               <TableHead>Employee</TableHead>
-              <TableHead>VC Status</TableHead>
+              <TableHead>Primary VC Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredCustomers.map((customer) => (
-              <React.Fragment key={customer.id}>
-                <TableRow className="hover:bg-muted/50">
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleRowExpansion(customer.id)}
-                      className="h-8 w-8 p-0"
-                    >
-                      {expandedRows.has(customer.id) ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="font-medium text-foreground">
-                        {customer.name}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {customer.phoneNumber}
-                      </div>
-                      {customer.email && (
-                        <div className="text-xs text-muted-foreground/70">
-                          {customer.email}
+            {filteredCustomers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={11} className="text-center py-8">
+                  {customers.length === 0
+                    ? "No customers found"
+                    : "No customers match your search criteria"}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredCustomers.map((customer) => (
+                <React.Fragment key={customer.id}>
+                  {/* Main Row */}
+                  <TableRow className="group">
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => toggleRow(customer.id)}
+                      >
+                        {expandedRows.has(customer.id) ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="font-medium text-foreground">
+                          {customer.name}
                         </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm text-foreground">
-                      {formatAddress(customer.address)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm text-foreground">
-                      {customer.currentPackage}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="font-medium text-foreground">
-                      {formatCurrency(customer.packageAmount)}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div
-                      className={cn(
-                        "font-medium",
-                        customer.previousOutstanding > 0
-                          ? "text-red-600 dark:text-red-400"
-                          : customer.previousOutstanding < 0
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-muted-foreground",
-                      )}
-                    >
-                      {formatCurrency(customer.previousOutstanding)}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div
-                      className={cn(
-                        "font-medium",
-                        customer.calculatedOutstanding > 0
-                          ? "text-red-600 dark:text-red-400"
-                          : customer.calculatedOutstanding < 0
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-muted-foreground",
-                      )}
-                    >
-                      {formatCurrency(customer.calculatedOutstanding)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm text-foreground">
-                      {formatDueDate(customer.billDueDate)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm text-foreground">
-                      {customer.collectorName}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {isAdmin ? (
-                      <Select
-                        value={customer.status}
-                        onValueChange={(value: CustomerStatus) =>
-                          handleStatusChange(customer, value)
-                        }
+                        <div className="text-sm text-muted-foreground">
+                          {customer.phoneNumber}
+                        </div>
+                        {customer.email && (
+                          <div className="text-xs text-muted-foreground/70">
+                            {customer.email}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-foreground">
+                        {formatAddress(customer.address)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-foreground">
+                        {customer.currentPackage}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="font-medium text-foreground">
+                        {formatCurrency(customer.packageAmount)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div
+                        className={cn(
+                          "font-medium",
+                          customer.previousOutstanding > 0
+                            ? "text-red-600 dark:text-red-400"
+                            : customer.previousOutstanding < 0
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-muted-foreground",
+                        )}
                       >
-                        <SelectTrigger className="w-24 h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
-                          <SelectItem value="demo">Demo</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Badge
-                        variant={getStatusBadgeVariant(customer.vcStatus)}
-                        className={cn(getStatusBadgeColor(customer.vcStatus))}
+                        {formatCurrency(customer.previousOutstanding)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div
+                        className={cn(
+                          "font-medium",
+                          customer.calculatedOutstanding > 0
+                            ? "text-red-600 dark:text-red-400"
+                            : customer.calculatedOutstanding < 0
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-muted-foreground",
+                        )}
                       >
-                        {getStatusDisplayText(customer)}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-1">
+                        {formatCurrency(customer.calculatedOutstanding)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-foreground">
+                        {formatDueDate(customer.billDueDate)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-foreground">
+                        {customer.collectorName}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       {isAdmin ? (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onEdit(customer)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => onView(customer)}
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => onViewHistory(customer)}
-                              >
-                                <History className="mr-2 h-4 w-4" />
-                                View History
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => onPaymentCapture(customer)}
-                              >
-                                <CreditCard className="mr-2 h-4 w-4" />
-                                Payment
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => setDeleteCustomer(customer)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </>
+                        <Select
+                          value={customer.status}
+                          onValueChange={(value: CustomerStatus) =>
+                            handlePrimaryVCStatusChange(customer, value)
+                          }
+                        >
+                          <SelectTrigger className="w-24 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="demo">Demo</SelectItem>
+                          </SelectContent>
+                        </Select>
                       ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                requestPermission("edit", customer)
-                              }
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Request Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                requestPermission("delete", customer)
-                              }
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Request Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Badge
+                          variant={getStatusBadgeVariant(customer.vcStatus)}
+                          className={cn(getStatusBadgeColor(customer.vcStatus))}
+                        >
+                          {getStatusDisplayText(customer)}
+                        </Badge>
                       )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-1">
+                        {isAdmin ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onEdit(customer)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem
+                                  onClick={() => onView(customer)}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => onViewHistory(customer)}
+                                >
+                                  <History className="mr-2 h-4 w-4" />
+                                  View History
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => onDelete(customer)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onView(customer)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Requests</DropdownMenuLabel>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleActionRequest(customer, "activation")
+                                  }
+                                >
+                                  <Power className="mr-2 h-4 w-4" />
+                                  Request Activation
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleActionRequest(
+                                      customer,
+                                      "deactivation",
+                                    )
+                                  }
+                                >
+                                  <PowerOff className="mr-2 h-4 w-4" />
+                                  Request Deactivation
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleActionRequest(customer, "plan_change")
+                                  }
+                                >
+                                  <Package className="mr-2 h-4 w-4" />
+                                  Request Plan Change
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
 
-                {/* Expanded Row Content - Enhanced with Multiple VC Support */}
-                {expandedRows.has(customer.id) && (
-                  <TableRow>
-                    <TableCell colSpan={11} className="p-0">
-                      <div className="p-3 bg-muted/30">
-                        <div className="space-y-3">
-                          {/* Service Details with Individual VC Status */}
-                          <div>
-                            <h4 className="font-medium text-foreground mb-2 flex items-center">
-                              <Tv className="h-4 w-4 mr-2" />
-                              VC Connections & Status
-                            </h4>
-                            <div className="bg-card p-2 rounded-lg space-y-2 border border-border">
-                              {customer.connections &&
-                              customer.connections.length > 0 ? (
-                                <div className="space-y-3">
-                                  {customer.connections.map(
-                                    (connection, index) => (
-                                      <div
-                                        key={connection.id}
-                                        className="p-3 rounded-lg bg-muted/50 border border-border"
-                                      >
-                                        <div className="flex items-center justify-between mb-2">
-                                          <div className="flex items-center space-x-2">
-                                            <Badge
-                                              variant="outline"
-                                              className="font-mono text-sm"
-                                            >
-                                              {connection.vcNumber}
-                                            </Badge>
-                                            <Badge
-                                              variant={
-                                                connection.isPrimary
-                                                  ? "default"
-                                                  : "secondary"
-                                              }
-                                              className="text-xs"
-                                            >
-                                              {connection.isPrimary
-                                                ? "Primary"
-                                                : "Secondary"}
-                                            </Badge>
-                                          </div>
-                                          <Badge
-                                            variant={getStatusBadgeVariant(
-                                              connection.status ||
-                                                customer.status,
-                                            )}
-                                            className={cn(
-                                              getStatusBadgeColor(
-                                                connection.status ||
-                                                  customer.status,
-                                              ),
-                                            )}
-                                          >
-                                            {(
-                                              connection.status ||
-                                              customer.status
-                                            )
-                                              .charAt(0)
-                                              .toUpperCase() +
-                                              (
-                                                connection.status ||
-                                                customer.status
-                                              ).slice(1)}
-                                          </Badge>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
-                                          <div>
-                                            <span className="text-muted-foreground">
-                                              Package:
-                                            </span>
-                                            <span className="ml-2 font-medium text-foreground">
-                                              {connection.planName}
-                                            </span>
-                                          </div>
-                                          <div>
-                                            <span className="text-muted-foreground">
-                                              Amount:
-                                            </span>
-                                            <span className="ml-2 font-medium text-foreground">
-                                              {formatCurrency(
-                                                connection.packageAmount ||
-                                                  connection.planPrice,
-                                              )}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ),
-                                  )}
+                  {/* Expanded Row - Service Details with Individual VC Status */}
+                  {expandedRows.has(customer.id) && (
+                    <TableRow>
+                      <TableCell colSpan={11} className="bg-muted/30 p-6">
+                        <div className="space-y-6">
+                          {/* Customer Summary */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                                <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-foreground">
+                                  Primary VC Number
                                 </div>
-                              ) : (
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      VC Number:
-                                    </span>
-                                    <Badge
-                                      variant="outline"
-                                      className="font-mono"
-                                    >
-                                      {customer.vcNumber}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Package:
-                                    </span>
-                                    <span className="font-medium text-foreground">
-                                      {customer.currentPackage}
-                                    </span>
-                                  </div>
+                                <div className="text-lg font-bold text-foreground">
+                                  {customer.vcNumber}
                                 </div>
-                              )}
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                                <IndianRupee className="h-5 w-5 text-green-600 dark:text-green-400" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-foreground">
+                                  Total Monthly
+                                </div>
+                                <div className="text-lg font-bold text-foreground">
+                                  {formatCurrency(customer.packageAmount)}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                                <Tv className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-foreground">
+                                  Total Connections
+                                </div>
+                                <div className="text-lg font-bold text-foreground">
+                                  {customer.numberOfConnections}
+                                </div>
+                              </div>
                             </div>
                           </div>
 
-                          {/* Enhanced Financial Summary - Per VC Breakdown */}
+                          {/* Service Details with Individual VC Status */}
                           <div>
-                            <h4 className="font-medium text-foreground mb-2 flex items-center">
-                              <IndianRupee className="h-4 w-4 mr-2" />
-                              Financial Summary
+                            <h4 className="text-lg font-semibold text-foreground mb-4">
+                              Service Details & VC Status
                             </h4>
-                            <div className="bg-card p-2 rounded-lg border border-border space-y-3">
-                              {/* Overall Summary */}
-                              <div className="grid grid-cols-3 gap-4 text-sm pb-2 border-b border-border">
-                                <div className="text-center">
-                                  <div className="text-xs text-muted-foreground">
-                                    Total Package Amount
+
+                            {/* Primary VC */}
+                            <div className="border rounded-lg p-4 bg-white dark:bg-gray-800 mb-4">
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                <div>
+                                  <div className="text-sm text-muted-foreground">
+                                    VC Number
                                   </div>
-                                  <div className="font-medium text-foreground">
-                                    {formatCurrency(
-                                      customer.connections?.reduce(
-                                        (sum, conn) =>
-                                          sum +
-                                          (conn.packageAmount ||
-                                            conn.planPrice),
-                                        0,
-                                      ) || customer.packageAmount,
-                                    )}
+                                  <div className="font-mono font-medium">
+                                    {customer.vcNumber}
+                                  </div>
+                                  <Badge variant="default" className="mt-1">
+                                    Primary
+                                  </Badge>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">
+                                    Package
+                                  </div>
+                                  <div className="font-medium">
+                                    {customer.currentPackage}
                                   </div>
                                 </div>
-                                <div className="text-center">
-                                  <div className="text-xs text-muted-foreground">
-                                    Previous O/S
+                                <div>
+                                  <div className="text-sm text-muted-foreground">
+                                    VC Status
                                   </div>
-                                  <div
-                                    className={cn(
-                                      "font-medium",
-                                      customer.previousOutstanding > 0
-                                        ? "text-red-600 dark:text-red-400"
-                                        : customer.previousOutstanding < 0
-                                          ? "text-green-600 dark:text-green-400"
-                                          : "text-muted-foreground",
-                                    )}
-                                  >
-                                    {formatCurrency(
-                                      customer.previousOutstanding,
-                                    )}
-                                  </div>
+                                  {isAdmin ? (
+                                    <Select
+                                      value={customer.status}
+                                      onValueChange={(value: CustomerStatus) =>
+                                        handlePrimaryVCStatusChange(
+                                          customer,
+                                          value,
+                                        )
+                                      }
+                                    >
+                                      <SelectTrigger className="w-24 h-8">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="active">
+                                          Active
+                                        </SelectItem>
+                                        <SelectItem value="inactive">
+                                          Inactive
+                                        </SelectItem>
+                                        <SelectItem value="demo">
+                                          Demo
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <Badge
+                                      variant={getStatusBadgeVariant(
+                                        customer.status,
+                                      )}
+                                      className={cn(
+                                        getStatusBadgeColor(customer.status),
+                                      )}
+                                    >
+                                      {customer.status}
+                                    </Badge>
+                                  )}
                                 </div>
-                                <div className="text-center">
-                                  <div className="text-xs text-muted-foreground">
-                                    Current O/S
+                                <div className="text-right">
+                                  <div className="text-sm text-muted-foreground">
+                                    Monthly Amount
                                   </div>
-                                  <div
-                                    className={cn(
-                                      "font-medium",
-                                      customer.calculatedOutstanding > 0
-                                        ? "text-red-600 dark:text-red-400"
-                                        : customer.calculatedOutstanding < 0
-                                          ? "text-green-600 dark:text-green-400"
-                                          : "text-muted-foreground",
-                                    )}
-                                  >
-                                    {formatCurrency(
-                                      customer.calculatedOutstanding,
-                                    )}
+                                  <div className="font-bold">
+                                    {formatCurrency(customer.packageAmount)}
                                   </div>
                                 </div>
                               </div>
+                            </div>
 
-                              {/* Per-VC Financial Breakdown */}
-                              {customer.connections &&
-                                customer.connections.length > 1 && (
-                                  <div>
-                                    <div className="text-xs text-muted-foreground mb-2 font-medium">
-                                      Per-VC Breakdown:
-                                    </div>
-                                    <div className="space-y-2">
-                                      {customer.connections.map(
-                                        (connection) => (
-                                          <div
-                                            key={connection.id}
-                                            className="grid grid-cols-4 gap-2 text-xs p-2 bg-muted/30 rounded"
-                                          >
+                            {/* Secondary VCs */}
+                            {customer.connections &&
+                              customer.connections.length > 1 && (
+                                <div className="space-y-3">
+                                  {customer.connections.map(
+                                    (connection, index) =>
+                                      !connection.isPrimary && (
+                                        <div
+                                          key={connection.id}
+                                          className="border rounded-lg p-4 bg-white dark:bg-gray-800"
+                                        >
+                                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                                             <div>
-                                              <span className="font-mono font-medium text-foreground">
+                                              <div className="text-sm text-muted-foreground">
+                                                VC Number
+                                              </div>
+                                              <div className="font-mono font-medium">
                                                 {connection.vcNumber}
-                                              </span>
-                                            </div>
-                                            <div className="text-center">
-                                              <span className="text-foreground">
-                                                {formatCurrency(
-                                                  connection.packageAmount ||
-                                                    connection.planPrice,
-                                                )}
-                                              </span>
-                                            </div>
-                                            <div className="text-center">
-                                              <span
-                                                className={cn(
-                                                  (connection.previousOutstanding ||
-                                                    0) > 0
-                                                    ? "text-red-600 dark:text-red-400"
-                                                    : (connection.previousOutstanding ||
-                                                          0) < 0
-                                                      ? "text-green-600 dark:text-green-400"
-                                                      : "text-muted-foreground",
-                                                )}
+                                              </div>
+                                              <Badge
+                                                variant="outline"
+                                                className="mt-1"
                                               >
-                                                {formatCurrency(
-                                                  connection.previousOutstanding ||
-                                                    0,
-                                                )}
-                                              </span>
+                                                Secondary
+                                              </Badge>
                                             </div>
-                                            <div className="text-center">
-                                              <span
-                                                className={cn(
-                                                  (connection.currentOutstanding ||
-                                                    0) > 0
-                                                    ? "text-red-600 dark:text-red-400"
-                                                    : (connection.currentOutstanding ||
-                                                          0) < 0
-                                                      ? "text-green-600 dark:text-green-400"
-                                                      : "text-muted-foreground",
-                                                )}
-                                              >
+                                            <div>
+                                              <div className="text-sm text-muted-foreground">
+                                                Package
+                                              </div>
+                                              <div className="font-medium">
+                                                {connection.planName}
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <div className="text-sm text-muted-foreground">
+                                                VC Status
+                                              </div>
+                                              {isAdmin ? (
+                                                <Select
+                                                  value={
+                                                    connection.status ||
+                                                    customer.status
+                                                  }
+                                                  onValueChange={(
+                                                    value: CustomerStatus,
+                                                  ) =>
+                                                    handleSecondaryVCStatusChange(
+                                                      customer,
+                                                      index,
+                                                      value,
+                                                    )
+                                                  }
+                                                >
+                                                  <SelectTrigger className="w-24 h-8">
+                                                    <SelectValue />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    <SelectItem value="active">
+                                                      Active
+                                                    </SelectItem>
+                                                    <SelectItem value="inactive">
+                                                      Inactive
+                                                    </SelectItem>
+                                                    <SelectItem value="demo">
+                                                      Demo
+                                                    </SelectItem>
+                                                  </SelectContent>
+                                                </Select>
+                                              ) : (
+                                                <Badge
+                                                  variant={getStatusBadgeVariant(
+                                                    connection.status ||
+                                                      customer.status,
+                                                  )}
+                                                  className={cn(
+                                                    getStatusBadgeColor(
+                                                      connection.status ||
+                                                        customer.status,
+                                                    ),
+                                                  )}
+                                                >
+                                                  {connection.status ||
+                                                    customer.status}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            <div className="text-right">
+                                              <div className="text-sm text-muted-foreground">
+                                                Monthly Amount
+                                              </div>
+                                              <div className="font-bold">
                                                 {formatCurrency(
-                                                  connection.currentOutstanding ||
-                                                    0,
+                                                  connection.planPrice,
                                                 )}
-                                              </span>
+                                              </div>
                                             </div>
                                           </div>
-                                        ),
-                                      )}
+                                        </div>
+                                      ),
+                                  )}
+                                </div>
+                              )}
+                          </div>
+
+                          {/* Contact Information */}
+                          <div>
+                            <h4 className="text-lg font-semibold text-foreground mb-4">
+                              Contact Information
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="flex items-center space-x-3">
+                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <div className="text-sm text-muted-foreground">
+                                    Phone
+                                  </div>
+                                  <div className="font-medium text-foreground">
+                                    {customer.phoneNumber}
+                                  </div>
+                                </div>
+                              </div>
+                              {customer.email && (
+                                <div className="flex items-center space-x-3">
+                                  <Mail className="h-4 w-4 text-muted-foreground" />
+                                  <div>
+                                    <div className="text-sm text-muted-foreground">
+                                      Email
+                                    </div>
+                                    <div className="font-medium text-foreground">
+                                      {customer.email}
                                     </div>
                                   </div>
-                                )}
+                                </div>
+                              )}
+                              <div className="flex items-start space-x-3">
+                                <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
+                                <div>
+                                  <div className="text-sm text-muted-foreground">
+                                    Address
+                                  </div>
+                                  <div className="font-medium text-foreground">
+                                    {customer.address}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
 
-                          {/* Recent Invoices - Enhanced with Firestore data and fallback */}
+                          {/* Financial Summary */}
                           <div>
-                            <h4 className="font-medium text-foreground mb-2 flex items-center">
-                              <FileText className="h-4 w-4 mr-2" />
-                              Recent Invoices
+                            <h4 className="text-lg font-semibold text-foreground mb-4">
+                              Financial Summary
                             </h4>
-                            {(() => {
-                              // Use Firestore data if available, otherwise fallback to customer's invoice history
-                              const invoices =
-                                customerInvoices[customer.id] ||
-                                customer.invoiceHistory ||
-                                [];
-                              return invoices.length > 0 ? (
-                                <div className="space-y-1">
-                                  {invoices.slice(0, 3).map((invoice) => (
-                                    <div
-                                      key={invoice.id}
-                                      className="bg-card p-2 rounded border border-border"
-                                    >
-                                      <div className="flex justify-between items-center">
-                                        <div className="flex-1">
-                                          <div className="flex items-center space-x-2">
-                                            <span className="font-medium text-sm text-foreground">
-                                              #{invoice.invoiceNumber}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">
-                                              {formatDate(
-                                                invoice.generatedDate,
-                                              )}
-                                            </span>
-                                          </div>
-                                          <div className="text-xs text-muted-foreground">
-                                            {invoice.billingMonth &&
-                                            invoice.billingYear
-                                              ? `${invoice.billingMonth} ${invoice.billingYear}`
-                                              : "Invoice"}
-                                          </div>
-                                        </div>
-                                        <div className="text-right">
-                                          <div className="font-medium text-sm text-foreground">
-                                            {formatCurrency(invoice.amount)}
-                                          </div>
-                                          <div className="text-xs text-muted-foreground">
-                                            {invoice.generatedBy || "System"}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                                <div className="text-sm text-blue-600 dark:text-blue-400">
+                                  Monthly Package
                                 </div>
-                              ) : (
-                                <div className="bg-card p-2 rounded text-center text-muted-foreground text-sm border border-border">
-                                  No recent invoices
+                                <div className="text-xl font-bold text-blue-700 dark:text-blue-300">
+                                  {formatCurrency(customer.packageAmount)}
                                 </div>
-                              );
-                            })()}
+                              </div>
+                              <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+                                <div className="text-sm text-red-600 dark:text-red-400">
+                                  Previous Outstanding
+                                </div>
+                                <div className="text-xl font-bold text-red-700 dark:text-red-300">
+                                  {formatCurrency(customer.previousOutstanding)}
+                                </div>
+                              </div>
+                              <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
+                                <div className="text-sm text-orange-600 dark:text-orange-400">
+                                  Current Outstanding
+                                </div>
+                                <div className="text-xl font-bold text-orange-700 dark:text-orange-300">
+                                  {formatCurrency(
+                                    customer.calculatedOutstanding,
+                                  )}
+                                </div>
+                              </div>
+                              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                                <div className="text-sm text-green-600 dark:text-green-400">
+                                  Due Date
+                                </div>
+                                <div className="text-xl font-bold text-green-700 dark:text-green-300">
+                                  {formatDueDate(customer.billDueDate)}
+                                </div>
+                              </div>
+                            </div>
                           </div>
 
-                          {/* Status Change Log - Admin Only - Compact */}
-                          {isAdmin &&
-                            customer.statusLogs &&
+                          {/* VC Status Changes */}
+                          {customer.statusLogs &&
                             customer.statusLogs.length > 0 && (
                               <div>
-                                <h4 className="font-medium text-foreground mb-2 flex items-center">
-                                  <Clock className="h-4 w-4 mr-2" />
+                                <h4 className="text-lg font-semibold text-foreground mb-4">
                                   VC Status Changes
                                 </h4>
-                                <div className="bg-card p-2 rounded border border-border">
-                                  <div className="space-y-1 max-h-24 overflow-y-auto">
-                                    {customer.statusLogs
-                                      .slice()
-                                      .reverse()
-                                      .slice(0, 3)
-                                      .map((log) => (
-                                        <div
-                                          key={log.id}
-                                          className="flex justify-between items-center p-1 bg-muted/50 rounded text-xs"
-                                        >
-                                          <span className="font-medium text-foreground">
+                                <div className="space-y-2 max-h-48 overflow-y-auto">
+                                  {customer.statusLogs
+                                    .slice(-5)
+                                    .reverse()
+                                    .map((log, index) => (
+                                      <div
+                                        key={log.id}
+                                        className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded border"
+                                      >
+                                        <div className="flex items-center space-x-3">
+                                          <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                                          <div>
+                                            <div className="text-sm font-medium text-foreground">
+                                              {log.reason}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                              {new Date(
+                                                log.changedDate,
+                                              ).toLocaleDateString()}{" "}
+                                              by {log.changedBy}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <Badge
+                                            variant="outline"
+                                            className="text-xs"
+                                          >
                                             {log.previousStatus} →{" "}
                                             {log.newStatus}
-                                          </span>
-                                          <span className="text-muted-foreground">
-                                            {log.changedBy} •{" "}
-                                            {formatDate(log.changedDate)}
-                                          </span>
+                                          </Badge>
                                         </div>
-                                      ))}
-                                  </div>
+                                      </div>
+                                    ))}
                                 </div>
                               </div>
                             )}
                         </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </React.Fragment>
-            ))}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
 
-      {/* Mobile Cards - Enhanced with Multiple VC Support */}
-      <div className="md:hidden space-y-3">
-        {filteredCustomers.map((customer) => (
-          <div
-            key={customer.id}
-            className="bg-card rounded-lg border border-border shadow-sm"
-          >
-            {/* Card Header - Compact */}
-            <div className="p-3 border-b border-border">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground">
-                    {customer.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {customer.phoneNumber}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {isAdmin ? (
-                    <Select
-                      value={customer.status}
-                      onValueChange={(value: CustomerStatus) =>
-                        handleStatusChange(customer, value)
-                      }
-                    >
-                      <SelectTrigger className="w-20 h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="demo">Demo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Badge
-                      variant={getStatusBadgeVariant(customer.vcStatus)}
-                      className={cn(getStatusBadgeColor(customer.vcStatus))}
-                    >
-                      {getStatusDisplayText(customer)}
-                    </Badge>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleRowExpansion(customer.id)}
-                    className="h-8 w-8 p-0"
-                  >
-                    {expandedRows.has(customer.id) ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Card Content - Compact */}
-            <div className="p-3">
-              {/* Quick Info Grid */}
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                    Package
-                  </div>
-                  <div className="text-sm font-medium text-foreground">
-                    {customer.currentPackage}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                    Outstanding
-                  </div>
-                  <div
-                    className={cn(
-                      "text-sm font-medium",
-                      customer.calculatedOutstanding > 0
-                        ? "text-red-600 dark:text-red-400"
-                        : customer.calculatedOutstanding < 0
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-muted-foreground",
-                    )}
-                  >
-                    {formatCurrency(customer.calculatedOutstanding)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Expanded Content for Mobile */}
-              {expandedRows.has(customer.id) && (
-                <div className="space-y-3 pt-3 border-t border-border">
-                  {/* VC Numbers with Individual Status */}
-                  {customer.connections && customer.connections.length > 0 && (
-                    <div>
-                      <div className="text-sm font-medium text-foreground mb-2">
-                        VC Connections
-                      </div>
-                      <div className="space-y-2">
-                        {customer.connections.map((connection) => (
-                          <div
-                            key={connection.id}
-                            className="flex items-center justify-between p-2 bg-muted/50 rounded"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <Badge
-                                variant="outline"
-                                className="text-sm font-mono"
-                              >
-                                {connection.vcNumber}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {connection.isPrimary ? "Primary" : "Secondary"}
-                              </span>
-                            </div>
-                            <Badge
-                              variant={getStatusBadgeVariant(
-                                connection.status || customer.status,
-                              )}
-                              className={cn(
-                                getStatusBadgeColor(
-                                  connection.status || customer.status,
-                                ),
-                                "text-xs",
-                              )}
-                            >
-                              {(connection.status || customer.status)
-                                .charAt(0)
-                                .toUpperCase() +
-                                (connection.status || customer.status).slice(1)}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recent Invoices - Mobile with fallback */}
-                  <div>
-                    <div className="text-sm font-medium text-foreground mb-1">
-                      Recent Invoices
-                    </div>
-                    {(() => {
-                      // Use Firestore data if available, otherwise fallback to customer's invoice history
-                      const invoices =
-                        customerInvoices[customer.id] ||
-                        customer.invoiceHistory ||
-                        [];
-                      return invoices.length > 0 ? (
-                        <div className="space-y-1">
-                          {invoices.slice(0, 2).map((invoice) => (
-                            <div
-                              key={invoice.id}
-                              className="bg-muted/50 p-2 rounded"
-                            >
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <div className="font-medium text-sm text-foreground">
-                                    #{invoice.invoiceNumber}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {formatDate(invoice.generatedDate)}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-medium text-sm text-foreground">
-                                    {formatCurrency(invoice.amount)}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="bg-muted/50 p-2 rounded text-center text-muted-foreground text-sm">
-                          No recent invoices
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Actions - Optimized for mobile */}
-                  <div className="flex space-x-2">
-                    {isAdmin ? (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onEdit(customer)}
-                          className="flex-1"
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => onViewHistory(customer)}
-                            >
-                              <History className="mr-2 h-4 w-4" />
-                              History
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => onPaymentCapture(customer)}
-                            >
-                              <CreditCard className="mr-2 h-4 w-4" />
-                              Payment
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => setDeleteCustomer(customer)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </>
-                    ) : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                          >
-                            <MoreHorizontal className="h-4 w-4 mr-1" />
-                            Actions
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => requestPermission("edit", customer)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Request Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              requestPermission("delete", customer)
-                            }
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Request Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        open={!!deleteCustomer}
-        onOpenChange={() => setDeleteCustomer(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete {deleteCustomer?.name}? This
-              action cannot be undone and will remove all associated data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteCustomer) {
-                  onDelete(deleteCustomer);
-                  setDeleteCustomer(null);
-                }
-              }}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete Customer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Action Request Modal */}
-      {selectedRequest && (
-        <ActionRequestModal
-          request={selectedRequest}
-          isOpen={!!selectedRequest}
-          onClose={() => setSelectedRequest(null)}
-          onSubmit={(request) => {
-            console.log("Request submitted:", request);
-            setSelectedRequest(null);
-            toast({
-              title: "Request Submitted",
-              description: "Your request has been sent to an administrator.",
-            });
-          }}
-        />
-      )}
-    </>
+      <ActionRequestModal
+        open={showRequestModal}
+        onOpenChange={setShowRequestModal}
+        customers={requestModalCustomer ? [requestModalCustomer] : []}
+        customer={requestModalCustomer}
+        defaultActionType={requestActionType}
+        onSuccess={() => {
+          setShowRequestModal(false);
+          toast({
+            title: "Request Submitted",
+            description:
+              "Your action request has been submitted for admin review.",
+          });
+        }}
+      />
+    </div>
   );
 }
