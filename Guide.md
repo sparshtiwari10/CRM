@@ -247,29 +247,39 @@ src/
 
 ### **`src/components/customers/`**
 
-#### **`ActionRequestModal.tsx`** 🎯 **[ENHANCED - CUSTOMER SELECTION]**
+#### **`ActionRequestModal.tsx`** 🎯 **[ENHANCED - VC STATUS MANAGEMENT]**
 
-- **Purpose**: Employee request submission with customer selection for admin clarity
+- **Purpose**: Employee VC status change request submission with search and VC selection
 - **Features**:
-  - **Customer Selection Dropdown**: Employees choose which customer the request is for
-  - **Action Type Selection**: Activation, deactivation, or plan change requests
-  - **Plan Change Support**: For plan change requests, shows available packages
-  - **Customer Information Display**: Shows selected customer's details (VC number, current package, status)
-  - **Form Validation**: Requires customer selection, action type, and detailed reason
-  - **Firebase Integration**: Submits requests directly to Firebase for admin review
-- **Request Flow**:
+  - **Customer Search Functionality**: Real-time search by name, VC number, phone, or address
+  - **VC Number Selection**: Choose specific VC (primary or secondary) for status changes
+  - **VC Status Clarification**: Clear distinction between VC activation/deactivation vs plan changes
+  - **Current Status Display**: Shows current VC status and package information
+  - **Action Type Descriptions**: Clear explanations of what each request type does
+  - **Form Validation**: Requires customer selection, VC selection, action type, and detailed reason
+  - **Firebase Integration**: Submits VC-specific requests directly to Firebase for admin review
+- **Request Types**:
+
   ```typescript
-  // Employee selects customer and submits request
+  // VC Status Change Requests
+  "activation"   → Request to change VC status to "Active"
+  "deactivation" → Request to change VC status to "Inactive"
+  "plan_change"  → Request to change package plan for specific VC
+
+  // Request Structure
   const request = {
     customerId: selectedCustomer.id,
     customerName: selectedCustomer.name,
+    vcNumber: selectedVCNumber,           // Specific VC for request
+    currentStatus: currentVCStatus,       // Current VC status
     employeeId: user.id,
     employeeName: user.name,
     actionType: "activation" | "deactivation" | "plan_change",
-    reason: "Detailed reason provided by employee",
+    reason: "Detailed reason for VC status change"
   };
-  await CustomerService.addRequest(request);
   ```
+
+- **Search Interface**: Similar to invoice generator with filtered results and selection cards
 
 #### **`CustomerModal.tsx`** 🎛️ **[FIXED - CONTROLLED INPUTS]**
 
