@@ -279,7 +279,7 @@ export default function EmployeeManagement() {
               <div className="text-2xl font-bold text-green-600">
                 {activeEmployees}
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 {employees.length - activeEmployees} inactive
               </p>
             </CardContent>
@@ -287,10 +287,10 @@ export default function EmployeeManagement() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Assigned Customers
               </CardTitle>
-              <UserCheck className="h-4 w-4 text-gray-600" />
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalCustomersAssigned}</div>
