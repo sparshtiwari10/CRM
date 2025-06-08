@@ -523,235 +523,44 @@ export function CustomerTable({
 
                     {/* Enhanced Expandable Row Content - Focus on Billing & Invoice History */}
                     {expandedRows.has(customer.id) ? (
-                      <TableRow>
-                        <TableCell colSpan={isAdmin ? 12 : 11}>
-                          <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-blue-200">
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                              <Card className="lg:col-span-1">
-                                <CardHeader className="pb-3">
-                                  <CardTitle className="text-sm flex items-center">
-                                    <Phone className="h-4 w-4 mr-2 text-blue-600" />
-                                    Contact Information
-                                  </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-3 text-sm">
-                                  <div>
-                                    <span className="text-gray-500 font-medium">
-                                      Phone:
-                                    </span>
-                                    <div className="font-medium">
-                                      {customer.phoneNumber}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-500 font-medium">
-                                      Email:
-                                    </span>
-                                    <div className="font-medium">
-                                      {customer.email || "Not provided"}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-500 font-medium">
-                                      Address:
-                                    </span>
-                                    <div className="text-sm">
-                                      {customer.address}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-500 font-medium">
-                                      VC Number:
-                                    </span>
-                                    <div className="font-mono font-medium text-blue-600">
-                                      {customer.vcNumber}
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-
-                              <Card className="lg:col-span-2">
-                                <CardHeader className="pb-3">
-                                  <CardTitle className="text-sm flex items-center justify-between">
-                                    <div className="flex items-center">
-                                      <IndianRupee className="h-4 w-4 mr-2 text-green-600" />
-                                      Financial Overview
-                                    </div>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => onViewHistory(customer)}
-                                      className="text-xs"
-                                    >
-                                      <ExternalLink className="h-3 w-3 mr-1" />
-                                      Full History
-                                    </Button>
-                                  </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                    <div className="text-center p-3 bg-green-50 rounded-lg">
-                                      <div className="text-xs text-green-600 font-medium">
-                                        Package Amount
-                                      </div>
-                                      <div className="text-lg font-bold text-green-700">
-                                        {formatCurrency(customer.packageAmount)}
-                                      </div>
-                                    </div>
-                                    <div className="text-center p-3 bg-orange-50 rounded-lg">
-                                      <div className="text-xs text-orange-600 font-medium">
-                                        Previous O/S
-                                      </div>
-                                      <div
-                                        className={`text-lg font-bold ${customer.previousOutstanding < 0 ? "text-green-700" : "text-orange-700"}`}
-                                      >
-                                        {formatCurrency(
-                                          customer.previousOutstanding,
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="text-center p-3 bg-red-50 rounded-lg">
-                                      <div className="text-xs text-red-600 font-medium">
-                                        Current O/S
-                                      </div>
-                                      <div
-                                        className={`text-lg font-bold ${customer.currentOutstanding < 0 ? "text-green-700" : "text-red-700"}`}
-                                      >
-                                        {formatCurrency(
-                                          customer.currentOutstanding,
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    <div className="text-center p-3 bg-blue-50 rounded-lg">
-                                      <div className="text-xs text-blue-600 font-medium">
-                                        Bill Due Date
-                                      </div>
-                                      <div className="text-lg font-bold text-blue-700">
-                                        {customer.billDueDate}{" "}
-                                        <span className="text-sm">
-                                          of every month
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="text-center p-3 bg-purple-50 rounded-lg">
-                                      <div className="text-xs text-purple-600 font-medium">
-                                        VC Number
-                                      </div>
-                                      <div className="text-lg font-bold text-purple-700 font-mono">
-                                        {customer.vcNumber}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="text-xs text-gray-500 text-center p-2 bg-gray-50 rounded">
-                                    Current Outstanding = Package Amount +
-                                    Previous Outstanding - Paid Invoice Amounts
-                                    <br />
-                                    <span className="text-blue-600">
-                                      Monthly Cycle:
-                                    </span>{" "}
-                                    On bill due date, Previous O/S becomes
-                                    Current O/S, then Current O/S = Previous O/S
-                                    + Package Amount
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </div>
-
-                            <Card className="mt-6">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-sm flex items-center">
-                                  <FileText className="h-4 w-4 mr-2 text-purple-600" />
-                                  Recent Invoice History (VC:{" "}
-                                  {customer.vcNumber})
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                {loadingInvoices.has(customer.id) ? (
-                                  <div className="text-center py-4">
-                                    <div className="text-sm text-gray-500">
-                                      Loading invoice history...
-                                    </div>
-                                  </div>
-                                ) : customerInvoices[customer.id] &&
-                                  customerInvoices[customer.id].length > 0 ? (
-                                  <div className="space-y-2">
-                                    <div className="grid grid-cols-4 gap-2 text-xs font-medium text-gray-500 border-b pb-2">
-                                      <div>Invoice #</div>
-                                      <div>Date</div>
-                                      <div>Amount</div>
-                                      <div>VC Numbers</div>
-                                    </div>
-                                    {customerInvoices[customer.id]
-                                      .slice(0, 10)
-                                      .map((invoice) => (
-                                        <div
-                                          key={invoice.id}
-                                          className="grid grid-cols-4 gap-2 text-sm py-2 border-b border-gray-100 hover:bg-gray-50 rounded"
-                                        >
-                                          <div className="font-mono text-xs">
-                                            {invoice.invoiceNumber}
-                                          </div>
-                                          <div className="text-xs">
-                                            {formatDate(invoice.generatedDate)}
-                                          </div>
-                                          <div className="font-medium">
-                                            {formatCurrency(invoice.amount)}
-                                          </div>
-                                          <div className="text-xs text-blue-600">
-                                            <div className="font-mono">
-                                              {invoice.allVcNumbers
-                                                ? invoice.allVcNumbers.join(
-                                                    ", ",
-                                                  )
-                                                : invoice.vcNumber}
-                                            </div>
-                                            <div className="text-gray-500 text-xs">
-                                              {invoice.allVcNumbers &&
-                                              invoice.allVcNumbers.length > 1
-                                                ? `${invoice.allVcNumbers.length} connections`
-                                                : "1 connection"}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    {customerInvoices[customer.id].length >
-                                      10 && (
-                                      <div className="text-center pt-3">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() =>
-                                            onViewHistory(customer)
-                                          }
-                                          className="text-xs"
-                                        >
-                                          View All{" "}
-                                          {customerInvoices[customer.id].length}{" "}
-                                          Invoices
-                                        </Button>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="text-center py-6 text-gray-500">
-                                    <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                                    <div className="text-sm">
-                                      No invoice history found
-                                    </div>
-                                    <div className="text-xs text-gray-400">
-                                      Invoices for VC {customer.vcNumber} will
-                                      appear here
-                                    </div>
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          {isAdmin ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onEdit(customer)}
+                                className="h-8"
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDeleteCustomer(customer)}
+                                className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Delete
+                              </Button>
+                            </>
+                          ) : (
+                            canAccessCustomer(customer.id) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleGenericActionRequest(customer)}
+                                className="h-8"
+                              >
+                                <RefreshCw className="h-4 w-4 mr-1" />
+                                Request Action
+                              </Button>
+                            )
+                          )}
+                        </div>
+                      </TableCell>
                       </TableRow>
                     ) : null}
                   </React.Fragment>
