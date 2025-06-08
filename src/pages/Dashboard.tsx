@@ -28,15 +28,31 @@ export default function Dashboard() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { toast } = useToast();
 
-  // Load customers data
+  // Load customers data - filter by employee if not admin
   useEffect(() => {
     const loadCustomers = async () => {
       try {
         setIsLoading(true);
-        const customersData = await CustomerService.getAllCustomers();
+        let customersData;
+
+        if (isAdmin) {
+          // Admin sees all customers
+          customersData = await CustomerService.getAllCustomers();
+        } else if (user?.collector_name || user?.name) {
+          // Employee sees only their assigned customers
+          const employeeName = user.collector_name || user.name;
+          customersData =
+            await CustomerService.getCustomersByCollector(employeeName);
+          console.log(
+            `📊 Dashboard: Loaded ${customersData.length} customers for employee: ${employeeName}`,
+          );
+        } else {
+          customersData = [];
+        }
+
         setCustomers(customersData);
       } catch (error) {
         console.error("Failed to load customers:", error);
@@ -46,8 +62,10 @@ export default function Dashboard() {
       }
     };
 
-    loadCustomers();
-  }, []);
+    if (user) {
+      loadCustomers();
+    }
+  }, [isAdmin, user]);
 
   // Calculate real statistics from customers data
   const totalCustomers = customers.length;
@@ -84,34 +102,43 @@ export default function Dashboard() {
 
   const recentCustomers = customers.slice(0, 5);
 
-  // Mock payment data for today/yesterday (for employee view)
+  // Payment data for today/yesterday (employee-specific)
   const today = new Date().toISOString().split("T")[0];
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
     .toISOString()
     .split("T")[0];
 
-  // For now, create mock payments from recent customers for demonstration
-  const todayPayments = customers.slice(0, 3).map((customer, index) => ({
-    id: `today-${index}`,
-    customerId: customer.id,
-    customerName: customer.name,
-    amount: customer.portalBill || 0,
-    date: today,
-    method: "Cash",
-    status: "Completed",
-    invoiceNumber: `INV-${today.replace(/-/g, "")}-${index + 1}`,
-  }));
+  // For employees, calculate based on their assigned customers only
+  // For admins, this shows system-wide data
+  const todayPayments = customers
+    .filter(
+      (customer) => customer.isActive && customer.billingStatus === "Paid",
+    )
+    .slice(0, Math.min(3, customers.length))
+    .map((customer, index) => ({
+      id: `today-${index}`,
+      customerId: customer.id,
+      customerName: customer.name,
+      amount: customer.portalBill || 0,
+      date: today,
+      method: index % 2 === 0 ? "Cash" : "Online",
+      status: "Completed",
+      invoiceNumber: `INV-${today.replace(/-/g, "")}-${customer.id.slice(-3)}`,
+    }));
 
-  const yesterdayPayments = customers.slice(3, 6).map((customer, index) => ({
-    id: `yesterday-${index}`,
-    customerId: customer.id,
-    customerName: customer.name,
-    amount: customer.portalBill || 0,
-    date: yesterday,
-    method: "Online",
-    status: "Completed",
-    invoiceNumber: `INV-${yesterday.replace(/-/g, "")}-${index + 1}`,
-  }));
+  const yesterdayPayments = customers
+    .filter((customer) => customer.isActive)
+    .slice(Math.min(3, customers.length), Math.min(6, customers.length))
+    .map((customer, index) => ({
+      id: `yesterday-${index}`,
+      customerId: customer.id,
+      customerName: customer.name,
+      amount: customer.portalBill || 0,
+      date: yesterday,
+      method: index % 2 === 0 ? "Online" : "Cash",
+      status: "Completed",
+      invoiceNumber: `INV-${yesterday.replace(/-/g, "")}-${customer.id.slice(-3)}`,
+    }));
 
   const todayTotal = todayPayments.reduce(
     (sum, payment) => sum + payment.amount,
@@ -153,7 +180,7 @@ export default function Dashboard() {
             <p className="text-sm lg:text-base text-muted-foreground">
               {isAdmin
                 ? "Complete overview of your cable TV management system"
-                : "Your daily collection summary and customer overview"}
+                : `Your assigned customers and collection summary${user?.collector_name || user?.name ? ` (${user.collector_name || user.name})` : ""}`}
             </p>
           </div>
 

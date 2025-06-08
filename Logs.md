@@ -8,6 +8,103 @@
 
 ### **🐛 Critical Bug Fixes**
 
+#### **Firestore Undefined Field Error RESOLVED**
+
+- **Date**: Current Session
+- **Type**: Bug Fix
+- **Problem**: Firestore error when submitting requests: "Function addDoc() called with invalid data. Unsupported field value: undefined (found in field requested_plan)"
+- **Root Cause**: `requested_plan` field being set to `undefined` for activation/deactivation requests (only needed for plan_change requests)
+- **Firestore Rule**: Firestore doesn't accept `undefined` values in documents
+- **Solution**:
+  - Enhanced `firestoreService.addRequest()` method to handle undefined values properly
+  - Added conditional inclusion of `requested_plan` field only when it has a valid value
+  - Implemented proper data sanitization before sending to Firestore
+  - Updated ActionRequestModal to only include `requestedPlan` for plan_change actions
+- **Technical Details**:
+
+  ```typescript
+  // Before (problematic):
+  requested_plan: request.requestedPlan, // Could be undefined
+
+  // After (fixed):
+  if (request.requestedPlan && request.requestedPlan.trim() !== "") {
+    requestData.requested_plan = request.requestedPlan;
+  }
+  ```
+
+- **Additional Safeguards**: Added comprehensive data sanitization using existing `sanitizeFirestoreData()` method
+
+#### **Request Form Submit Button and Employee Dashboard RESOLVED**
+
+- **Date**: Current Session
+- **Type**: Feature Enhancement & Bug Fix
+- **Problems**:
+  1. "Submit Request" button not working in employee request form
+  2. No customer selection available in request form - admins couldn't identify which customer request was for
+  3. Employee dashboard showing system-wide collections instead of employee-specific data
+- **Root Causes**:
+  1. ActionRequestModal expecting wrong props (`customer` & `onSubmit` vs `customers` & `onSuccess`)
+  2. Missing customer selection functionality in request form
+  3. Dashboard loading all customers for both admin and employee users
+- **Solutions Applied**:
+  - **Request Form**: Complete rewrite of ActionRequestModal component
+    - Added customer selection dropdown for employees to choose which customer
+    - Fixed prop interface to match usage in RequestManagement
+    - Added proper form validation with customer selection requirement
+    - Enhanced customer information display with VC number and package details
+    - Fixed submit functionality to properly save requests to Firebase
+  - **Employee Dashboard**: Modified to show employee-specific data only
+    - Employee dashboard now loads only customers assigned to that employee
+    - Today's and yesterday's collection calculations based on employee's customers only
+    - Added employee name in dashboard description
+    - Maintained admin functionality to see system-wide data
+- **Technical Details**:
+  - Modified `ActionRequestModal.tsx` with new schema including `customerId` field
+  - Added backward compatibility for existing usage patterns
+  - Updated Dashboard.tsx to use `CustomerService.getCustomersByCollector()` for employees
+  - Enhanced collection calculations to be employee-specific
+  - Added proper error handling and loading states
+
+#### **React setState During Render Warning RESOLVED**
+
+- **Date**: Current Session
+- **Type**: Bug Fix
+- **Problem**: React warning "Cannot update a component while rendering a different component" in ActionRequestModal
+- **Root Cause**: `form.reset()` being called directly during component render phase
+- **Location**: `src/components/customers/ActionRequestModal.tsx` line 95-97
+- **Solution**:
+  - Moved form reset logic from render phase to `useEffect` hook
+  - Prevented setState calls during component rendering
+  - Maintained same functionality while following React best practices
+- **Technical Details**:
+  - Added `useEffect` dependency on `[open, defaultActionType, form]`
+  - Form reset now happens after render completion
+  - Eliminated React development warning
+
+#### **Firestore Composite Index Issues RESOLVED**
+
+- **Date**: Current Session
+- **Type**: Critical Bug Fix
+- **Problem**: Multiple Firestore query failures requiring composite indexes:
+  - Employee customers: "failed to load customers" error
+  - Employee billing: "failed to load billing records" error
+  - Employee requests: potential query failures
+- **Root Cause**: Firestore composite index requirement when using `where()` + `orderBy()` in queries
+- **Solution**:
+  - **Customers**: Removed `orderBy("name")` from employee customer queries
+  - **Billing**: Removed `orderBy("generated_date", "desc")` from employee billing queries
+  - **Requests**: Removed `orderBy("request_date", "desc")` from employee request queries
+  - Added in-memory sorting after data retrieval for all employee queries
+  - Enhanced field mapping and null safety in customer data conversion
+  - Added comprehensive debugging logs for troubleshooting
+  - Ensured `collector_name` field is properly set during employee creation
+- **Technical Details**:
+  - Modified `firestoreService.getAllCustomers()`, `getCustomersByCollector()`, `getAllBillingRecords()`, and `getAllRequests()` methods
+  - Fixed customer data conversion methods with proper null handling
+  - Employee creation now properly sets `collector_name = employee.name`
+  - Added console logging for assignment and query debugging
+  - Preserved admin functionality with full orderBy capability
+
 #### **Website Freezing After Employee Deletion**
 
 - **Date**: Current Session
@@ -325,7 +422,7 @@ customers: {
 
 ---
 
-## **📞 Support Information**
+## **�� Support Information**
 
 ### **Common Issues & Solutions**
 

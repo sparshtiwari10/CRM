@@ -77,7 +77,7 @@ export interface FirestoreRequest {
   employee_name: string;
   action_type: "activation" | "deactivation" | "plan_change";
   current_plan?: string;
-  requested_plan?: string;
+  requested_plan?: string; // Optional - only present for plan_change requests
   reason: string;
   status: "pending" | "approved" | "rejected";
   request_date: Timestamp;
@@ -106,11 +106,9 @@ class FirestoreService {
         q = query(customersRef, orderBy("name"));
       } else {
         // Employees can only see customers assigned to them
-        q = query(
-          customersRef,
-          where("collector_name", "==", currentUser.collector_name),
-          orderBy("name"),
-        );
+        // Use collector_name OR name for compatibility (no orderBy to avoid composite index)
+        const employeeName = currentUser.collector_name || currentUser.name;
+        q = query(customersRef, where("collector_name", "==", employeeName));
       }
 
       const querySnapshot = await getDocs(q);
@@ -121,7 +119,14 @@ class FirestoreService {
         customers.push(this.convertFirestoreCustomerToCustomer(doc.id, data));
       });
 
-      console.log(`✅ Loaded ${customers.length} customers`);
+      // Sort in memory for employees since we can't use orderBy with where clause
+      if (currentUser.role !== "admin") {
+        customers.sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      console.log(
+        `✅ Loaded ${customers.length} customers for ${currentUser.role === "admin" ? "admin" : `employee: ${currentUser.collector_name || currentUser.name}`}`,
+      );
       return customers;
     } catch (error) {
       console.error("❌ Failed to load customers:", error);
@@ -135,7 +140,6 @@ class FirestoreService {
       const q = query(
         customersRef,
         where("collector_name", "==", collectorName),
-        orderBy("name"),
       );
 
       const querySnapshot = await getDocs(q);
@@ -146,6 +150,12 @@ class FirestoreService {
         customers.push(this.convertFirestoreCustomerToCustomer(doc.id, data));
       });
 
+      // Sort in memory since we can't use orderBy with where clause without composite index
+      customers.sort((a, b) => a.name.localeCompare(b.name));
+
+      console.log(
+        `✅ Found ${customers.length} customers for collector: ${collectorName}`,
+      );
       return customers;
     } catch (error) {
       console.error("❌ Failed to load customers by collector:", error);
@@ -284,13 +294,11 @@ class FirestoreService {
       let q;
 
       if (currentUser.role === "admin") {
+        // Admins can see all billing records
         q = query(billingRef, orderBy("generated_date", "desc"));
       } else {
-        q = query(
-          billingRef,
-          where("employee_id", "==", currentUser.id),
-          orderBy("generated_date", "desc"),
-        );
+        // Employees can only see their billing records (no orderBy to avoid composite index)
+        q = query(billingRef, where("employee_id", "==", currentUser.id));
       }
 
       const querySnapshot = await getDocs(q);
@@ -301,6 +309,18 @@ class FirestoreService {
         records.push(this.convertFirestoreBillingToBillingRecord(doc.id, data));
       });
 
+      // Sort in memory for employees since we can't use orderBy with where clause
+      if (currentUser.role !== "admin") {
+        records.sort(
+          (a, b) =>
+            new Date(b.generatedDate).getTime() -
+            new Date(a.generatedDate).getTime(),
+        );
+      }
+
+      console.log(
+        `✅ Loaded ${records.length} billing records for ${currentUser.role === "admin" ? "admin" : `employee: ${currentUser.name}`}`,
+      );
       return records;
     } catch (error) {
       console.error("❌ Failed to load billing records:", error);
@@ -409,13 +429,11 @@ class FirestoreService {
       let q;
 
       if (currentUser.role === "admin") {
+        // Admins can see all requests
         q = query(requestsRef, orderBy("request_date", "desc"));
       } else {
-        q = query(
-          requestsRef,
-          where("employee_id", "==", currentUser.id),
-          orderBy("request_date", "desc"),
-        );
+        // Employees can only see their requests (no orderBy to avoid composite index)
+        q = query(requestsRef, where("employee_id", "==", currentUser.id));
       }
 
       const querySnapshot = await getDocs(q);
@@ -441,6 +459,18 @@ class FirestoreService {
         });
       });
 
+      // Sort in memory for employees since we can't use orderBy with where clause
+      if (currentUser.role !== "admin") {
+        requests.sort(
+          (a, b) =>
+            new Date(b.requestDate).getTime() -
+            new Date(a.requestDate).getTime(),
+        );
+      }
+
+      console.log(
+        `✅ Loaded ${requests.length} requests for ${currentUser.role === "admin" ? "admin" : `employee: ${currentUser.name}`}`,
+      );
       return requests;
     } catch (error) {
       console.error("❌ Failed to load requests:", error);
@@ -456,23 +486,38 @@ class FirestoreService {
       }
 
       const requestsRef = collection(db, "requests");
-      const requestData: FirestoreRequest = {
-        customer_id: request.customerId,
-        customer_name: request.customerName,
-        employee_id: currentUser.id,
-        employee_name: currentUser.name,
-        action_type: request.actionType,
-        current_plan: request.currentPlan,
-        requested_plan: request.requestedPlan,
-        reason: request.reason,
+
+      // Build request data with proper undefined handling
+      const requestData: any = {
+        customer_id: request.customerId || "",
+        customer_name: request.customerName || "",
+        employee_id: currentUser.id || "",
+        employee_name: currentUser.name || "",
+        action_type: request.actionType || "",
+        current_plan: request.currentPlan || "",
+        reason: request.reason || "",
         status: "pending",
         request_date: Timestamp.now(),
         created_at: Timestamp.now(),
         updated_at: Timestamp.now(),
       };
 
+      // Only add requested_plan if it's not undefined or empty
+      if (request.requestedPlan && request.requestedPlan.trim() !== "") {
+        requestData.requested_plan = request.requestedPlan;
+      }
+
+      // Sanitize data to remove any remaining undefined values
+      this.sanitizeFirestoreData(requestData);
+
+      console.log("🔧 Adding request to Firestore:", {
+        customer_name: requestData.customer_name,
+        action_type: requestData.action_type,
+        has_requested_plan: !!requestData.requested_plan,
+      });
+
       const docRef = await addDoc(requestsRef, requestData);
-      console.log(`✅ Request submitted successfully`);
+      console.log(`✅ Request submitted successfully with ID: ${docRef.id}`);
 
       return docRef.id;
     } catch (error) {
@@ -582,19 +627,20 @@ class FirestoreService {
   ): Customer {
     return {
       id,
-      name: data.name,
-      phoneNumber: data.phone,
-      address: data.address,
-      currentPackage: data.package,
-      vcNumber: data.vc_no,
-      collectorName: data.collector_name,
-      email: data.email,
-      billingStatus: data.billing_status,
+      name: data.name || "",
+      phoneNumber: data.phone || "",
+      address: data.address || "",
+      currentPackage: data.package || "",
+      vcNumber: data.vc_no || "",
+      collectorName: data.collector_name || "",
+      email: data.email || "",
+      billingStatus: data.billing_status || "Pending",
       lastPaymentDate: data.last_payment_date
-        .toDate()
-        .toISOString()
-        .split("T")[0],
-      joinDate: data.join_date.toDate().toISOString().split("T")[0],
+        ? data.last_payment_date.toDate().toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0],
+      joinDate: data.join_date
+        ? data.join_date.toDate().toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0],
       activationDate: data.activation_date
         ?.toDate()
         .toISOString()
@@ -604,9 +650,10 @@ class FirestoreService {
         .toISOString()
         .split("T")[0],
       isActive: data.status === "active",
+      status: data.status || "active",
       portalBill: data.bill_amount || 0,
-      numberOfConnections: data.number_of_connections,
-      connections: data.connections,
+      numberOfConnections: data.number_of_connections || 1,
+      connections: data.connections || [],
       customPlan: data.custom_plan,
       // Add billing fields with defaults
       packageAmount: data.bill_amount || 0,
@@ -634,8 +681,9 @@ class FirestoreService {
       join_date: customer.joinDate
         ? Timestamp.fromDate(new Date(customer.joinDate))
         : Timestamp.now(),
-      status: customer.isActive ? "active" : "inactive",
-      bill_amount: customer.portalBill || 0,
+      status: (customer.status ||
+        (customer.isActive ? "active" : "inactive")) as "active" | "inactive",
+      bill_amount: customer.packageAmount || customer.portalBill || 0,
       number_of_connections: customer.numberOfConnections || 1,
       connections: customer.connections || [],
       // Fields from original Excel/CSV structure
@@ -650,6 +698,12 @@ class FirestoreService {
       created_at: Timestamp.now(),
       updated_at: Timestamp.now(),
     };
+
+    console.log("🔧 Converting customer to Firestore:", {
+      name: sanitizedData.name,
+      collector_name: sanitizedData.collector_name,
+      status: sanitizedData.status,
+    });
 
     // Only add optional fields if they have valid values
     if (customer.email && customer.email.trim() !== "") {

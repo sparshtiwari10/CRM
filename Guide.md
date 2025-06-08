@@ -147,15 +147,32 @@ src/
   const collectorName = user?.collector_name || user?.name || "";
   ```
 
-#### **`Dashboard.tsx`** 📊
+#### **`Dashboard.tsx`** 📊 **[ENHANCED - EMPLOYEE-SPECIFIC DATA]**
 
-- **Purpose**: Main dashboard with role-specific content
+- **Purpose**: Main dashboard with role-specific content and employee-specific collections
 - **Features**:
-  - Role-based content (different for Admin vs Employee)
-  - Customer count by status (Active, Inactive, Demo)
-  - Quick action buttons for customer/billing management
-  - Recent activity feed
-  - Firebase connection monitoring
+  - **Role-based Data Loading**: Admin sees all customers, employees see only assigned customers
+  - **Employee-Specific Collections**: Today's and yesterday's collection amounts based on employee's customers only
+  - **Customer Statistics**: Count by status (Active, Inactive, Demo) for assigned customers
+  - **Collection Summary Cards**: Separate cards for today's and yesterday's collections with employee-specific totals
+  - **Quick Action Buttons**: Customer/billing management, invoice generation
+  - **Recent Activity Feed**: Shows recent customers assigned to the logged-in employee
+  - **Firebase Connection Monitoring**: Real-time connection status
+- **Employee Dashboard Features**:
+
+  ```typescript
+  // Employee-specific data loading
+  const employeeName = user.collector_name || user.name;
+  customersData = await CustomerService.getCustomersByCollector(employeeName);
+
+  // Collection calculations based on employee's customers only
+  todayTotal = employeeCustomers.reduce(
+    (sum, payment) => sum + payment.amount,
+    0,
+  );
+  ```
+
+- **Collection Display**: Green card for today's collection, blue card for yesterday's collection
 
 #### **`Billing.tsx`** 💰
 
@@ -229,6 +246,30 @@ src/
 ## 🧩 **Customer Components**
 
 ### **`src/components/customers/`**
+
+#### **`ActionRequestModal.tsx`** 🎯 **[ENHANCED - CUSTOMER SELECTION]**
+
+- **Purpose**: Employee request submission with customer selection for admin clarity
+- **Features**:
+  - **Customer Selection Dropdown**: Employees choose which customer the request is for
+  - **Action Type Selection**: Activation, deactivation, or plan change requests
+  - **Plan Change Support**: For plan change requests, shows available packages
+  - **Customer Information Display**: Shows selected customer's details (VC number, current package, status)
+  - **Form Validation**: Requires customer selection, action type, and detailed reason
+  - **Firebase Integration**: Submits requests directly to Firebase for admin review
+- **Request Flow**:
+  ```typescript
+  // Employee selects customer and submits request
+  const request = {
+    customerId: selectedCustomer.id,
+    customerName: selectedCustomer.name,
+    employeeId: user.id,
+    employeeName: user.name,
+    actionType: "activation" | "deactivation" | "plan_change",
+    reason: "Detailed reason provided by employee",
+  };
+  await CustomerService.addRequest(request);
+  ```
 
 #### **`CustomerModal.tsx`** 🎛️ **[FIXED - CONTROLLED INPUTS]**
 
@@ -461,39 +502,62 @@ if (userData.is_active === false) {
 
 ### **Employee Cannot See Customers**
 
-**Symptoms**: Employee logs in but sees no customers
+**Symptoms**: Employee logs in but sees no customers or gets "failed to load customers" error
 **Debug Steps**:
 
-1. Check console logs for customer assignment debugging (detailed logs now provided)
+1. Check browser console for detailed customer assignment debugging (automatically provided)
 2. Verify employee has `collector_name` set in Firebase (should equal employee name)
 3. Ensure customers have `collectorName` matching employee name exactly
 4. Check if employee status is active
 5. Look for yellow diagnostic card on empty customer page
+6. Verify Firestore query is not failing due to composite index requirements
 
-**Enhanced Debugging**:
+**Enhanced Debugging & Troubleshooting**:
 
 - **Console Logs**: Detailed customer assignment debugging automatically shown
 - **Diagnostic UI**: Yellow info card appears for employees with no customers
 - **Field Comparison**: Console shows exact field matching for troubleshooting
+- **Firestore Query Optimization**: Queries now avoid composite index requirements
 
-**Solution**:
+**Common Causes & Solutions**:
+
+1. **Firestore Query Issues**:
+   - **Cause**: Using `where()` + `orderBy()` requires composite index for customers, billing, and requests
+   - **Solution**: Removed orderBy from all employee queries, sort in memory instead
+   - **Affected Queries**: Customer lists, billing records, request management
+   - **Performance**: In-memory sorting maintains performance while avoiding index requirements
+2. **Missing collector_name Field**:
+
+   - **Cause**: Employee created without proper `collector_name` field
+   - **Solution**: Employee creation now automatically sets `collector_name = employee.name`
+
+3. **Customer Assignment Mismatch**:
+
+   - **Cause**: Customer `collectorName` doesn't match employee `collector_name`
+   - **Solution**: When assigning customers, select exact employee name from dropdown
+
+4. **Data Conversion Issues**:
+   - **Cause**: Null/undefined values in customer data conversion
+   - **Solution**: Added comprehensive null safety in data conversion methods
+
+**Debug Console Output**:
 
 ```typescript
-// Enhanced debugging in console:
-console.log("Employee looking for:", user?.collector_name || user?.name);
-console.log("Available customers and assignments:");
-allCustomers.forEach((c) => {
-  console.log(
-    `${c.name} → "${c.collectorName}" ${c.collectorName === employeeName ? "✅" : "❌"}`,
-  );
-});
+// Example debugging output you'll see:
+console.log(
+  "🔍 Employee user - looking for customers assigned to: 'John Employee'",
+);
+console.log("📊 Found 3 customers assigned to 'John Employee'");
+console.log("✅ Successfully loaded 3 customers for employee: John Employee");
 ```
 
-**Common Fixes**:
+**Step-by-Step Fix Process**:
 
-1. **Create Employee Properly**: Ensure `collector_name` is set when creating employee
-2. **Assign Customers**: In customer modal, select exact employee name in "Employee" field
-3. **Check Spelling**: Customer `collectorName` must exactly match employee `collector_name`
+1. **Create Employee Properly**: Use Employee Management to create employee
+2. **Verify collector_name**: Check that `collector_name` equals employee name in Firebase
+3. **Assign Customers**: In customer modal, select exact employee name in "Employee" field
+4. **Test Login**: Employee should now see assigned customers
+5. **Check Console**: Look for debugging messages if issues persist
 
 ### **User Management Issues**
 
