@@ -725,127 +725,177 @@ export default function CustomerTable({
                                 </div>
                               </div>
                             </div>
-                          </div>
-
-                          {/* Service Details with Individual VC Status */}
+                          {/* Request History */}
                           <div>
                             <h4 className="text-lg font-semibold text-foreground mb-4">
-                              Service Details & VC Status
+                              Request History
                             </h4>
+                            {loadingHistories.has(customer.id) ? (
+                              <div className="text-center py-4 text-muted-foreground">
+                                Loading request history...
+                              </div>
+                            ) : customerRequests[customer.id]?.length > 0 ? (
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {customerRequests[customer.id]
+                                  .slice(-10) // Show last 10 requests
+                                  .reverse()
+                                  .map((request) => (
+                                    <div
+                                      key={request.id}
+                                      className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded border"
+                                    >
+                                      <div className="flex items-center space-x-3">
+                                        {request.actionType === "activation" ? (
+                                          <Power className="h-4 w-4 text-green-600" />
+                                        ) : request.actionType === "deactivation" ? (
+                                          <PowerOff className="h-4 w-4 text-red-600" />
+                                        ) : (
+                                          <Package className="h-4 w-4 text-blue-600" />
+                                        )}
+                                        <div>
+                                          <div className="text-sm font-medium text-foreground">
+                                            {request.actionType === "activation" && "VC Activation"}
+                                            {request.actionType === "deactivation" && "VC Deactivation"}
+                                            {request.actionType === "plan_change" && "Plan Change"}
+                                            {" Request"}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            VC {request.vcNumber} • {new Date(request.requestDate).toLocaleDateString()}
+                                            {request.reviewDate && ` • Reviewed ${new Date(request.reviewDate).toLocaleDateString()}`}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            By {request.employeeName}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <Badge
+                                          variant={
+                                            request.status === "approved"
+                                              ? "default"
+                                              : request.status === "rejected"
+                                              ? "destructive"
+                                              : "secondary"
+                                          }
+                                          className="text-xs"
+                                        >
+                                          {request.status}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-4 text-muted-foreground">
+                                No requests found for this customer
+                              </div>
+                            )}
+                          </div>
 
-                            {/* Primary VC */}
-                            <div className="border rounded-lg p-4 bg-white dark:bg-gray-800 mb-4">
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                <div>
-                                  <div className="text-sm text-muted-foreground">
-                                    VC Number
-                                  </div>
-                                  <div className="font-mono font-medium">
-                                    {customer.vcNumber}
-                                  </div>
-                                  <Badge variant="default" className="mt-1">
-                                    Primary
-                                  </Badge>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-muted-foreground">
-                                    Package
-                                  </div>
-                                  <div className="font-medium">
-                                    {customer.currentPackage}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-muted-foreground">
-                                    VC Status
-                                  </div>
-                                  {isAdmin ? (
-                                    <Select
-                                      value={customer.status}
-                                      onValueChange={(value: CustomerStatus) =>
-                                        handlePrimaryVCStatusChange(
-                                          customer,
-                                          value,
-                                        )
-                                      }
+                          {/* Invoice History */}
+                          <div>
+                            <h4 className="text-lg font-semibold text-foreground mb-4">
+                              Invoice History
+                            </h4>
+                            {loadingHistories.has(customer.id) ? (
+                              <div className="text-center py-4 text-muted-foreground">
+                                Loading invoice history...
+                              </div>
+                            ) : customerInvoices[customer.id]?.length > 0 ? (
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {customerInvoices[customer.id]
+                                  .slice(-10) // Show last 10 invoices
+                                  .reverse()
+                                  .map((invoice) => (
+                                    <div
+                                      key={invoice.id}
+                                      className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded border"
                                     >
-                                      <SelectTrigger className="w-24 h-8">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="active">
-                                          Active
-                                        </SelectItem>
-                                        <SelectItem value="inactive">
-                                          Inactive
-                                        </SelectItem>
-                                        <SelectItem value="demo">
-                                          Demo
-                                        </SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  ) : (
-                                    <Badge
-                                      variant={getStatusBadgeVariant(
-                                        customer.status,
-                                      )}
-                                      className={cn(
-                                        getStatusBadgeColor(customer.status),
-                                      )}
+                                      <div className="flex items-center space-x-3">
+                                        <FileText className="h-4 w-4 text-muted-foreground" />
+                                        <div>
+                                          <div className="text-sm font-medium text-foreground">
+                                            {invoice.invoiceNumber}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {invoice.billingMonth} {invoice.billingYear} • Due: {new Date(invoice.dueDate).toLocaleDateString()}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            Generated by {invoice.generatedBy}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <div className="text-right">
+                                          <div className="text-sm font-bold text-foreground">
+                                            {formatCurrency(invoice.amount)}
+                                          </div>
+                                          <Badge
+                                            variant={
+                                              invoice.status === "Paid"
+                                                ? "default"
+                                                : invoice.status === "Overdue"
+                                                ? "destructive"
+                                                : "secondary"
+                                            }
+                                            className="text-xs"
+                                          >
+                                            {invoice.status}
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-4 text-muted-foreground">
+                                No invoices found for this customer
+                              </div>
+                            )}
+                          </div>
+
+                          {/* VC Status Changes */}
+                          {customer.statusLogs && customer.statusLogs.length > 0 && (
+                            <div>
+                              <h4 className="text-lg font-semibold text-foreground mb-4">
+                                VC Status Changes
+                              </h4>
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {customer.statusLogs
+                                  .slice(-5)
+                                  .reverse()
+                                  .map((log, index) => (
+                                    <div
+                                      key={log.id}
+                                      className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded border"
                                     >
-                                      {customer.status}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-sm text-muted-foreground">
-                                    Monthly Amount
-                                  </div>
-                                  <div className="font-bold">
-                                    {formatCurrency(customer.packageAmount)}
-                                  </div>
-                                </div>
+                                      <div className="flex items-center space-x-3">
+                                        <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                                        <div>
+                                          <div className="text-sm font-medium text-foreground">
+                                            {log.reason}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {new Date(
+                                              log.changedDate,
+                                            ).toLocaleDateString()}{" "}
+                                            by {log.changedBy}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs"
+                                        >
+                                          {log.previousStatus} → {log.newStatus}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  ))}
                               </div>
                             </div>
-
-                            {/* Secondary VCs */}
-                            {customer.connections &&
-                              customer.connections.length > 1 && (
-                                <div className="space-y-3">
-                                  {customer.connections.map(
-                                    (connection, index) =>
-                                      !connection.isPrimary && (
-                                        <div
-                                          key={connection.id}
-                                          className="border rounded-lg p-4 bg-white dark:bg-gray-800"
-                                        >
-                                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                            <div>
-                                              <div className="text-sm text-muted-foreground">
-                                                VC Number
-                                              </div>
-                                              <div className="font-mono font-medium">
-                                                {connection.vcNumber}
-                                              </div>
-                                              <Badge
-                                                variant="outline"
-                                                className="mt-1"
-                                              >
-                                                Secondary
-                                              </Badge>
-                                            </div>
-                                            <div>
-                                              <div className="text-sm text-muted-foreground">
-                                                Package
-                                              </div>
-                                              <div className="font-medium">
-                                                {connection.planName}
-                                              </div>
-                                            </div>
-                                            <div>
-                                              <div className="text-sm text-muted-foreground">
-                                                VC Status
-                                              </div>
+                          )}
                                               {isAdmin ? (
                                                 <Select
                                                   value={
