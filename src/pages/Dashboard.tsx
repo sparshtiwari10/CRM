@@ -528,50 +528,42 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-foreground">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <Button
-                variant="outline"
-                onClick={() => navigate("/customers")}
-                className="h-auto p-4 flex-col space-y-2"
-              >
-                <Users className="h-6 w-6" />
-                <span className="text-sm">Customers</span>
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => navigate("/billing")}
-                className="h-auto p-4 flex-col space-y-2"
-              >
-                <CreditCard className="h-6 w-6" />
-                <span className="text-sm">Billing</span>
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowInvoiceGenerator(true)}
-                className="h-auto p-4 flex-col space-y-2"
-              >
-                <FileText className="h-6 w-6" />
-                <span className="text-sm">Invoice</span>
-              </Button>
-              {isAdmin && (
+        {/* Quick Actions (Employee View only) */}
+        {!isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-foreground">Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => navigate("/packages")}
+                  onClick={() => navigate("/customers")}
                   className="h-auto p-4 flex-col space-y-2"
                 >
-                  <Package className="h-6 w-6" />
-                  <span className="text-sm">Packages</span>
+                  <Users className="h-6 w-6" />
+                  <span className="text-sm">Customers</span>
                 </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/billing")}
+                  className="h-auto p-4 flex-col space-y-2"
+                >
+                  <CreditCard className="h-6 w-6" />
+                  <span className="text-sm">Billing</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowInvoiceGenerator(true)}
+                  className="h-auto p-4 flex-col space-y-2"
+                >
+                  <FileText className="h-6 w-6" />
+                  <span className="text-sm">Invoice</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Invoice Generator Modal */}
         {showInvoiceGenerator && (
