@@ -26,6 +26,7 @@ import CustomerTable from "@/components/customers/CustomerTable";
 import { CustomerImportExport } from "@/components/customers/CustomerImportExport";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
+import { authService } from "@/services/authService";
 import { Customer } from "@/types";
 import { ActionRequest } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -35,7 +36,7 @@ export default function Customers() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [collectorFilter, setCollectorFilter] = useState("all");
+  const [employeeFilter, setEmployeeFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
@@ -107,14 +108,36 @@ export default function Customers() {
       (statusFilter === "inactive" && customer.status === "inactive") ||
       (statusFilter === "demo" && customer.status === "demo");
 
-    const matchesCollector =
-      collectorFilter === "all" || customer.collectorName === collectorFilter;
+    const matchesEmployee =
+      employeeFilter === "all" || customer.collectorName === employeeFilter;
 
-    return matchesSearch && matchesStatus && matchesCollector;
+    return matchesSearch && matchesStatus && matchesEmployee;
   });
 
-  // Get unique collectors for filter dropdown
-  const uniqueCollectors = Array.from(
+  // Get unique employees for filter dropdown - using same source as billing
+  const [allEmployees, setAllEmployees] = useState<
+    Array<{ id: string; name: string; role: string; is_active: boolean }>
+  >([]);
+
+  // Load employees from Firebase (same as billing)
+  useEffect(() => {
+    const loadEmployees = async () => {
+      if (isAdmin) {
+        try {
+          const users = await authService.getAllEmployees();
+          // Only include active employees for assignment
+          const activeUsers = users.filter((user) => user.is_active);
+          setAllEmployees(activeUsers);
+        } catch (error) {
+          console.error("Failed to load employees:", error);
+        }
+      }
+    };
+    loadEmployees();
+  }, [isAdmin]);
+
+  // Also get unique employees from existing customer data as fallback
+  const uniqueEmployees = Array.from(
     new Set(customers.map((customer) => customer.collectorName)),
   ).filter(Boolean);
 
@@ -426,21 +449,29 @@ export default function Customers() {
                 </SelectContent>
               </Select>
 
-              {/* Collector Filter */}
+              {/* Employee Filter */}
               <Select
-                value={collectorFilter}
-                onValueChange={setCollectorFilter}
+                value={employeeFilter}
+                onValueChange={setEmployeeFilter}
+                disabled={!isAdmin}
               >
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Filter by collector" />
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Filter by employee" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Collectors</SelectItem>
-                  {uniqueCollectors.map((collector) => (
-                    <SelectItem key={collector} value={collector}>
-                      {collector}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">All Employees</SelectItem>
+                  {/* Use Firebase employee data first, fallback to customer data */}
+                  {allEmployees.length > 0
+                    ? allEmployees.map((employee) => (
+                        <SelectItem key={employee.id} value={employee.name}>
+                          {employee.name} ({employee.role})
+                        </SelectItem>
+                      ))
+                    : uniqueEmployees.map((employee) => (
+                        <SelectItem key={employee} value={employee}>
+                          {employee}
+                        </SelectItem>
+                      ))}
                 </SelectContent>
               </Select>
             </div>
@@ -459,8 +490,8 @@ export default function Customers() {
             {statusFilter !== "all" && (
               <span className="ml-2">• Status: {statusFilter}</span>
             )}
-            {collectorFilter !== "all" && (
-              <span className="ml-2">• Collector: {collectorFilter}</span>
+            {employeeFilter !== "all" && (
+              <span className="ml-2">• Employee: {employeeFilter}</span>
             )}
           </div>
         </div>

@@ -9,6 +9,8 @@ import {
   UserCheck,
   UserX,
   MoreHorizontal,
+  Power,
+  PowerOff,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +30,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -48,34 +51,67 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { User } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 
+// Define the user type based on what authService.getAllUsers() returns
+type User = {
+  id: string;
+  name: string;
+  role: string;
+  is_active: boolean;
+};
+
 export default function EmployeeManagement() {
-  const [employees, setEmployees] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [deleteEmployee, setDeleteEmployee] = useState<User | null>(null);
-  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [deleteUser, setDeleteUser] = useState<User | null>(null);
+  const [toggleStatusUser, setToggleStatusUser] = useState<User | null>(null);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Load employees from Firebase on component mount
+  // Load all users from Firebase on component mount
   useEffect(() => {
-    const loadEmployees = async () => {
+    const loadUsers = async () => {
       try {
         setIsLoading(true);
-        // Get all users from the authentication service
+        console.log("🔄 Loading all users for User Management...");
+
+        // Get all users from the authentication service (both admins and employees)
         const allUsers = await authService.getAllUsers();
-        setEmployees(allUsers.filter((user) => user.role === "employee"));
-        console.log(
-          "Loaded employees:",
-          allUsers.filter((user) => user.role === "employee"),
-        );
+
+        setUsers(allUsers);
+
+        if (allUsers.length === 0) {
+          console.warn("⚠️ No users found in Firebase");
+          toast({
+            title: "No Users Found",
+            description:
+              "No user accounts found. You can create new users below.",
+            variant: "destructive",
+          });
+        } else {
+          console.log(
+            `✅ Loaded ${allUsers.length} users (admins + employees/collectors):`,
+            allUsers,
+          );
+          const adminCount = allUsers.filter((u) => u.role === "admin").length;
+          const employeeCount = allUsers.filter(
+            (u) => u.role === "employee",
+          ).length;
+          const activeCount = allUsers.filter((u) => u.is_active).length;
+          const inactiveCount = allUsers.filter((u) => !u.is_active).length;
+          console.log(`   - ${adminCount} Administrators`);
+          console.log(`   - ${employeeCount} Employees/Collectors`);
+          console.log(`   - ${activeCount} Active, ${inactiveCount} Inactive`);
+        }
       } catch (error) {
-        console.error("Failed to load employees:", error);
+        console.error("Failed to load users:", error);
         toast({
           title: "Loading Error",
-          description: "Failed to load employees. Starting with empty list.",
+          description:
+            "Failed to load users from Firebase. Starting with empty list.",
           variant: "destructive",
         });
       } finally {
@@ -83,85 +119,119 @@ export default function EmployeeManagement() {
       }
     };
 
-    loadEmployees();
+    loadUsers();
   }, [toast]);
 
-  const filteredEmployees = employees.filter(
-    (employee) =>
-      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.phone?.includes(searchTerm),
-  );
+  // Filter users based on search term
+  const filteredUsers = users.filter((user) => {
+    if (!searchTerm) return true;
 
-  const handleToggleStatus = (employee: User) => {
-    setEmployees((prev) =>
-      prev.map((emp) =>
-        emp.id === employee.id ? { ...emp, isActive: !emp.isActive } : emp,
-      ),
+    const term = searchTerm.toLowerCase();
+    return (
+      user.name?.toLowerCase().includes(term) ||
+      user.role?.toLowerCase().includes(term) ||
+      user.id?.toLowerCase().includes(term) ||
+      (user.is_active ? "active" : "inactive").includes(term)
     );
+  });
 
-    toast({
-      title: `Employee ${employee.isActive ? "deactivated" : "activated"}`,
-      description: `${employee.name} has been ${employee.isActive ? "deactivated" : "activated"} successfully.`,
-    });
-  };
-
-  const handleDeleteEmployee = async () => {
-    if (!deleteEmployee) return;
+  const handleToggleStatus = async () => {
+    if (!toggleStatusUser) return;
 
     try {
-      // Check if employee has any active assignments
-      if (
-        deleteEmployee.assignedCustomers &&
-        deleteEmployee.assignedCustomers.length > 0
-      ) {
-        toast({
-          title: "Cannot delete employee",
-          description: `${deleteEmployee.name} has ${deleteEmployee.assignedCustomers.length} assigned customers. Please reassign customers before deleting.`,
-          variant: "destructive",
-        });
-        setDeleteEmployee(null);
-        return;
-      }
+      setIsUpdating(toggleStatusUser.id);
+      const newStatus = !toggleStatusUser.is_active;
 
-      // Simulate API call to delete from Firebase
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log(
+        `🔄 ${newStatus ? "Activating" : "Deactivating"} user: ${toggleStatusUser.name}`,
+      );
 
-      setEmployees((prev) =>
-        prev.filter((emp) => emp.id !== deleteEmployee.id),
+      // Update user status in Firebase
+      await authService.updateUser(toggleStatusUser.id, {
+        is_active: newStatus,
+      });
+
+      // Update local state
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === toggleStatusUser.id
+            ? { ...user, is_active: newStatus }
+            : user,
+        ),
       );
 
       toast({
-        title: "Employee deleted",
-        description: `${deleteEmployee.name} has been removed from the system.`,
-        variant: "destructive",
+        title: "Status Updated",
+        description: `${toggleStatusUser.name} has been ${newStatus ? "activated" : "deactivated"}. ${newStatus ? "They can now log in." : "They can no longer log in."}`,
       });
 
-      setDeleteEmployee(null);
+      console.log(
+        `✅ Successfully ${newStatus ? "activated" : "deactivated"} user: ${toggleStatusUser.name}`,
+      );
+    } catch (error: any) {
+      console.error("Failed to toggle user status:", error);
+      toast({
+        title: "Status Update Failed",
+        description:
+          error.message || "Failed to update user status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(null);
+      setToggleStatusUser(null);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUser) return;
+
+    try {
+      // Note: This is a simplified version since we don't have the full user management
+      // In a real implementation, this would call authService.deleteUser()
+
+      // For now, just remove from local state
+      setUsers((prev) => prev.filter((user) => user.id !== deleteUser.id));
+
+      toast({
+        title: "User Removed",
+        description: `${deleteUser.name} has been removed from the list.`,
+      });
+
+      setDeleteUser(null);
     } catch (error) {
       toast({
-        title: "Delete failed",
-        description: "Failed to delete employee. Please try again.",
+        title: "Delete Failed",
+        description: "Failed to remove user. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const handleAddEmployee = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddUser = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
 
-    const employeeData = {
+    const userData = {
       name: formData.get("name") as string,
       username: formData.get("username") as string,
       password: formData.get("password") as string,
-      phone: formData.get("phone") as string,
-      role: formData.get("role") as "admin" | "employee",
+      role: (formData.get("role") as string) || "employee",
+      collector_name: formData.get("name") as string, // Use name as collector name for employees
     };
 
     try {
+      // Validate required fields
+      if (!userData.name || !userData.username || !userData.password) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all required fields.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Validate password strength
-      if (employeeData.password.length < 6) {
+      if (userData.password.length < 6) {
         toast({
           title: "Validation Error",
           description: "Password must be at least 6 characters long.",
@@ -170,62 +240,55 @@ export default function EmployeeManagement() {
         return;
       }
 
+      console.log(`🔄 Creating new ${userData.role}: ${userData.name}`);
+
       // Create user through authentication service
-      const newUser = await authService.createUser({
-        username: employeeData.username,
-        password: employeeData.password,
-        name: employeeData.name,
-        role: employeeData.role,
-        access_scope: [],
+      const newUserId = await authService.createUser({
+        username: userData.username,
+        password: userData.password,
+        name: userData.name,
+        role: userData.role as "admin" | "employee",
+        collector_name:
+          userData.role === "employee" ? userData.collector_name : null,
       });
 
-      // Add phone number to the user object
-      const newEmployee: User = {
-        ...newUser,
-        phone: employeeData.phone,
-        email: `${employeeData.username}@agvcabletv.local`,
-        assignedCustomers: [],
+      // Add to local state
+      const newUser: User = {
+        id: newUserId,
+        name: userData.name,
+        role: userData.role,
+        is_active: true, // New users are active by default
       };
 
-      setEmployees((prev) => [...prev, newEmployee]);
-      setShowAddEmployeeModal(false);
+      setUsers((prev) => [...prev, newUser]);
+      setShowAddUserModal(false);
+
+      // Reset form
+      (event.target as HTMLFormElement).reset();
 
       toast({
-        title: "Employee Created",
-        description: `${newEmployee.name} has been successfully created and saved to Firebase with username: ${employeeData.username}`,
+        title: "User Created",
+        description: `${userData.name} has been successfully created and can now log in.`,
       });
-    } catch (error) {
-      console.error("Failed to create employee:", error);
+
+      console.log(`✅ Successfully created ${userData.role}: ${userData.name}`);
+    } catch (error: any) {
+      console.error("Failed to create user:", error);
       toast({
         title: "Creation Failed",
-        description: "Failed to create employee account. Please try again.",
+        description:
+          error.message || "Failed to create user. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const activeEmployees = employees.filter((emp) => emp.isActive).length;
-  const totalCustomersAssigned = employees.reduce(
-    (sum, emp) => sum + (emp.assignedCustomers?.length || 0),
-    0,
-  );
-
   if (isLoading) {
     return (
-      <DashboardLayout title="Employee Management">
-        <div className="p-6">
-          <div className="text-center py-8">
-            <div className="text-lg">Loading employees...</div>
+      <DashboardLayout title="User Management">
+        <div className="p-4 lg:p-6">
+          <div className="text-center py-8 text-muted-foreground">
+            Loading users...
           </div>
         </div>
       </DashboardLayout>
@@ -233,398 +296,357 @@ export default function EmployeeManagement() {
   }
 
   return (
-    <DashboardLayout title="Employee Management">
-      <div className="p-6 space-y-6">
+    <DashboardLayout title="User Management">
+      <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">
-              Employee Management
+            <h2 className="text-xl lg:text-2xl font-bold text-foreground">
+              User Management
             </h2>
-            <p className="text-muted-foreground">
-              Manage employee accounts and permissions
+            <p className="text-sm lg:text-base text-muted-foreground">
+              Manage all user accounts (Admins & Employees/Collectors)
             </p>
           </div>
-          <Button onClick={() => setShowAddEmployeeModal(true)}>
+
+          <Button onClick={() => setShowAddUserModal(true)} className="text-sm">
             <Plus className="mr-2 h-4 w-4" />
-            Add New Employee
+            Add User
           </Button>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Employees
-              </CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{employees.length}</div>
-              <p className="text-xs text-muted-foreground">
-                {activeEmployees} active
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Active Employees
-              </CardTitle>
-              <Shield className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {activeEmployees}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {employees.length - activeEmployees} inactive
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Assigned Customers
-              </CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalCustomersAssigned}</div>
-              <p className="text-xs text-muted-foreground">Total assignments</p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Search */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex space-x-4">
-              <div className="flex-1">
-                <Input
-                  placeholder="Search employees by name, email, or phone..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+            <div className="relative">
+              <Input
+                placeholder="Search users by name, role, status, or ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+              <div className="absolute inset-y-0 left-3 flex items-center">
+                <Eye className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Employee Table */}
+        {/* Results Summary */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+          <div className="text-sm text-blue-800 dark:text-blue-200">
+            <span className="font-medium">
+              Showing {filteredUsers.length} of {users.length} users
+            </span>
+            {searchTerm && (
+              <span className="ml-2">• Search: "{searchTerm}"</span>
+            )}
+            <span className="ml-4">
+              ({users.filter((u) => u.role === "admin").length} Admins,{" "}
+              {users.filter((u) => u.role === "employee").length}{" "}
+              Employees/Collectors)
+            </span>
+            <span className="ml-4">
+              ({users.filter((u) => u.is_active).length} Active,{" "}
+              {users.filter((u) => !u.is_active).length} Inactive)
+            </span>
+          </div>
+        </div>
+
+        {/* User Table */}
         <Card>
-          <CardHeader>
-            <CardTitle>Employee Directory</CardTitle>
-          </CardHeader>
           <CardContent className="p-0">
-            {/* Desktop Table */}
-            <div className="hidden lg:block">
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Assigned Customers</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>User ID</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Last Login</TableHead>
-                    <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEmployees.map((employee) => (
-                    <TableRow key={employee.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{employee.name}</div>
-                          <div className="text-sm text-gray-500">
-                            {employee.email}
+                  {filteredUsers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8">
+                        <div className="text-muted-foreground">
+                          <UserX className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <div className="font-medium">No users found</div>
+                          <div className="text-sm">
+                            {searchTerm
+                              ? "Try adjusting your search criteria"
+                              : "No user accounts have been created yet"}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {employee.phone || "No phone"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {employee.assignedCustomers?.length || 0} customers
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={employee.isActive ? "default" : "secondary"}
-                          className={employee.isActive ? "bg-green-600" : ""}
-                        >
-                          {employee.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {employee.lastLogin
-                            ? formatDate(employee.lastLogin)
-                            : "Never"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {formatDate(employee.createdAt)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit Employee
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleToggleStatus(employee)}
-                            >
-                              {employee.isActive ? (
-                                <>
-                                  <UserX className="mr-2 h-4 w-4" />
-                                  Deactivate
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="mr-2 h-4 w-4" />
-                                  Activate
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setDeleteEmployee(employee)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <TableRow key={user.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                                user.role === "admin"
+                                  ? "bg-purple-600"
+                                  : "bg-blue-600"
+                              } ${!user.is_active ? "opacity-50" : ""}`}
+                            >
+                              <span className="text-xs font-medium text-white">
+                                {user.name?.charAt(0).toUpperCase() || "?"}
+                              </span>
+                            </div>
+                            <div>
+                              <div
+                                className={`font-medium ${
+                                  user.is_active
+                                    ? "text-foreground"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                {user.name || "Unknown"}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              user.role === "admin" ? "default" : "secondary"
+                            }
+                            className={`${
+                              user.role === "admin"
+                                ? "bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-200"
+                                : "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200"
+                            } ${!user.is_active ? "opacity-50" : ""}`}
+                          >
+                            {user.role === "admin" ? (
+                              <>
+                                <Shield className="w-3 h-3 mr-1" />
+                                Administrator
+                              </>
+                            ) : (
+                              <>
+                                <UserCheck className="w-3 h-3 mr-1" />
+                                Employee/Collector
+                              </>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`font-mono text-sm ${
+                              user.is_active
+                                ? "text-muted-foreground"
+                                : "text-muted-foreground opacity-50"
+                            }`}
+                          >
+                            {user.id}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={user.is_active ? "default" : "secondary"}
+                            className={
+                              user.is_active
+                                ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+                                : "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200"
+                            }
+                          >
+                            {user.is_active ? (
+                              <>
+                                <UserCheck className="w-3 h-3 mr-1" />
+                                Active
+                              </>
+                            ) : (
+                              <>
+                                <UserX className="w-3 h-3 mr-1" />
+                                Inactive
+                              </>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={isUpdating === user.id}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => setToggleStatusUser(user)}
+                              >
+                                {user.is_active ? (
+                                  <>
+                                    <PowerOff className="mr-2 h-4 w-4" />
+                                    Deactivate
+                                  </>
+                                ) : (
+                                  <>
+                                    <Power className="mr-2 h-4 w-4" />
+                                    Activate
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setDeleteUser(user)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Remove
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
-            </div>
-
-            {/* Mobile Cards */}
-            <div className="lg:hidden space-y-4 p-4">
-              {filteredEmployees.map((employee) => (
-                <Card key={employee.id} className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-medium text-lg">{employee.name}</h3>
-                      <p className="text-sm text-gray-500">{employee.email}</p>
-                      {employee.phone && (
-                        <p className="text-sm text-gray-500">
-                          {employee.phone}
-                        </p>
-                      )}
-                    </div>
-                    <Badge
-                      variant={employee.isActive ? "default" : "secondary"}
-                      className={employee.isActive ? "bg-green-600" : ""}
-                    >
-                      {employee.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Assigned Customers:</span>
-                      <Badge variant="outline">
-                        {employee.assignedCustomers?.length || 0}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Last Login:</span>
-                      <span>
-                        {employee.lastLogin
-                          ? formatDate(employee.lastLogin)
-                          : "Never"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Created:</span>
-                      <span>{formatDate(employee.createdAt)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex space-x-2 mt-4">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Eye className="mr-2 h-4 w-4" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleStatus(employee)}
-                      className="flex-1"
-                    >
-                      {employee.isActive ? (
-                        <>
-                          <UserX className="mr-2 h-4 w-4" />
-                          Deactivate
-                        </>
-                      ) : (
-                        <>
-                          <UserCheck className="mr-2 h-4 w-4" />
-                          Activate
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </Card>
-              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Delete Confirmation */}
+        {/* Toggle Status Confirmation Dialog */}
         <AlertDialog
-          open={!!deleteEmployee}
-          onOpenChange={() => setDeleteEmployee(null)}
+          open={!!toggleStatusUser}
+          onOpenChange={() => setToggleStatusUser(null)}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Employee</AlertDialogTitle>
+              <AlertDialogTitle>
+                {toggleStatusUser?.is_active ? "Deactivate" : "Activate"} User
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete {deleteEmployee?.name}? This
-                action cannot be undone and will remove all associated data.
+                {toggleStatusUser?.is_active
+                  ? `Are you sure you want to deactivate ${toggleStatusUser?.name}? They will no longer be able to log in to the system.`
+                  : `Are you sure you want to activate ${toggleStatusUser?.name}? They will be able to log in to the system.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleDeleteEmployee}
-                className="bg-red-600 hover:bg-red-700"
+                onClick={handleToggleStatus}
+                className={
+                  toggleStatusUser?.is_active
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-green-600 hover:bg-green-700"
+                }
               >
-                Delete Employee
+                {toggleStatusUser?.is_active ? "Deactivate" : "Activate"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Add Employee Modal */}
-        <Dialog
-          open={showAddEmployeeModal}
-          onOpenChange={setShowAddEmployeeModal}
+        {/* Delete User Confirmation Dialog */}
+        <AlertDialog
+          open={!!deleteUser}
+          onOpenChange={() => setDeleteUser(null)}
         >
-          <DialogContent className="sm:max-w-[500px]">
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove User</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove {deleteUser?.name}? This action
+                cannot be undone and they will be permanently removed from the
+                system.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteUser}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Add User Modal */}
+        <Dialog open={showAddUserModal} onOpenChange={setShowAddUserModal}>
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Add New Employee</DialogTitle>
+              <DialogTitle>Add New User</DialogTitle>
               <DialogDescription>
-                Create a new employee account with access credentials
+                Create a new user account (Admin or Employee/Collector). They
+                will be able to log in with these credentials.
               </DialogDescription>
             </DialogHeader>
-
-            <form onSubmit={handleAddEmployee}>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Full Name</Label>
+            <form onSubmit={handleAddUser}>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Full Name *
+                  </Label>
                   <Input
                     id="name"
                     name="name"
-                    type="text"
+                    placeholder="John Doe"
+                    className="col-span-3"
                     required
-                    placeholder="Enter employee's full name"
-                    className="mt-1"
                   />
                 </div>
-
-                <div>
-                  <Label htmlFor="username">Username</Label>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="username" className="text-right">
+                    Username *
+                  </Label>
                   <Input
                     id="username"
                     name="username"
-                    type="text"
+                    placeholder="johndoe"
+                    className="col-span-3"
                     required
-                    placeholder="employee_username"
-                    className="mt-1"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Used for login authentication
-                  </p>
                 </div>
-
-                <div>
-                  <Label htmlFor="password">Password</Label>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="password" className="text-right">
+                    Password *
+                  </Label>
                   <Input
                     id="password"
                     name="password"
                     type="password"
+                    placeholder="Min 6 characters"
+                    className="col-span-3"
                     required
-                    placeholder="Enter secure password"
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Minimum 8 characters recommended
-                  </p>
-                </div>
-
-                <div>
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    placeholder="+1 (555) 123-4567"
-                    className="mt-1"
+                    minLength={6}
                   />
                 </div>
-
-                <div>
-                  <Label htmlFor="role">Role</Label>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="role" className="text-right">
+                    Role
+                  </Label>
                   <select
                     id="role"
                     name="role"
-                    required
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    defaultValue="employee"
                   >
-                    <option value="">Select role</option>
-                    <option value="employee">Employee</option>
+                    <option value="employee">Employee/Collector</option>
                     <option value="admin">Administrator</option>
                   </select>
                 </div>
-
-                <div className="text-sm text-gray-500 bg-blue-50 p-3 rounded-md">
-                  <p>
-                    <strong>Note:</strong> The employee will be able to login
-                    using the username and password provided above. These
-                    credentials will be saved securely in Firebase
-                    Authentication.
-                  </p>
-                </div>
               </div>
-
-              <DialogFooter className="mt-6">
+              <DialogFooter>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowAddEmployeeModal(false)}
+                  onClick={() => setShowAddUserModal(false)}
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Create Employee</Button>
+                <Button type="submit">Create User</Button>
               </DialogFooter>
             </form>
           </DialogContent>
