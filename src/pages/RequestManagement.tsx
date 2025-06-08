@@ -410,7 +410,7 @@ export default function RequestManagement() {
                 {filteredRequests.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={isAdmin ? 7 : 6}
+                      colSpan={isAdmin ? 9 : 8}
                       className="text-center py-8"
                     >
                       {requests.length === 0
