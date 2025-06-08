@@ -44,6 +44,7 @@ import {
   Clock,
   User,
   MoreHorizontal,
+  Tv,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -565,75 +566,147 @@ export default function CustomerTable({
                   </TableCell>
                 </TableRow>
 
-                {/* Expanded Row Content - Optimized */}
+                {/* Expanded Row Content - Enhanced with Multiple VC Support */}
                 {expandedRows.has(customer.id) && (
                   <TableRow>
                     <TableCell colSpan={11} className="p-0">
                       <div className="p-3 bg-muted/30">
                         <div className="space-y-3">
-                          {/* Service Details - Moved to top */}
+                          {/* Service Details with Individual VC Status */}
                           <div>
                             <h4 className="font-medium text-foreground mb-2 flex items-center">
-                              <Package className="h-4 w-4 mr-2" />
-                              Service Details
+                              <Tv className="h-4 w-4 mr-2" />
+                              VC Connections & Status
                             </h4>
                             <div className="bg-card p-2 rounded-lg space-y-2 border border-border">
-                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">
-                                    Package:
-                                  </span>
-                                  <span className="font-medium text-foreground">
-                                    {customer.currentPackage}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">
-                                    Collector:
-                                  </span>
-                                  <span className="text-foreground">
-                                    {customer.collectorName}
-                                  </span>
-                                </div>
-                              </div>
                               {customer.connections &&
-                                customer.connections.length > 0 && (
-                                  <div className="border-t border-border pt-2">
-                                    <div className="text-sm text-muted-foreground mb-1">
-                                      VC Numbers:
-                                    </div>
-                                    <div className="flex flex-wrap gap-1">
-                                      {customer.connections.map(
-                                        (connection) => (
+                              customer.connections.length > 0 ? (
+                                <div className="space-y-3">
+                                  {customer.connections.map(
+                                    (connection, index) => (
+                                      <div
+                                        key={connection.id}
+                                        className="p-3 rounded-lg bg-muted/50 border border-border"
+                                      >
+                                        <div className="flex items-center justify-between mb-2">
+                                          <div className="flex items-center space-x-2">
+                                            <Badge
+                                              variant="outline"
+                                              className="font-mono text-sm"
+                                            >
+                                              {connection.vcNumber}
+                                            </Badge>
+                                            <Badge
+                                              variant={
+                                                connection.isPrimary
+                                                  ? "default"
+                                                  : "secondary"
+                                              }
+                                              className="text-xs"
+                                            >
+                                              {connection.isPrimary
+                                                ? "Primary"
+                                                : "Secondary"}
+                                            </Badge>
+                                          </div>
                                           <Badge
-                                            key={connection.id}
-                                            variant="outline"
-                                            className="text-sm font-mono"
+                                            variant={getStatusBadgeVariant(
+                                              connection.status ||
+                                                customer.status,
+                                            )}
+                                            className={cn(
+                                              getStatusBadgeColor(
+                                                connection.status ||
+                                                  customer.status,
+                                              ),
+                                            )}
                                           >
-                                            {connection.vcNumber}
+                                            {(
+                                              connection.status ||
+                                              customer.status
+                                            )
+                                              .charAt(0)
+                                              .toUpperCase() +
+                                              (
+                                                connection.status ||
+                                                customer.status
+                                              ).slice(1)}
                                           </Badge>
-                                        ),
-                                      )}
-                                    </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                          <div>
+                                            <span className="text-muted-foreground">
+                                              Package:
+                                            </span>
+                                            <span className="ml-2 font-medium text-foreground">
+                                              {connection.planName}
+                                            </span>
+                                          </div>
+                                          <div>
+                                            <span className="text-muted-foreground">
+                                              Amount:
+                                            </span>
+                                            <span className="ml-2 font-medium text-foreground">
+                                              {formatCurrency(
+                                                connection.packageAmount ||
+                                                  connection.planPrice,
+                                              )}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ),
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">
+                                      VC Number:
+                                    </span>
+                                    <Badge
+                                      variant="outline"
+                                      className="font-mono"
+                                    >
+                                      {customer.vcNumber}
+                                    </Badge>
                                   </div>
-                                )}
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">
+                                      Package:
+                                    </span>
+                                    <span className="font-medium text-foreground">
+                                      {customer.currentPackage}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
 
-                          {/* Financial Summary - Compact */}
+                          {/* Enhanced Financial Summary - Per VC Breakdown */}
                           <div>
                             <h4 className="font-medium text-foreground mb-2 flex items-center">
                               <IndianRupee className="h-4 w-4 mr-2" />
                               Financial Summary
                             </h4>
-                            <div className="bg-card p-2 rounded-lg border border-border">
-                              <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div className="bg-card p-2 rounded-lg border border-border space-y-3">
+                              {/* Overall Summary */}
+                              <div className="grid grid-cols-3 gap-4 text-sm pb-2 border-b border-border">
                                 <div className="text-center">
                                   <div className="text-xs text-muted-foreground">
-                                    Package Amount
+                                    Total Package Amount
                                   </div>
                                   <div className="font-medium text-foreground">
-                                    {formatCurrency(customer.packageAmount)}
+                                    {formatCurrency(
+                                      customer.connections?.reduce(
+                                        (sum, conn) =>
+                                          sum +
+                                          (conn.packageAmount ||
+                                            conn.planPrice),
+                                        0,
+                                      ) || customer.packageAmount,
+                                    )}
                                   </div>
                                 </div>
                                 <div className="text-center">
@@ -675,6 +748,76 @@ export default function CustomerTable({
                                   </div>
                                 </div>
                               </div>
+
+                              {/* Per-VC Financial Breakdown */}
+                              {customer.connections &&
+                                customer.connections.length > 1 && (
+                                  <div>
+                                    <div className="text-xs text-muted-foreground mb-2 font-medium">
+                                      Per-VC Breakdown:
+                                    </div>
+                                    <div className="space-y-2">
+                                      {customer.connections.map(
+                                        (connection) => (
+                                          <div
+                                            key={connection.id}
+                                            className="grid grid-cols-4 gap-2 text-xs p-2 bg-muted/30 rounded"
+                                          >
+                                            <div>
+                                              <span className="font-mono font-medium text-foreground">
+                                                {connection.vcNumber}
+                                              </span>
+                                            </div>
+                                            <div className="text-center">
+                                              <span className="text-foreground">
+                                                {formatCurrency(
+                                                  connection.packageAmount ||
+                                                    connection.planPrice,
+                                                )}
+                                              </span>
+                                            </div>
+                                            <div className="text-center">
+                                              <span
+                                                className={cn(
+                                                  (connection.previousOutstanding ||
+                                                    0) > 0
+                                                    ? "text-red-600 dark:text-red-400"
+                                                    : (connection.previousOutstanding ||
+                                                          0) < 0
+                                                      ? "text-green-600 dark:text-green-400"
+                                                      : "text-muted-foreground",
+                                                )}
+                                              >
+                                                {formatCurrency(
+                                                  connection.previousOutstanding ||
+                                                    0,
+                                                )}
+                                              </span>
+                                            </div>
+                                            <div className="text-center">
+                                              <span
+                                                className={cn(
+                                                  (connection.currentOutstanding ||
+                                                    0) > 0
+                                                    ? "text-red-600 dark:text-red-400"
+                                                    : (connection.currentOutstanding ||
+                                                          0) < 0
+                                                      ? "text-green-600 dark:text-green-400"
+                                                      : "text-muted-foreground",
+                                                )}
+                                              >
+                                                {formatCurrency(
+                                                  connection.currentOutstanding ||
+                                                    0,
+                                                )}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        ),
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                             </div>
                           </div>
 
@@ -781,7 +924,7 @@ export default function CustomerTable({
         </Table>
       </div>
 
-      {/* Mobile Cards - Optimized */}
+      {/* Mobile Cards - Enhanced with Multiple VC Support */}
       <div className="md:hidden space-y-3">
         {filteredCustomers.map((customer) => (
           <div
@@ -874,21 +1017,46 @@ export default function CustomerTable({
               {/* Expanded Content for Mobile */}
               {expandedRows.has(customer.id) && (
                 <div className="space-y-3 pt-3 border-t border-border">
-                  {/* VC Numbers - Clean display */}
+                  {/* VC Numbers with Individual Status */}
                   {customer.connections && customer.connections.length > 0 && (
                     <div>
-                      <div className="text-sm font-medium text-foreground mb-1">
-                        VC Numbers
+                      <div className="text-sm font-medium text-foreground mb-2">
+                        VC Connections
                       </div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="space-y-2">
                         {customer.connections.map((connection) => (
-                          <Badge
+                          <div
                             key={connection.id}
-                            variant="outline"
-                            className="text-sm font-mono"
+                            className="flex items-center justify-between p-2 bg-muted/50 rounded"
                           >
-                            {connection.vcNumber}
-                          </Badge>
+                            <div className="flex items-center space-x-2">
+                              <Badge
+                                variant="outline"
+                                className="text-sm font-mono"
+                              >
+                                {connection.vcNumber}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {connection.isPrimary ? "Primary" : "Secondary"}
+                              </span>
+                            </div>
+                            <Badge
+                              variant={getStatusBadgeVariant(
+                                connection.status || customer.status,
+                              )}
+                              className={cn(
+                                getStatusBadgeColor(
+                                  connection.status || customer.status,
+                                ),
+                                "text-xs",
+                              )}
+                            >
+                              {(connection.status || customer.status)
+                                .charAt(0)
+                                .toUpperCase() +
+                                (connection.status || customer.status).slice(1)}
+                            </Badge>
+                          </div>
                         ))}
                       </div>
                     </div>
