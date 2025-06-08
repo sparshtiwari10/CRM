@@ -250,7 +250,10 @@ export function InvoiceGenerator({
       };
 
       // Save the updated customer data
-      await CustomerService.updateCustomer(updatedCustomer);
+      await CustomerService.updateCustomer(
+        selectedCustomer.id,
+        updatedCustomer,
+      );
 
       toast({
         title: "Invoice Generated",
