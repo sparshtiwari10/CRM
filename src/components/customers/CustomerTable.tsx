@@ -219,21 +219,8 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
     setActionRequestCustomer(customer);
   };
 
-  // Calculate derived values for each customer
-  const enrichedCustomers = useMemo(() => {
-    return filteredCustomers.map((customer) => {
-      const status = getCustomerStatus(customer);
-      const financialSummary = getFinancialSummary(customer);
-      const nextBillingDate = calculateNextBillingDate(customer);
-
-      return {
-        ...customer,
-        status,
-        financialSummary,
-        nextBillingDate,
-      };
-    });
-  }, [filteredCustomers]);
+  // Use filtered customers directly
+  const enrichedCustomers = filteredCustomers;
 
   if (enrichedCustomers.length === 0) {
     return (
