@@ -115,10 +115,12 @@ export function ActionRequestModal({
     onOpenChange(false);
   };
 
-  // Reset form when modal opens or action type changes
-  if (open && form.getValues("actionType") !== defaultActionType) {
-    resetForm();
-  }
+  // Reset form when modal opens or action type changes - using useEffect to avoid setState during render
+  useEffect(() => {
+    if (open && form.getValues("actionType") !== defaultActionType) {
+      resetForm();
+    }
+  }, [open, defaultActionType, form]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
