@@ -619,30 +619,21 @@ function CustomerModal({
 
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor={`secondary-vc-${index}`}>
-                                VC Number *
-                              </Label>
+                              <Label htmlFor={`secondary-vc-${index}`}>VC Number *</Label>
                               <Input
                                 id={`secondary-vc-${index}`}
                                 value={connection.vcNumber}
-                                onChange={(e) =>
-                                  handleSecondaryConnectionChange(
-                                    index + 1,
-                                    "vcNumber",
-                                    e.target.value,
-                                  )
-                                }
+                                onChange={(e) => handleSecondaryConnectionChange(index + 1, 'vcNumber', e.target.value)}
                                 disabled={isSaving}
                                 placeholder="Enter VC Number"
+                                className={errors[`secondaryVc${index + 1}`] ? "border-red-500" : ""}
                               />
+                              {errors[`secondaryVc${index + 1}`] && (
+                                <p className="text-red-500 text-xs mt-1">
+                                  {errors[`secondaryVc${index + 1}`]}
+                                </p>
+                              )}
                             </div>
-                            <div>
-                              <Label htmlFor={`secondary-desc-${index}`}>
-                                Description
-                              </Label>
-                              <Input
-                                id={`secondary-desc-${index}`}
-                                value={connection.description || ""}
                                 onChange={(e) =>
                                   handleSecondaryConnectionChange(
                                     index + 1,
