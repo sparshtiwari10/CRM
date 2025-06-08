@@ -125,6 +125,52 @@ export default function CustomerTable({
     }
   }, [searchTerm]);
 
+  // Load customer invoice history
+  const loadCustomerInvoices = useCallback(
+    async (customerId: string) => {
+      if (customerInvoices[customerId]) return; // Already loaded
+
+      setLoadingHistories((prev) => new Set([...prev, customerId]));
+      try {
+        const invoices =
+          await CustomerService.getBillingRecordsByCustomer(customerId);
+        setCustomerInvoices((prev) => ({ ...prev, [customerId]: invoices }));
+      } catch (error) {
+        console.error("Failed to load customer invoices:", error);
+        setCustomerInvoices((prev) => ({ ...prev, [customerId]: [] }));
+      } finally {
+        setLoadingHistories((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(customerId);
+          return newSet;
+        });
+      }
+    },
+    [customerInvoices],
+  );
+
+  // Load customer request history
+  const loadCustomerRequests = useCallback(
+    async (customerId: string) => {
+      if (customerRequests[customerId]) return; // Already loaded
+
+      try {
+        const allRequests = await CustomerService.getAllRequests();
+        const customerSpecificRequests = allRequests.filter(
+          (req) => req.customerId === customerId,
+        );
+        setCustomerRequests((prev) => ({
+          ...prev,
+          [customerId]: customerSpecificRequests,
+        }));
+      } catch (error) {
+        console.error("Failed to load customer requests:", error);
+        setCustomerRequests((prev) => ({ ...prev, [customerId]: [] }));
+      }
+    },
+    [customerRequests],
+  );
+
   // Calculate VC status for a customer
   const calculateVCStatus = useCallback((customer: Customer) => {
     if (!customer.connections || customer.connections.length === 0) {
