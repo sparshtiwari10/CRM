@@ -71,7 +71,7 @@ async function initializeFirebaseWithRetry(attempt = 1): Promise<void> {
     // Handle emulator connection in development
     if (import.meta.env.DEV) {
       try {
-        connectFirestoreEmulator(db, "localhost", 8080);
+        connectFirestoreEmulator(db, "localhost", 8090);
         console.log("🔗 Connected to Firestore emulator");
       } catch (error) {
         console.log("📡 Using production Firestore with enhanced connectivity");
