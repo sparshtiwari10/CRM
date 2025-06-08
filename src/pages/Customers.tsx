@@ -66,24 +66,53 @@ export default function Customers() {
         if (isAdmin) {
           console.log("👑 Admin user - loading all customers");
           customerData = await CustomerService.getAllCustomers();
+
+          // Debug: Show all customers and their assignments
+          if (customerData.length > 0) {
+            console.log("📋 All customers loaded:", customerData.map(c => ({
+              name: c.name,
+              collectorName: c.collectorName,
+              vcNumber: c.vcNumber
+            })));
+
+            // Show unique employee assignments
+            const uniqueEmployees = [...new Set(customerData.map(c => c.collectorName))];
+            console.log("👥 Employees with customers assigned:", uniqueEmployees);
+          }
         } else {
           // For employees, get customers assigned to them
           // Use collector_name if available, otherwise fall back to name
           const collectorName = user?.collector_name || user?.name || "";
-          console.log(
-            `🔍 Employee user - loading customers for collector: "${collectorName}"`,
+          console.log(`🔍 Employee user - loading customers for collector: "${collectorName}"`);
+
+          // First, get ALL customers to debug assignment
+          const allCustomers = await CustomerService.getAllCustomers();
+          console.log("🔍 DEBUG - All customers in system:", allCustomers.map(c => ({
+            name: c.name,
+            collectorName: c.collectorName,
+            matchesUser: c.collectorName === collectorName
+          })));
+
+          customerData = await CustomerService.getCustomersByCollector(
+            collectorName,
           );
-          customerData =
-            await CustomerService.getCustomersByCollector(collectorName);
-          console.log(
-            `📊 Found ${customerData.length} customers assigned to ${collectorName}`,
-          );
+          console.log(`📊 Found ${customerData.length} customers assigned to ${collectorName}`);
 
           // Debug: Show which customers were found
           if (customerData.length > 0) {
-            console.log(
-              "📋 Assigned customers:",
-              customerData.map((c) => ({
+            console.log("📋 Assigned customers:", customerData.map(c => ({
+              name: c.name,
+              collectorName: c.collectorName,
+              vcNumber: c.vcNumber
+            })));
+          } else {
+            console.warn("⚠️ No customers found for this employee. Diagnosis:");
+            console.warn(`  1. Employee looking for: "${collectorName}"`);
+            console.warn(`  2. Available customers:`, allCustomers.map(c => `${c.name} (assigned to: "${c.collectorName}")`));
+            console.warn("  3. Check customer assignment: ensure customers have collectorName exactly matching:", collectorName);
+            console.warn("  4. Check employee profile: ensure collector_name is set correctly in Firebase");
+          }
+        }
                 name: c.name,
                 collectorName: c.collectorName,
                 vcNumber: c.vcNumber,
