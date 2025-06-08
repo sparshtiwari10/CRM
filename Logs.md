@@ -21,19 +21,24 @@
   6. **Request-Driven Status Changes**: VC status changes through approved requests with proper audit trail
   7. **Current Outstanding Calculation**: Only active VCs contribute to current outstanding on bill due date
 - **Technical Details**:
-
-  - **ActionRequestModal**: Complete rewrite with search functionality
-    - Customer search with filtering by name, VC number, phone, address
-    - VC number selection dropdown showing primary/secondary connections
-    - Clear action type descriptions (VC activation/deactivation vs plan change)
-    - Enhanced customer information display with current VC status
-  - **Request Management**: Updated to show VC number and current status columns
-  - **Dashboard Enhancements**:
-    - Admin view: VC number statistics (Total, Active, Inactive VCs)
-    - Employee view: Personal collection data only
-    - Removed system overview and quick actions from admin view
-  - **Data Structure**: Enhanced ActionRequest interface with VC number and status fields
-
+  - **CustomerTable Enhancement**: Complete rewrite with individual VC status management
+    - Primary VC status dropdown for admins in main table view
+    - Secondary VC status dropdowns in expanded view for each connection
+    - Individual VC status change handlers with proper status logging
+    - Enhanced expanded view showing all VC connections with status controls
+  - **Request Approval Automation**: When admin approves VC requests, status automatically updates
+    - Primary VC requests update customer.status and customer.isActive
+    - Secondary VC requests update specific connection.status in connections array
+    - Proper error handling and user feedback for status change failures
+  - **Auto-Selection Logic**: Smart VC selection in request forms
+    - Single VC customers: automatically select the only VC number
+    - Multiple VC customers: require manual VC selection
+  - **Current Outstanding Calculation**: Enhanced to respect VC status
+    - Only active and demo VCs contribute to outstanding calculations
+    - Inactive VCs are excluded from billing calculations on due dates
+  - **Status Audit Trail**: Comprehensive logging for all VC status changes
+    - Primary VC changes logged with admin details and timestamps
+    - Secondary VC changes tracked separately with VC number identification
 - **Request Type Clarification**:
 
   - **Activation Request**: Employee requests admin to change VC status to "Active"
@@ -268,7 +273,7 @@
   - Added automatic dark mode detection
   - Updated all components for theme compatibility
 
-### **🏗️ Layout Architecture Fix**
+### **🏗�� Layout Architecture Fix**
 
 - **Date**: Previous Session
 - **Type**: Critical Bug Fix
