@@ -9,6 +9,8 @@ import {
   UserCheck,
   UserX,
   MoreHorizontal,
+  Power,
+  PowerOff,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +30,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -55,14 +58,17 @@ type User = {
   id: string;
   name: string;
   role: string;
+  is_active: boolean;
 };
 
 export default function EmployeeManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteUser, setDeleteUser] = useState<User | null>(null);
+  const [toggleStatusUser, setToggleStatusUser] = useState<User | null>(null);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Load all users from Firebase on component mount
@@ -94,8 +100,11 @@ export default function EmployeeManagement() {
           const employeeCount = allUsers.filter(
             (u) => u.role === "employee",
           ).length;
+          const activeCount = allUsers.filter((u) => u.is_active).length;
+          const inactiveCount = allUsers.filter((u) => !u.is_active).length;
           console.log(`   - ${adminCount} Administrators`);
           console.log(`   - ${employeeCount} Employees/Collectors`);
+          console.log(`   - ${activeCount} Active, ${inactiveCount} Inactive`);
         }
       } catch (error) {
         console.error("Failed to load users:", error);
@@ -121,16 +130,56 @@ export default function EmployeeManagement() {
     return (
       user.name?.toLowerCase().includes(term) ||
       user.role?.toLowerCase().includes(term) ||
-      user.id?.toLowerCase().includes(term)
+      user.id?.toLowerCase().includes(term) ||
+      (user.is_active ? "active" : "inactive").includes(term)
     );
   });
 
-  const handleToggleStatus = (user: User) => {
-    // For now, just show a notification since we don't have isActive in our simple structure
-    toast({
-      title: "Status Toggle",
-      description: `Status toggle for ${user.name} - Feature coming soon`,
-    });
+  const handleToggleStatus = async () => {
+    if (!toggleStatusUser) return;
+
+    try {
+      setIsUpdating(toggleStatusUser.id);
+      const newStatus = !toggleStatusUser.is_active;
+
+      console.log(
+        `🔄 ${newStatus ? "Activating" : "Deactivating"} user: ${toggleStatusUser.name}`,
+      );
+
+      // Update user status in Firebase
+      await authService.updateUser(toggleStatusUser.id, {
+        is_active: newStatus,
+      });
+
+      // Update local state
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.id === toggleStatusUser.id
+            ? { ...user, is_active: newStatus }
+            : user,
+        ),
+      );
+
+      toast({
+        title: "Status Updated",
+        description: `${toggleStatusUser.name} has been ${newStatus ? "activated" : "deactivated"}. ${newStatus ? "They can now log in." : "They can no longer log in."}`,
+      });
+
+      console.log(
+        `✅ Successfully ${newStatus ? "activated" : "deactivated"} user: ${toggleStatusUser.name}`,
+      );
+    } catch (error: any) {
+      console.error("Failed to toggle user status:", error);
+      toast({
+        title: "Status Update Failed",
+        description:
+          error.message || "Failed to update user status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(null);
+      setToggleStatusUser(null);
+    }
   };
 
   const handleDeleteUser = async () => {
@@ -208,6 +257,7 @@ export default function EmployeeManagement() {
         id: newUserId,
         name: userData.name,
         role: userData.role,
+        is_active: true, // New users are active by default
       };
 
       setUsers((prev) => [...prev, newUser]);
@@ -270,7 +320,7 @@ export default function EmployeeManagement() {
           <CardContent className="pt-6">
             <div className="relative">
               <Input
-                placeholder="Search users by name, role, or ID..."
+                placeholder="Search users by name, role, status, or ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -295,6 +345,10 @@ export default function EmployeeManagement() {
               ({users.filter((u) => u.role === "admin").length} Admins,{" "}
               {users.filter((u) => u.role === "employee").length}{" "}
               Employees/Collectors)
+            </span>
+            <span className="ml-4">
+              ({users.filter((u) => u.is_active).length} Active,{" "}
+              {users.filter((u) => !u.is_active).length} Inactive)
             </span>
           </div>
         </div>
@@ -338,14 +392,20 @@ export default function EmployeeManagement() {
                                 user.role === "admin"
                                   ? "bg-purple-600"
                                   : "bg-blue-600"
-                              }`}
+                              } ${!user.is_active ? "opacity-50" : ""}`}
                             >
                               <span className="text-xs font-medium text-white">
                                 {user.name?.charAt(0).toUpperCase() || "?"}
                               </span>
                             </div>
                             <div>
-                              <div className="font-medium text-foreground">
+                              <div
+                                className={`font-medium ${
+                                  user.is_active
+                                    ? "text-foreground"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
                                 {user.name || "Unknown"}
                               </div>
                             </div>
@@ -356,11 +416,11 @@ export default function EmployeeManagement() {
                             variant={
                               user.role === "admin" ? "default" : "secondary"
                             }
-                            className={
+                            className={`${
                               user.role === "admin"
                                 ? "bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-200"
                                 : "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200"
-                            }
+                            } ${!user.is_active ? "opacity-50" : ""}`}
                           >
                             {user.role === "admin" ? (
                               <>
@@ -376,33 +436,66 @@ export default function EmployeeManagement() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <span className="font-mono text-sm text-muted-foreground">
+                          <span
+                            className={`font-mono text-sm ${
+                              user.is_active
+                                ? "text-muted-foreground"
+                                : "text-muted-foreground opacity-50"
+                            }`}
+                          >
                             {user.id}
                           </span>
                         </TableCell>
                         <TableCell>
                           <Badge
-                            variant="default"
-                            className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+                            variant={user.is_active ? "default" : "secondary"}
+                            className={
+                              user.is_active
+                                ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+                                : "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200"
+                            }
                           >
-                            <UserCheck className="w-3 h-3 mr-1" />
-                            Active
+                            {user.is_active ? (
+                              <>
+                                <UserCheck className="w-3 h-3 mr-1" />
+                                Active
+                              </>
+                            ) : (
+                              <>
+                                <UserX className="w-3 h-3 mr-1" />
+                                Inactive
+                              </>
+                            )}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={isUpdating === user.id}
+                              >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onClick={() => handleToggleStatus(user)}
+                                onClick={() => setToggleStatusUser(user)}
                               >
-                                <UserX className="mr-2 h-4 w-4" />
-                                Toggle Status
+                                {user.is_active ? (
+                                  <>
+                                    <PowerOff className="mr-2 h-4 w-4" />
+                                    Deactivate
+                                  </>
+                                ) : (
+                                  <>
+                                    <Power className="mr-2 h-4 w-4" />
+                                    Activate
+                                  </>
+                                )}
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => setDeleteUser(user)}
                                 className="text-red-600"
@@ -421,6 +514,64 @@ export default function EmployeeManagement() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Toggle Status Confirmation Dialog */}
+        <AlertDialog
+          open={!!toggleStatusUser}
+          onOpenChange={() => setToggleStatusUser(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {toggleStatusUser?.is_active ? "Deactivate" : "Activate"} User
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {toggleStatusUser?.is_active
+                  ? `Are you sure you want to deactivate ${toggleStatusUser?.name}? They will no longer be able to log in to the system.`
+                  : `Are you sure you want to activate ${toggleStatusUser?.name}? They will be able to log in to the system.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleToggleStatus}
+                className={
+                  toggleStatusUser?.is_active
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-green-600 hover:bg-green-700"
+                }
+              >
+                {toggleStatusUser?.is_active ? "Deactivate" : "Activate"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete User Confirmation Dialog */}
+        <AlertDialog
+          open={!!deleteUser}
+          onOpenChange={() => setDeleteUser(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove User</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove {deleteUser?.name}? This action
+                cannot be undone and they will be permanently removed from the
+                system.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteUser}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Add User Modal */}
         <Dialog open={showAddUserModal} onOpenChange={setShowAddUserModal}>
@@ -500,33 +651,6 @@ export default function EmployeeManagement() {
             </form>
           </DialogContent>
         </Dialog>
-
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog
-          open={!!deleteUser}
-          onOpenChange={() => setDeleteUser(null)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Remove User</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to remove{" "}
-                <strong>{deleteUser?.name}</strong> from the user list? This
-                action will remove them from the current view but won't delete
-                their Firebase account.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteUser}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Remove User
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </DashboardLayout>
   );
