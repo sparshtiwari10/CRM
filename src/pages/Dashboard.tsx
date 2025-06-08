@@ -97,8 +97,9 @@ export default function Dashboard() {
     customerName: customer.name,
     amount: customer.portalBill || 0,
     date: today,
-    status: "Paid" as const,
-    method: "Cash" as const,
+    method: "Cash",
+    status: "Completed",
+    invoiceNumber: `INV-${today.replace(/-/g, "")}-${index + 1}`,
   }));
 
   const yesterdayPayments = customers.slice(3, 6).map((customer, index) => ({
@@ -107,8 +108,9 @@ export default function Dashboard() {
     customerName: customer.name,
     amount: customer.portalBill || 0,
     date: yesterday,
-    status: "Paid" as const,
-    method: "Online" as const,
+    method: "Online",
+    status: "Completed",
+    invoiceNumber: `INV-${yesterday.replace(/-/g, "")}-${index + 1}`,
   }));
 
   const todayTotal = todayPayments.reduce(
@@ -120,639 +122,361 @@ export default function Dashboard() {
     0,
   );
 
-  // Combine recent payments for the Recent Payments section
-  const recentPayments = [...todayPayments, ...yesterdayPayments].slice(0, 5);
-
-  // Create empty state message when no customers exist
-  const hasCustomers = customers.length > 0;
-
-  const StatCard = ({
-    title,
-    value,
-    icon: Icon,
-    change,
-    changeType,
-  }: {
-    title: string;
-    value: string | number;
-    icon: any;
-    change?: string;
-    changeType?: "positive" | "negative" | "neutral";
-  }) => (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {change && (
-          <p
-            className={`text-xs ${
-              changeType === "positive"
-                ? "text-green-600"
-                : changeType === "negative"
-                  ? "text-red-600"
-                  : "text-muted-foreground"
-            }`}
-          >
-            {change}
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-
-  // Quick action handlers for admins
-  const handleAddCustomer = () => {
-    if (isAdmin) {
-      navigate("/customers");
-      setTimeout(() => {
-        toast({
-          title: "Add Customer",
-          description:
-            "Click the 'Add New Customer' button to create a new customer.",
-        });
-      }, 100);
-    } else {
-      toast({
-        title: "Access Denied",
-        description: "Only administrators can add new customers.",
-        variant: "destructive",
-      });
-    }
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+    }).format(amount);
   };
 
-  const handleProcessPayment = () => {
-    navigate("/billing");
-    toast({
-      title: "Process Payment",
-      description: "Navigate to payments section to process customer payments.",
-    });
-  };
-
-  const handleManagePackages = () => {
-    if (isAdmin) {
-      navigate("/packages");
-      toast({
-        title: "Manage Packages",
-        description: "Navigate to packages section to manage service packages.",
-      });
-    } else {
-      toast({
-        title: "Access Denied",
-        description: "Only administrators can manage packages.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleViewAlerts = () => {
-    toast({
-      title: "System Alerts",
-      description: `You have ${overdueCustomers} overdue accounts and ${pendingCustomers} pending payments.`,
-    });
-  };
-
-  const handleGenerateRequest = () => {
-    navigate("/requests");
-    toast({
-      title: "Generate Request",
-      description: "Navigate to requests section to create a new request.",
-    });
-  };
-
-  // Render admin dashboard
-  if (isAdmin) {
+  if (isLoading) {
     return (
       <DashboardLayout title="Dashboard">
-        <div className="p-6 space-y-6">
-          {/* Admin Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard
-              title="Total Customers"
-              value={isLoading ? "..." : totalCustomers.toLocaleString()}
-              icon={Users}
-              change={
-                totalCustomers > 0
-                  ? `${activeCustomers} active, ${inactiveCustomers} inactive`
-                  : "No customers yet"
-              }
-              changeType={totalCustomers > 0 ? "positive" : "neutral"}
-            />
-            <StatCard
-              title="Active Customers"
-              value={isLoading ? "..." : activeCustomers.toLocaleString()}
-              icon={TrendingUp}
-              change={
-                activeCustomers > 0
-                  ? `${pendingCustomers} pending payments`
-                  : "No active customers"
-              }
-              changeType={activeCustomers > 0 ? "positive" : "neutral"}
-            />
-            <StatCard
-              title="Monthly Revenue"
-              value={isLoading ? "..." : `₹${totalRevenue.toLocaleString()}`}
-              icon={DollarSign}
-              change={
-                totalRevenue > 0
-                  ? `From ${totalCustomers} customers`
-                  : "No revenue yet"
-              }
-              changeType={totalRevenue > 0 ? "positive" : "neutral"}
-            />
-            <StatCard
-              title="Pending Payments"
-              value={isLoading ? "..." : pendingCustomers}
-              icon={Clock}
-              change={
-                overdueCustomers > 0
-                  ? `${overdueCustomers} overdue`
-                  : pendingCustomers > 0
-                    ? "All pending on time"
-                    : "No pending payments"
-              }
-              changeType={
-                overdueCustomers > 0
-                  ? "negative"
-                  : pendingCustomers > 0
-                    ? "neutral"
-                    : "positive"
-              }
-            />
+        <div className="p-4 lg:p-6">
+          <div className="text-center py-8 text-muted-foreground">
+            Loading dashboard data...
           </div>
-
-          {/* Admin Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Package className="h-5 w-5" />
-                <span>Quick Actions</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Button
-                  className="h-16 flex flex-col space-y-2 hover:bg-blue-600"
-                  onClick={handleAddCustomer}
-                >
-                  <UserPlus className="h-6 w-6" />
-                  <span>Add Customer</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
-                  onClick={handleProcessPayment}
-                >
-                  <CreditCard className="h-6 w-6" />
-                  <span>Process Payment</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
-                  onClick={handleManagePackages}
-                >
-                  <Package className="h-6 w-6" />
-                  <span>Manage Packages</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
-                  onClick={handleViewAlerts}
-                >
-                  <AlertCircle className="h-6 w-6" />
-                  <span>View Alerts</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recent Customers */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Customers</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {isLoading ? (
-                    <div className="text-center py-4 text-muted-foreground">
-                      Loading customers...
-                    </div>
-                  ) : recentCustomers.length > 0 ? (
-                    recentCustomers.map((customer) => (
-                      <div
-                        key={customer.id}
-                        className="flex items-center justify-between py-2"
-                      >
-                        <div>
-                          <p className="font-medium">{customer.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {customer.currentPackage}
-                          </p>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={
-                            customer.billingStatus === "Paid"
-                              ? "bg-green-100 text-green-800"
-                              : customer.billingStatus === "Pending"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
-                          }
-                        >
-                          {customer.billingStatus}
-                        </Badge>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground/70" />
-                      <p>No customers yet</p>
-                      <p className="text-sm">
-                        Start by adding your first customer
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="pt-4 border-t">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => navigate("/customers")}
-                    >
-                      View All Customers
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Payments */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Payments</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {isLoading ? (
-                    <div className="text-center py-4 text-muted-foreground">
-                      Loading recent activity...
-                    </div>
-                  ) : recentCustomers.length > 0 ? (
-                    <div className="space-y-3">
-                      {recentCustomers.slice(0, 5).map((customer) => (
-                        <div
-                          key={customer.id}
-                          className="flex items-center justify-between"
-                        >
-                          <div>
-                            <p className="font-medium">{customer.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {customer.email}
-                            </p>
-                          </div>
-                          <Badge
-                            variant={
-                              customer.status === "active"
-                                ? "default"
-                                : "secondary"
-                            }
-                          >
-                            {customer.status}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground/70" />
-                      <p>No customers yet</p>
-                      <p className="text-xs mt-1">
-                        Add your first customer to get started
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Admin Alerts Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5 text-orange-500" />
-                <span>System Alerts</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-start space-x-3 p-3 bg-red-50 rounded-lg">
-                  <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-medium text-red-800">
-                      {overdueCustomers} Overdue Accounts
-                    </p>
-                    <p className="text-sm text-red-600">
-                      {overdueCustomers > 0
-                        ? `${overdueCustomers > 1 ? "Multiple customers have" : "One customer has"} overdue payments requiring immediate attention.`
-                        : "No overdue accounts - great job!"}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate("/customers")}
-                    className="text-red-600 border-red-300 hover:bg-red-50"
-                  >
-                    View
-                  </Button>
-                </div>
-
-                <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
-                  <Clock className="h-5 w-5 text-yellow-500 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-medium text-yellow-800">
-                      {pendingCustomers} Pending Payments
-                    </p>
-                    <p className="text-sm text-yellow-600">
-                      {pendingCustomers > 0
-                        ? `${pendingCustomers} payments need attention.`
-                        : "All payments are up to date!"}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate("/billing")}
-                    className="text-yellow-600 border-yellow-300 hover:bg-yellow-50"
-                  >
-                    Review
-                  </Button>
-                </div>
-
-                <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-green-500 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-medium text-green-800">
-                      {newCustomersThisMonth} New Customers This Month
-                    </p>
-                    <p className="text-sm text-green-600">
-                      {newCustomersThisMonth > 0
-                        ? `Good growth in customer acquisition this month.`
-                        : "Ready to add new customers for this month."}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate("/customers")}
-                    className="text-green-600 border-green-300 hover:bg-green-50"
-                  >
-                    View
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </DashboardLayout>
     );
   }
 
-  // Render employee dashboard (restricted content with mobile-optimized containers)
   return (
-    <DashboardLayout title="Employee Dashboard">
+    <DashboardLayout title="Dashboard">
       <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
-        {/* Employee: Compact Today & Yesterday Billing Containers */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-6">
-          <Card className="compact-mobile">
-            <CardHeader className="pb-2 lg:pb-3">
-              <CardTitle className="text-base lg:text-lg font-medium text-gray-900 flex items-center space-x-2">
-                <DollarSign className="h-4 w-4 lg:h-5 lg:w-5 text-green-600" />
-                <span>Today's Billing</span>
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+          <div>
+            <h2 className="text-xl lg:text-2xl font-bold text-foreground">
+              Dashboard
+            </h2>
+            <p className="text-sm lg:text-base text-muted-foreground">
+              {isAdmin
+                ? "Complete overview of your cable TV management system"
+                : "Your daily collection summary and customer overview"}
+            </p>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+            <Button
+              onClick={() => setShowInvoiceGenerator(true)}
+              className="text-sm"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Generate Invoice
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/customers")}
+              className="text-sm"
+            >
+              <Users className="mr-2 h-4 w-4" />
+              View Customers
+            </Button>
+          </div>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          {/* Total Customers */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Customers
               </CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-2xl lg:text-3xl font-bold text-green-600">
-                ₹{todayTotal.toFixed(2)}
+              <div className="text-2xl font-bold text-foreground">
+                {totalCustomers}
               </div>
-              <p className="text-xs lg:text-sm text-muted-foreground mt-1">
-                {todayPayments.length} invoices generated today
+              <p className="text-xs text-muted-foreground">
+                {activeCustomers} active, {inactiveCustomers} inactive
               </p>
-              <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
-                <div className="text-xs text-muted-foreground">
-                  Status breakdown:
-                </div>
-                <div className="flex space-x-2 lg:space-x-4 text-xs">
-                  <span className="text-green-600">
-                    Paid:{" "}
-                    {
-                      todayPayments.filter((r) => r.status === "Completed")
-                        .length
-                    }
-                  </span>
-                  <span className="text-yellow-600">
-                    Pending:{" "}
-                    {todayPayments.filter((r) => r.status === "Pending").length}
-                  </span>
-                </div>
-              </div>
             </CardContent>
           </Card>
 
-          <Card className="compact-mobile">
-            <CardHeader className="pb-2 lg:pb-3">
-              <CardTitle className="text-base lg:text-lg font-medium text-foreground flex items-center space-x-2">
-                <Calendar className="h-4 w-4 lg:h-5 lg:w-5 text-blue-600" />
-                <span>Yesterday's Billing</span>
+          {/* Monthly Revenue */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Monthly Revenue
               </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-2xl lg:text-3xl font-bold text-blue-600">
-                ₹{yesterdayTotal.toFixed(2)}
+              <div className="text-2xl font-bold text-foreground">
+                {formatCurrency(monthlyRevenue)}
               </div>
-              <p className="text-xs lg:text-sm text-muted-foreground mt-1">
-                {yesterdayPayments.length} invoices generated yesterday
+              <p className="text-xs text-muted-foreground">
+                From {totalCustomers} active subscriptions
               </p>
-              <div className="mt-2 lg:mt-4 space-y-1 lg:space-y-2">
-                <div className="text-xs text-muted-foreground">
-                  Status breakdown:
-                </div>
-                <div className="flex space-x-2 lg:space-x-4 text-xs">
-                  <span className="text-green-600">
-                    Paid:{" "}
-                    {
-                      yesterdayPayments.filter((r) => r.status === "Completed")
-                        .length
-                    }
-                  </span>
-                  <span className="text-yellow-600">
-                    Pending:{" "}
-                    {
-                      yesterdayPayments.filter((r) => r.status === "Pending")
-                        .length
-                    }
-                  </span>
-                </div>
+            </CardContent>
+          </Card>
+
+          {/* Pending Payments */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Pending Payments
+              </CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-2xl font-bold text-foreground">
+                {pendingCustomers}
               </div>
+              <p className="text-xs text-muted-foreground">
+                {overdueCustomers} overdue accounts
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* New Customers */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                New This Month
+              </CardTitle>
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-2xl font-bold text-foreground">
+                {newCustomersThisMonth}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                New customer registrations
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Employee: Action Buttons */}
+        {/* Payment Summary Cards (Employee View) */}
+        {!isAdmin && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+            {/* Today's Collection Summary */}
+            <Card className="bg-green-100 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                      Today's Collection
+                    </p>
+                    <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+                      {formatCurrency(todayTotal)}
+                    </p>
+                    <p className="text-xs text-green-600 dark:text-green-300">
+                      {todayPayments.length} payments collected
+                    </p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-green-600 dark:text-green-400" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Yesterday's Collection Summary */}
+            <Card className="bg-blue-100 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      Yesterday's Collection
+                    </p>
+                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                      {formatCurrency(yesterdayTotal)}
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-300">
+                      {yesterdayPayments.length} payments collected
+                    </p>
+                  </div>
+                  <Calendar className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Recent Activity and Quick Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+          {/* Recent Customers */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-foreground">
+                Recent Customers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recentCustomers.length > 0 ? (
+                <div className="space-y-3">
+                  {recentCustomers.map((customer) => (
+                    <div
+                      key={customer.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">
+                          {customer.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {customer.phoneNumber} • {customer.currentPackage}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={customer.isActive ? "default" : "secondary"}
+                        className={
+                          customer.isActive
+                            ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+                            : ""
+                        }
+                      >
+                        {customer.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No customers found
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Today's Highlights (Employee View) or System Status (Admin View) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-foreground">
+                {isAdmin ? "System Overview" : "Today's Activity"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isAdmin ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">
+                      Active Packages
+                    </span>
+                    <Badge variant="outline">4 Available</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">
+                      Payment Methods
+                    </span>
+                    <Badge variant="outline">Cash, Online, Card</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">
+                      Billing Cycle
+                    </span>
+                    <Badge variant="outline">Monthly</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">
+                      System Status
+                    </span>
+                    <Badge className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200">
+                      Online
+                    </Badge>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {todayPayments.length > 0 ? (
+                    <>
+                      <div className="text-sm font-medium text-foreground mb-2">
+                        Recent Collections
+                      </div>
+                      {todayPayments.slice(0, 3).map((payment) => (
+                        <div
+                          key={payment.id}
+                          className="flex items-center justify-between p-2 rounded bg-muted/30"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {payment.customerName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {payment.method} • {payment.invoiceNumber}
+                            </p>
+                          </div>
+                          <span className="text-sm font-medium text-foreground">
+                            {formatCurrency(payment.amount)}
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No payments collected today yet
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <CreditCard className="h-5 w-5" />
-              <span>Employee Actions</span>
-            </CardTitle>
+            <CardTitle className="text-foreground">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <Button
-                className="h-16 flex flex-col space-y-2 hover:bg-blue-600"
-                onClick={() => setShowInvoiceGenerator(true)}
+                variant="outline"
+                onClick={() => navigate("/customers")}
+                className="h-auto p-4 flex-col space-y-2"
               >
-                <FileText className="h-6 w-6" />
-                <span>Generate Invoice</span>
+                <Users className="h-6 w-6" />
+                <span className="text-sm">Customers</span>
               </Button>
               <Button
                 variant="outline"
-                className="h-16 flex flex-col space-y-2 hover:bg-gray-50"
-                onClick={handleGenerateRequest}
+                onClick={() => navigate("/billing")}
+                className="h-auto p-4 flex-col space-y-2"
               >
-                <ClipboardList className="h-6 w-6" />
-                <span>Generate Request</span>
+                <CreditCard className="h-6 w-6" />
+                <span className="text-sm">Billing</span>
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowInvoiceGenerator(true)}
+                className="h-auto p-4 flex-col space-y-2"
+              >
+                <FileText className="h-6 w-6" />
+                <span className="text-sm">Invoice</span>
+              </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/packages")}
+                  className="h-auto p-4 flex-col space-y-2"
+                >
+                  <Package className="h-6 w-6" />
+                  <span className="text-sm">Packages</span>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Employee: Today's Payments */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Today's Payments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {todayPayments.length > 0 ? (
-                  todayPayments.slice(0, 5).map((payment) => (
-                    <div
-                      key={payment.id}
-                      className="flex items-center justify-between py-2"
-                    >
-                      <div>
-                        <p className="font-medium">{payment.customerName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {payment.method} •{" "}
-                          {new Date(payment.date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">₹{payment.amount}</p>
-                        <Badge
-                          variant="outline"
-                          className="bg-green-100 text-green-800"
-                        >
-                          {payment.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-center text-muted-foreground py-4">
-                    No payments today
-                  </p>
-                )}
-
-                <div className="pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate("/billing")}
-                  >
-                    View Today's Billing
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Employee: Yesterday's Payments */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Yesterday's Payments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {yesterdayPayments.length > 0 ? (
-                  yesterdayPayments.slice(0, 5).map((payment) => (
-                    <div
-                      key={payment.id}
-                      className="flex items-center justify-between py-2"
-                    >
-                      <div>
-                        <p className="font-medium">{payment.customerName}</p>
-                        <p className="text-sm text-gray-500">
-                          {payment.method} •{" "}
-                          {new Date(payment.date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">₹{payment.amount}</p>
-                        <Badge
-                          variant="outline"
-                          className="bg-green-100 text-green-800"
-                        >
-                          {payment.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-center text-gray-500 py-4">
-                    No payments yesterday
-                  </p>
-                )}
-
-                <div className="pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate("/billing")}
-                  >
-                    View Yesterday's Billing
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Invoice Generator Modal */}
-        <InvoiceGenerator
-          open={showInvoiceGenerator}
-          onOpenChange={setShowInvoiceGenerator}
-        />
+        {showInvoiceGenerator && (
+          <InvoiceGenerator
+            open={showInvoiceGenerator}
+            onOpenChange={setShowInvoiceGenerator}
+            customers={customers}
+            onInvoiceGenerated={(invoice) => {
+              toast({
+                title: "Invoice Generated",
+                description: `Invoice ${invoice.invoiceNumber} has been created successfully.`,
+              });
+            }}
+          />
+        )}
       </div>
-
-      {/* Add CSS for mobile optimization */}
-      <style jsx>{`
-        @media (max-width: 768px) {
-          .compact-mobile .card-header {
-            padding: 12px 16px 8px 16px;
-          }
-          .compact-mobile .card-content {
-            padding: 0 16px 12px 16px;
-          }
-        }
-      `}</style>
     </DashboardLayout>
   );
 }

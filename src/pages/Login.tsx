@@ -98,81 +98,86 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="h-12 w-12 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Shield className="h-8 w-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-foreground">AGV</h1>
-          </div>
-          <h2 className="text-xl font-semibold text-muted-foreground">
-            Cable TV Management System
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Secure access for employees and administrators
-          </p>
-          {/* Firebase Connection Status */}
-          <div className="flex justify-center mt-2">
-            <FirebaseStatus />
-          </div>
+          <Card className="w-full max-w-md shadow-xl">
+            <CardHeader className="space-y-4 pb-6">
+              <div className="flex items-center justify-center mb-4">
+                <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center">
+                  <Lock className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl font-bold text-center text-foreground">
+                Welcome Back
+              </CardTitle>
+              <p className="text-muted-foreground text-center">
+                Sign in to your account to continue
+              </p>
+              <p className="text-xs text-muted-foreground text-center">
+                Secure access for employees and administrators
+              </p>
+              {/* Firebase Connection Status */}
+              <div className="flex justify-center mt-2">
+                <FirebaseStatus />
+              </div>
+            </CardHeader>
+          </Card>
         </div>
 
         {/* Login Form */}
         <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-center text-xl">Sign In</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username" className="text-foreground">
+                  Username
+                </Label>
                 <Input
                   id="username"
                   type="text"
+                  placeholder="Enter your username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
                   disabled={isLoading}
-                  className="h-11"
-                  autoComplete="username"
-                  autoFocus
+                  required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-foreground">
+                  Password
+                </Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
                     disabled={isLoading}
-                    className="h-11 pr-10"
-                    autoComplete="current-password"
+                    required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isLoading}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      <Eye className="h-4 w-4" />
                     )}
                   </Button>
                 </div>
@@ -180,8 +185,8 @@ export default function Login() {
 
               <Button
                 type="submit"
-                className="w-full h-11"
-                disabled={isLoading}
+                className="w-full"
+                disabled={isLoading || !username.trim() || !password.trim()}
               >
                 {isLoading ? (
                   <>
@@ -189,66 +194,55 @@ export default function Login() {
                     Signing In...
                   </>
                 ) : (
-                  <>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Sign In
-                  </>
+                  "Sign In"
                 )}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Demo Login Section */}
-        <Card className="shadow-lg border-dashed border-2 border-gray-300">
+        {/* Demo Login Buttons */}
+        <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="text-center text-lg text-muted-foreground">
+            <CardTitle className="text-lg text-center text-foreground">
               Demo Access
             </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground text-center">
               Try the system with demo credentials
             </p>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                onClick={() => handleDemoLogin("admin")}
-                disabled={isLoading}
-                className="h-12 flex flex-col space-y-1"
-              >
-                <Shield className="h-4 w-4" />
-                <span className="text-xs">Admin Demo</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => handleDemoLogin("employee")}
-                disabled={isLoading}
-                className="h-12 flex flex-col space-y-1"
-              >
-                <Users className="h-4 w-4" />
-                <span className="text-xs">Employee Demo</span>
-              </Button>
-            </div>
-
-            <div className="text-xs text-muted-foreground space-y-1">
-              <div>
-                <strong>Admin:</strong> username: admin, password: admin123
-              </div>
-              <div>
-                <strong>Employee:</strong> username: employee, password:
-                employee123
-              </div>
-            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => handleDemoLogin("admin")}
+              disabled={isLoading}
+            >
+              <Shield className="mr-2 h-4 w-4" />
+              Login as Administrator
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => handleDemoLogin("employee")}
+              disabled={isLoading}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Login as Employee
+            </Button>
           </CardContent>
         </Card>
 
-        {/* Security Notice */}
-        <div className="text-center text-xs text-muted-foreground space-y-1">
-          <p>🔒 This system is for authorized personnel only</p>
-          <p>All login attempts are monitored and logged</p>
+        {/* Footer */}
+        <div className="text-center space-y-2">
+          <p className="text-xs text-muted-foreground">
+            AGV Cable TV Management System
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Secure • Reliable • Efficient
+          </p>
         </div>
       </div>
     </div>

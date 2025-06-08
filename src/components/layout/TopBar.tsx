@@ -37,7 +37,7 @@ export function TopBar({ title }: TopBarProps) {
   };
 
   return (
-    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-16 flex items-center justify-between px-4 lg:px-6">
+    <header className="bg-background border-b border-border h-16 flex items-center justify-between px-4 lg:px-6">
       {/* Left side - Title and Search */}
       <div className="flex items-center space-x-4 flex-1">
         {/* Page Title */}
@@ -80,6 +80,7 @@ export function TopBar({ title }: TopBarProps) {
         <Button variant="ghost" size="icon" className="md:hidden">
           <Search className="h-5 w-5" />
         </Button>
+
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -96,32 +97,19 @@ export function TopBar({ title }: TopBarProps) {
             <DropdownMenuItem className="flex flex-col items-start p-3">
               <div className="font-medium text-sm">Overdue Payment Alert</div>
               <div className="text-xs text-muted-foreground mt-1">
-                Michael Brown has an overdue payment of $79.99
-              </div>
-              <div className="text-xs text-muted-foreground/70 mt-1">
-                2 hours ago
+                Michael Brown has an overdue payment of ₹799
               </div>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem className="flex flex-col items-start p-3">
-              <div className="font-medium text-sm">
-                New Customer Registration
-              </div>
+              <div className="font-medium text-sm">New Customer Added</div>
               <div className="text-xs text-muted-foreground mt-1">
-                Lisa Anderson signed up for Basic package
-              </div>
-              <div className="text-xs text-muted-foreground/70 mt-1">
-                5 hours ago
+                Sarah Wilson registered for Premium package
               </div>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem className="flex flex-col items-start p-3">
-              <div className="font-medium text-sm">System Maintenance</div>
+              <div className="font-medium text-sm">Payment Received</div>
               <div className="text-xs text-muted-foreground mt-1">
-                Scheduled maintenance tonight at 2 AM EST
-              </div>
-              <div className="text-xs text-muted-foreground/70 mt-1">
-                1 day ago
+                John Doe paid ₹599 for January billing
               </div>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -130,30 +118,30 @@ export function TopBar({ title }: TopBarProps) {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src="/placeholder-avatar.jpg" alt={user?.name} />
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user?.avatar || ""} alt={user?.name || ""} />
                 <AvatarFallback className="bg-blue-600 text-white">
-                  {user?.name ? (
-                    getUserInitials(user.name)
-                  ) : (
-                    <User className="h-5 w-5" />
-                  )}
+                  {user?.name ? getUserInitials(user.name) : "U"}
                 </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{user?.name}</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-                <div className="flex items-center space-x-1">
+                <p className="text-sm font-medium leading-none text-foreground">
+                  {user?.name || "User"}
+                </p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email || "user@example.com"}
+                </p>
+                <div className="flex items-center mt-1">
                   <Badge
                     variant={isAdmin ? "default" : "secondary"}
                     className="text-xs"
                   >
-                    {isAdmin ? "Admin" : "Employee"}
+                    {isAdmin ? "Administrator" : "Employee"}
                   </Badge>
                 </div>
               </div>
@@ -161,16 +149,16 @@ export function TopBar({ title }: TopBarProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
-              Profile
+              <span>Profile</span>
             </DropdownMenuItem>
             <DropdownMenuItem>
               <Settings className="mr-2 h-4 w-4" />
-              Settings
+              <span>Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600" onClick={handleLogout}>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

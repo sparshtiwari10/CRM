@@ -308,6 +308,41 @@ class FirestoreService {
     }
   }
 
+  async getBillingRecordsByCustomer(
+    customerId: string,
+  ): Promise<BillingRecord[]> {
+    try {
+      const billingRef = collection(db, "billing");
+      // Use only where clause to avoid composite index requirement
+      const q = query(
+        billingRef,
+        where("customer_id", "==", customerId),
+        limit(20), // Get more records since we'll sort in memory
+      );
+
+      const querySnapshot = await getDocs(q);
+      const records: BillingRecord[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as FirestoreBillingRecord;
+        records.push(this.convertFirestoreBillingToBillingRecord(doc.id, data));
+      });
+
+      // Sort in memory by generated date (newest first) and limit to 10
+      return records
+        .sort(
+          (a, b) =>
+            new Date(b.generatedDate).getTime() -
+            new Date(a.generatedDate).getTime(),
+        )
+        .slice(0, 10);
+    } catch (error) {
+      console.error("❌ Failed to load billing records for customer:", error);
+      // Fallback: return empty array instead of throwing error
+      return [];
+    }
+  }
+
   async addBillingRecord(record: Omit<BillingRecord, "id">): Promise<string> {
     try {
       const currentUser = authService.getCurrentUser();
