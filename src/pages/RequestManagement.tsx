@@ -396,7 +396,9 @@ export default function RequestManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Customer</TableHead>
+                  <TableHead>VC Number</TableHead>
                   <TableHead>Action Type</TableHead>
+                  <TableHead>Current Status</TableHead>
                   {isAdmin && <TableHead>Employee</TableHead>}
                   <TableHead>Request Date</TableHead>
                   <TableHead>Status</TableHead>
@@ -408,7 +410,7 @@ export default function RequestManagement() {
                 {filteredRequests.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={isAdmin ? 7 : 6}
+                      colSpan={isAdmin ? 9 : 8}
                       className="text-center py-8"
                     >
                       {requests.length === 0
@@ -422,9 +424,23 @@ export default function RequestManagement() {
                       <TableCell className="font-medium">
                         {request.customerName}
                       </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {request.vcNumber}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline">
                           {getActionTypeLabel(request.actionType)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            request.currentStatus === "active"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {request.currentStatus || "unknown"}
                         </Badge>
                       </TableCell>
                       {isAdmin && <TableCell>{request.employeeName}</TableCell>}

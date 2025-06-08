@@ -147,32 +147,48 @@ src/
   const collectorName = user?.collector_name || user?.name || "";
   ```
 
-#### **`Dashboard.tsx`** 📊 **[ENHANCED - EMPLOYEE-SPECIFIC DATA]**
+#### **`Dashboard.tsx`** 📊 **[ENHANCED - VC STATISTICS & ROLE-BASED]**
 
-- **Purpose**: Main dashboard with role-specific content and employee-specific collections
-- **Features**:
-  - **Role-based Data Loading**: Admin sees all customers, employees see only assigned customers
-  - **Employee-Specific Collections**: Today's and yesterday's collection amounts based on employee's customers only
-  - **Customer Statistics**: Count by status (Active, Inactive, Demo) for assigned customers
-  - **Collection Summary Cards**: Separate cards for today's and yesterday's collections with employee-specific totals
-  - **Quick Action Buttons**: Customer/billing management, invoice generation
-  - **Recent Activity Feed**: Shows recent customers assigned to the logged-in employee
-  - **Firebase Connection Monitoring**: Real-time connection status
+- **Purpose**: Main dashboard with role-specific content, VC statistics for admins, and employee-specific collections
+- **Admin Dashboard Features**:
+  - **VC Number Statistics**: Count of Total, Active, and Inactive VC numbers across all customers
+  - **VC-Based Revenue**: Monthly revenue calculated from active VC connections
+  - **System-Wide Data**: Admin sees all customers and VC connections
+  - **Clean Interface**: Removed system overview and quick actions for focused admin view
 - **Employee Dashboard Features**:
+  - **Employee-Specific Data**: Only assigned customers and their collections
+  - **Personal Collection Summary**: Today's and yesterday's collection amounts
+  - **Customer Statistics**: Count by status for assigned customers only
+  - **Collection Cards**: Green card for today, blue card for yesterday
+  - **Quick Actions**: Customer/billing management, invoice generation
+  - **Recent Activity Feed**: Shows recent customers assigned to the logged-in employee
+- **VC Statistics Calculation**:
 
   ```typescript
-  // Employee-specific data loading
-  const employeeName = user.collector_name || user.name;
-  customersData = await CustomerService.getCustomersByCollector(employeeName);
+  // Admin VC count calculation
+  const calculateVCStats = () => {
+    let activeVCs = 0,
+      inactiveVCs = 0;
 
-  // Collection calculations based on employee's customers only
-  todayTotal = employeeCustomers.reduce(
-    (sum, payment) => sum + payment.amount,
-    0,
-  );
+    customers.forEach((customer) => {
+      // Count primary VC
+      if (customer.status === "active") activeVCs++;
+      else inactiveVCs++;
+
+      // Count secondary VCs
+      customer.connections?.forEach((conn) => {
+        if (!conn.isPrimary) {
+          if (conn.status === "active") activeVCs++;
+          else inactiveVCs++;
+        }
+      });
+    });
+
+    return { activeVCs, inactiveVCs, totalVCs: activeVCs + inactiveVCs };
+  };
   ```
 
-- **Collection Display**: Green card for today's collection, blue card for yesterday's collection
+- **Role-Based UI**: Completely different dashboard layouts for admin vs employee users
 
 #### **`Billing.tsx`** 💰
 
@@ -247,29 +263,39 @@ src/
 
 ### **`src/components/customers/`**
 
-#### **`ActionRequestModal.tsx`** 🎯 **[ENHANCED - CUSTOMER SELECTION]**
+#### **`ActionRequestModal.tsx`** 🎯 **[ENHANCED - VC STATUS MANAGEMENT]**
 
-- **Purpose**: Employee request submission with customer selection for admin clarity
+- **Purpose**: Employee VC status change request submission with search and VC selection
 - **Features**:
-  - **Customer Selection Dropdown**: Employees choose which customer the request is for
-  - **Action Type Selection**: Activation, deactivation, or plan change requests
-  - **Plan Change Support**: For plan change requests, shows available packages
-  - **Customer Information Display**: Shows selected customer's details (VC number, current package, status)
-  - **Form Validation**: Requires customer selection, action type, and detailed reason
-  - **Firebase Integration**: Submits requests directly to Firebase for admin review
-- **Request Flow**:
+  - **Customer Search Functionality**: Real-time search by name, VC number, phone, or address
+  - **VC Number Selection**: Choose specific VC (primary or secondary) for status changes
+  - **VC Status Clarification**: Clear distinction between VC activation/deactivation vs plan changes
+  - **Current Status Display**: Shows current VC status and package information
+  - **Action Type Descriptions**: Clear explanations of what each request type does
+  - **Form Validation**: Requires customer selection, VC selection, action type, and detailed reason
+  - **Firebase Integration**: Submits VC-specific requests directly to Firebase for admin review
+- **Request Types**:
+
   ```typescript
-  // Employee selects customer and submits request
+  // VC Status Change Requests
+  "activation"   → Request to change VC status to "Active"
+  "deactivation" → Request to change VC status to "Inactive"
+  "plan_change"  → Request to change package plan for specific VC
+
+  // Request Structure
   const request = {
     customerId: selectedCustomer.id,
     customerName: selectedCustomer.name,
+    vcNumber: selectedVCNumber,           // Specific VC for request
+    currentStatus: currentVCStatus,       // Current VC status
     employeeId: user.id,
     employeeName: user.name,
     actionType: "activation" | "deactivation" | "plan_change",
-    reason: "Detailed reason provided by employee",
+    reason: "Detailed reason for VC status change"
   };
-  await CustomerService.addRequest(request);
   ```
+
+- **Search Interface**: Similar to invoice generator with filtered results and selection cards
 
 #### **`CustomerModal.tsx`** 🎛️ **[FIXED - CONTROLLED INPUTS]**
 

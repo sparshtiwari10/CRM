@@ -46,10 +46,12 @@ export interface ActionRequest {
   id: string;
   customerId: string;
   customerName: string;
+  vcNumber: string; // VC number for the request
   employeeId: string;
   employeeName: string;
   actionType: "activation" | "deactivation" | "plan_change";
   currentPlan?: string;
+  currentStatus?: "active" | "inactive" | "demo"; // Current VC status
   requestedPlan?: string;
   reason: string;
   status: "pending" | "approved" | "rejected";

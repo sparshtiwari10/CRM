@@ -73,10 +73,12 @@ export interface FirestoreBillingRecord {
 export interface FirestoreRequest {
   customer_id: string;
   customer_name: string;
+  vc_number: string; // VC number for the request
   employee_id: string;
   employee_name: string;
   action_type: "activation" | "deactivation" | "plan_change";
   current_plan?: string;
+  current_status?: "active" | "inactive" | "demo"; // Current VC status
   requested_plan?: string; // Optional - only present for plan_change requests
   reason: string;
   status: "pending" | "approved" | "rejected";
@@ -445,10 +447,12 @@ class FirestoreService {
           id: doc.id,
           customerId: data.customer_id,
           customerName: data.customer_name,
+          vcNumber: data.vc_number,
           employeeId: data.employee_id,
           employeeName: data.employee_name,
           actionType: data.action_type,
           currentPlan: data.current_plan,
+          currentStatus: data.current_status,
           requestedPlan: data.requested_plan,
           reason: data.reason,
           status: data.status,
@@ -491,6 +495,7 @@ class FirestoreService {
       const requestData: any = {
         customer_id: request.customerId || "",
         customer_name: request.customerName || "",
+        vc_number: request.vcNumber || "",
         employee_id: currentUser.id || "",
         employee_name: currentUser.name || "",
         action_type: request.actionType || "",
@@ -502,7 +507,11 @@ class FirestoreService {
         updated_at: Timestamp.now(),
       };
 
-      // Only add requested_plan if it's not undefined or empty
+      // Only add optional fields if they have valid values
+      if (request.currentStatus && request.currentStatus.trim() !== "") {
+        requestData.current_status = request.currentStatus;
+      }
+
       if (request.requestedPlan && request.requestedPlan.trim() !== "") {
         requestData.requested_plan = request.requestedPlan;
       }
