@@ -941,7 +941,6 @@ export default function CustomerTable({
               Delete Customer
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogFooter>
       </AlertDialog>
 
       {/* Action Request Modal */}
