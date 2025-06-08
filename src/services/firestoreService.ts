@@ -294,13 +294,11 @@ class FirestoreService {
       let q;
 
       if (currentUser.role === "admin") {
+        // Admins can see all billing records
         q = query(billingRef, orderBy("generated_date", "desc"));
       } else {
-        q = query(
-          billingRef,
-          where("employee_id", "==", currentUser.id),
-          orderBy("generated_date", "desc"),
-        );
+        // Employees can only see their billing records (no orderBy to avoid composite index)
+        q = query(billingRef, where("employee_id", "==", currentUser.id));
       }
 
       const querySnapshot = await getDocs(q);
@@ -311,6 +309,18 @@ class FirestoreService {
         records.push(this.convertFirestoreBillingToBillingRecord(doc.id, data));
       });
 
+      // Sort in memory for employees since we can't use orderBy with where clause
+      if (currentUser.role !== "admin") {
+        records.sort(
+          (a, b) =>
+            new Date(b.generatedDate).getTime() -
+            new Date(a.generatedDate).getTime(),
+        );
+      }
+
+      console.log(
+        `✅ Loaded ${records.length} billing records for ${currentUser.role === "admin" ? "admin" : `employee: ${currentUser.name}`}`,
+      );
       return records;
     } catch (error) {
       console.error("❌ Failed to load billing records:", error);
