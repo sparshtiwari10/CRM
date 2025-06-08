@@ -11,6 +11,7 @@ import {
   MoreHorizontal,
   Power,
   PowerOff,
+  KeyRound,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,9 +67,15 @@ export default function EmployeeManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteUser, setDeleteUser] = useState<User | null>(null);
   const [toggleStatusUser, setToggleStatusUser] = useState<User | null>(null);
+  const [changePasswordUser, setChangePasswordUser] = useState<User | null>(
+    null,
+  );
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const { toast } = useToast();
 
   // Load all users from Firebase on component mount
@@ -179,6 +186,55 @@ export default function EmployeeManagement() {
     } finally {
       setIsUpdating(null);
       setToggleStatusUser(null);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!changePasswordUser) return;
+
+    // Validate passwords
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters long");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+
+    try {
+      setIsUpdating(changePasswordUser.id);
+
+      console.log(`🔄 Changing password for user: ${changePasswordUser.name}`);
+
+      // Change password in Firebase
+      await authService.changeUserPassword(changePasswordUser.id, newPassword);
+
+      toast({
+        title: "Password Changed",
+        description: `Password has been successfully changed for ${changePasswordUser.name}. They can now log in with the new password.`,
+      });
+
+      console.log(
+        `✅ Successfully changed password for user: ${changePasswordUser.name}`,
+      );
+
+      // Reset form and close modal
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordError("");
+      setChangePasswordUser(null);
+    } catch (error: any) {
+      console.error("Failed to change password:", error);
+      toast({
+        title: "Password Change Failed",
+        description:
+          error.message || "Failed to change password. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(null);
     }
   };
 
@@ -481,6 +537,13 @@ export default function EmployeeManagement() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
+                                onClick={() => setChangePasswordUser(user)}
+                              >
+                                <KeyRound className="mr-2 h-4 w-4" />
+                                Change Password
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
                                 onClick={() => setToggleStatusUser(user)}
                               >
                                 {user.is_active ? (
@@ -514,6 +577,91 @@ export default function EmployeeManagement() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Change Password Dialog */}
+        <Dialog
+          open={!!changePasswordUser}
+          onOpenChange={() => {
+            setChangePasswordUser(null);
+            setNewPassword("");
+            setConfirmPassword("");
+            setPasswordError("");
+          }}
+        >
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Change Password</DialogTitle>
+              <DialogDescription>
+                Change the password for {changePasswordUser?.name}. They will
+                need to use the new password to log in.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setPasswordError("");
+                  }}
+                  placeholder="Enter new password"
+                  minLength={6}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setPasswordError("");
+                  }}
+                  placeholder="Confirm new password"
+                  minLength={6}
+                />
+              </div>
+              {passwordError && (
+                <div className="p-3 border border-red-200 bg-red-50 dark:bg-red-900/20 rounded-md">
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    {passwordError}
+                  </p>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setChangePasswordUser(null);
+                  setNewPassword("");
+                  setConfirmPassword("");
+                  setPasswordError("");
+                }}
+                disabled={isUpdating === changePasswordUser?.id}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleChangePassword}
+                disabled={
+                  isUpdating === changePasswordUser?.id ||
+                  !newPassword ||
+                  !confirmPassword
+                }
+              >
+                {isUpdating === changePasswordUser?.id
+                  ? "Changing..."
+                  : "Change Password"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Toggle Status Confirmation Dialog */}
         <AlertDialog
