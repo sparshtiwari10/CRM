@@ -154,9 +154,14 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
       const loadCollectors = async () => {
         try {
           const collectors = ["System Administrator"];
-          // Use a simple mock list since getActiveEmployees doesn't exist
-          const employees = ["John Collector", "Sarah Collector", "Mike Field"];
-          collectors.push(...employees);
+
+          // Get all active employees from the database
+          const allUsers = await authService.getAllUsers();
+          const activeEmployees = allUsers
+            .filter((user) => user.role === "employee" && user.is_active)
+            .map((user) => user.name);
+
+          collectors.push(...activeEmployees);
 
           if (mounted) {
             setAvailableCollectors(collectors);
@@ -164,6 +169,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({
         } catch (error) {
           console.error("Failed to load collectors:", error);
           if (mounted) {
+            // Fallback to System Administrator only if loading fails
             setAvailableCollectors(["System Administrator"]);
           }
         }
