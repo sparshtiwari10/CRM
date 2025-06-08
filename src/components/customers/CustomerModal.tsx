@@ -184,7 +184,31 @@ function CustomerModal({
 
   // Stable input change handler without dependencies
   const handleInputChange = useCallback((field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+
+      // If VC number is changed and we have multiple connections, update the secondary VC numbers
+      if (
+        field === "vcNumber" &&
+        prev.numberOfConnections > 1 &&
+        prev.connections.length > 1
+      ) {
+        const newConnections = prev.connections.map((conn, index) => {
+          if (index === 0) {
+            // Primary connection uses the main VC number
+            return { ...conn, vcNumber: value };
+          } else {
+            // Secondary connections use suffixes
+            const suffix = index === 1 ? "SEC" : `SEC${index - 1}`;
+            return { ...conn, vcNumber: `${value}-${suffix}` };
+          }
+        });
+        updated.connections = newConnections;
+      }
+
+      return updated;
+    });
+
     // Clear error for this field
     setErrors((prev) => {
       if (prev[field]) {
