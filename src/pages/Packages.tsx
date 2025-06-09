@@ -318,10 +318,27 @@ export default function Packages() {
                     </li>
                     <li>Check browser console for detailed error messages</li>
                   </ol>
+                  <div className="flex space-x-2 mt-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => FirebaseDebug.runDiagnostics()}
+                    >
+                      Run Firebase Diagnostics
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => FirebaseDebug.testPermissions()}
+                    >
+                      Test Permissions
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    If the 'packages' collection doesn't exist, create it
-                    manually in the Firebase Console with at least one sample
-                    package.
+                    Click "Run Firebase Diagnostics" and check the browser
+                    console for detailed information. If the 'packages'
+                    collection doesn't exist, create it manually in the Firebase
+                    Console.
                   </p>
                 </div>
               </AlertDescription>
