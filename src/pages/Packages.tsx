@@ -33,6 +33,9 @@ import {
 } from "@/services/packageService";
 import { firestoreService } from "@/services/firestoreService";
 import { useAuth } from "@/contexts/AuthContext";
+import { FirebaseDebug } from "@/utils/firebaseDebug";
+import { AuthDiagnostics } from "@/utils/authDiagnostics";
+import { FirebaseConnectionTest } from "@/utils/firebaseConnectionTest";
 
 export default function Packages() {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -132,6 +135,7 @@ export default function Packages() {
       setLoading(false);
     }
   };
+
   const getCustomerCount = (packageName: string) => {
     return packageService.getCustomerCount(packageName, customers);
   };
@@ -292,7 +296,7 @@ export default function Packages() {
               <div className="space-y-2">
                 <p className="font-medium">Failed to Load Package Data</p>
                 <p className="text-sm">{error}</p>
-                <div className="flex space-x-2 mt-3">
+                <div className="flex flex-wrap gap-2 mt-3">
                   <Button variant="outline" size="sm" onClick={loadData}>
                     <Loader2 className="mr-2 h-4 w-4" />
                     Try Again
@@ -321,6 +325,16 @@ export default function Packages() {
                   >
                     Show Setup Instructions
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      console.log("🔥 Testing Firebase Connection...");
+                      FirebaseConnectionTest.runConnectionDiagnostics();
+                    }}
+                  >
+                    Test Firebase Connection
+                  </Button>
                 </div>
               </div>
             </AlertDescription>
@@ -331,22 +345,25 @@ export default function Packages() {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 <div className="space-y-3">
-                  <p className="font-medium">🚨 Quick Fix Needed:</p>
+                  <p className="font-medium">
+                    🚨 Critical Firebase Issue Detected:
+                  </p>
                   <div className="bg-muted p-3 rounded text-sm font-mono">
                     <p>
-                      1. Run:{" "}
+                      1. Deploy emergency rules:{" "}
                       <strong>firebase deploy --only firestore:rules</strong>
                     </p>
-                    <p>2. Or use emergency rules in terminal:</p>
-                    <p className="text-xs mt-1">
-                      cp firestore-emergency.rules firestore.rules
+                    <p>
+                      2. Test connection in console:{" "}
+                      <strong>
+                        FirebaseConnectionTest.runConnectionDiagnostics()
+                      </strong>
                     </p>
-                    <p className="text-xs">
-                      firebase deploy --only firestore:rules
-                    </p>
+                    <p>3. Check Firebase Console for project status</p>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Check browser console for detailed diagnostic output.
+                    This appears to be a Firebase connection issue, not just
+                    permissions.
                   </p>
                 </div>
               </AlertDescription>
@@ -356,6 +373,7 @@ export default function Packages() {
       </DashboardLayout>
     );
   }
+
   return (
     <DashboardLayout title="Package Management">
       <div className="p-6 space-y-6">
@@ -438,6 +456,7 @@ export default function Packages() {
             </CardContent>
           </Card>
         </div>
+
         {/* Packages Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {packages.map((pkg) => (
@@ -449,14 +468,14 @@ export default function Packages() {
                     {pkg.isActive ? "Active" : "Inactive"}
                   </Badge>
                 </div>
-                <div className="text-3xl font-bold text-blue-600">
+                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
                   ₹{pkg.price}
-                  <span className="text-base font-normal text-gray-500">
+                  <span className="text-base font-normal text-muted-foreground">
                     /month
                   </span>
                 </div>
                 {pkg.portalAmount && (
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-muted-foreground">
                     Portal Amount: ₹{pkg.portalAmount}
                   </div>
                 )}
@@ -629,14 +648,16 @@ export default function Packages() {
                   >
                     Close
                   </Button>
-                  <Button
-                    onClick={() => {
-                      setViewingPackage(null);
-                      setEditingPackage(viewingPackage);
-                    }}
-                  >
-                    Edit Package
-                  </Button>
+                  {isAdmin && (
+                    <Button
+                      onClick={() => {
+                        setViewingPackage(null);
+                        setEditingPackage(viewingPackage);
+                      }}
+                    >
+                      Edit Package
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
