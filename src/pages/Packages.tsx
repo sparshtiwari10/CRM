@@ -75,27 +75,63 @@ export default function Packages() {
       setLoading(true);
       setError(null);
 
-      const [packagesData, customersData] = await Promise.all([
-        packageService.getAllPackages(),
-        firestoreService.getAllCustomers(),
-      ]);
+      console.log("🔄 Loading packages and customer data...");
+
+      // Try to load packages first
+      let packagesData: Package[] = [];
+      try {
+        packagesData = await packageService.getAllPackages();
+        console.log("✅ Packages loaded successfully:", packagesData.length);
+      } catch (packageError) {
+        console.error("❌ Failed to load packages:", packageError);
+        // Continue to try loading customers even if packages fail
+        packagesData = [];
+      }
+
+      // Try to load customers
+      let customersData: Customer[] = [];
+      try {
+        customersData = await firestoreService.getAllCustomers();
+        console.log("✅ Customers loaded successfully:", customersData.length);
+      } catch (customerError) {
+        console.error("❌ Failed to load customers:", customerError);
+        customersData = [];
+      }
+
+      // If both failed, show error
+      if (packagesData.length === 0 && customersData.length === 0) {
+        throw new Error(
+          "Failed to load any data from Firestore. Please check your connection and permissions.",
+        );
+      }
 
       setPackages(packagesData);
       setCustomers(customersData);
+
+      // Show warning if only some data loaded
+      if (packagesData.length === 0) {
+        toast({
+          title: "Packages Not Available",
+          description:
+            "Could not load packages. Check Firestore permissions and collection setup.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Failed to load data:", error);
-      setError(error instanceof Error ? error.message : "Failed to load data");
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load data";
+      setError(errorMessage);
+
       toast({
         title: "Error Loading Data",
-        description:
-          "Failed to load packages and customer data. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
-
   const getCustomerCount = (packageName: string) => {
     return packageService.getCustomerCount(packageName, customers);
   };
@@ -249,21 +285,48 @@ export default function Packages() {
   if (error) {
     return (
       <DashboardLayout title="Package Management">
-        <div className="p-6">
+        <div className="p-6 space-y-4">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {error}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadData}
-                className="ml-4"
-              >
-                Try Again
-              </Button>
+              <div className="space-y-2">
+                <p className="font-medium">Error Loading Data</p>
+                <p>{error}</p>
+                <div className="flex space-x-2">
+                  <Button variant="outline" size="sm" onClick={loadData}>
+                    Try Again
+                  </Button>
+                </div>
+              </div>
             </AlertDescription>
           </Alert>
+
+          {error.includes("permission") && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-2">
+                  <p className="font-medium">Debugging Steps:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-sm">
+                    <li>Ensure you're logged in as an admin user</li>
+                    <li>Check if Firestore security rules are deployed</li>
+                    <li>
+                      Verify the 'packages' collection exists in Firestore
+                    </li>
+                    <li>
+                      Run: <code>firebase deploy --only firestore:rules</code>
+                    </li>
+                    <li>Check browser console for detailed error messages</li>
+                  </ol>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    If the 'packages' collection doesn't exist, create it
+                    manually in the Firebase Console with at least one sample
+                    package.
+                  </p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </DashboardLayout>
     );
