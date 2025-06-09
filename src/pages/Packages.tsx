@@ -78,15 +78,35 @@ export default function Packages() {
       setLoading(true);
       setError(null);
 
-      console.log("🔄 Loading packages and customer data...");
+      console.log("🔄 Starting package data load...");
+
+      // First, run diagnostics to check Firebase connection
+      console.log("🔍 Running Firebase diagnostics...");
+      const { FirebaseDebug } = await import("@/utils/firebaseDebug");
+      await FirebaseDebug.runDiagnostics();
 
       // Try to load packages first
       let packagesData: Package[] = [];
       try {
+        console.log("📦 Attempting to load packages...");
         packagesData = await packageService.getAllPackages();
-        console.log("✅ Packages loaded successfully:", packagesData.length);
+        console.log("✅ Packages loaded successfully:", {
+          count: packagesData.length,
+          packages: packagesData.map((p) => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+          })),
+        });
       } catch (packageError) {
         console.error("❌ Failed to load packages:", packageError);
+        console.error("❌ Package error details:", {
+          message:
+            packageError instanceof Error
+              ? packageError.message
+              : "Unknown error",
+          stack: packageError instanceof Error ? packageError.stack : undefined,
+        });
         // Continue to try loading customers even if packages fail
         packagesData = [];
       }
@@ -94,34 +114,68 @@ export default function Packages() {
       // Try to load customers
       let customersData: Customer[] = [];
       try {
+        console.log("👥 Attempting to load customers...");
         customersData = await firestoreService.getAllCustomers();
-        console.log("✅ Customers loaded successfully:", customersData.length);
+        console.log("✅ Customers loaded successfully:", {
+          count: customersData.length,
+          sample: customersData.slice(0, 3).map((c) => ({
+            id: c.id,
+            name: c.name,
+            package: c.currentPackage,
+          })),
+        });
       } catch (customerError) {
         console.error("❌ Failed to load customers:", customerError);
+        console.error("❌ Customer error details:", {
+          message:
+            customerError instanceof Error
+              ? customerError.message
+              : "Unknown error",
+          stack:
+            customerError instanceof Error ? customerError.stack : undefined,
+        });
         customersData = [];
       }
 
-      // If both failed, show error
-      if (packagesData.length === 0 && customersData.length === 0) {
-        throw new Error(
-          "Failed to load any data from Firestore. Please check your connection and permissions.",
-        );
-      }
+      // Check if we have any data at all
+      console.log("📊 Data load summary:", {
+        packagesCount: packagesData.length,
+        customersCount: customersData.length,
+        packagesSuccess: packagesData.length > 0,
+        customersSuccess: customersData.length > 0,
+      });
 
       setPackages(packagesData);
       setCustomers(customersData);
 
-      // Show warning if only some data loaded
+      // Show specific error messages based on what failed
       if (packagesData.length === 0) {
+        console.warn("⚠️ No packages loaded - showing notification");
         toast({
           title: "Packages Not Available",
           description:
-            "Could not load packages. Check Firestore permissions and collection setup.",
+            "Could not load packages from Firestore. Check browser console for details.",
           variant: "destructive",
         });
       }
+
+      if (customersData.length === 0) {
+        console.warn("⚠️ No customers loaded");
+        toast({
+          title: "Customers Not Available",
+          description: "Could not load customer data from Firestore.",
+          variant: "destructive",
+        });
+      }
+
+      // If both failed completely, show a different error
+      if (packagesData.length === 0 && customersData.length === 0) {
+        throw new Error(
+          "Failed to load any data from Firestore. Please check Firebase configuration and console logs.",
+        );
+      }
     } catch (error) {
-      console.error("Failed to load data:", error);
+      console.error("❌ Complete data load failure:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to load data";
       setError(errorMessage);
