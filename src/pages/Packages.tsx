@@ -301,11 +301,25 @@ export default function Packages() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      console.log("🔍 Running Firebase Diagnostics...");
-                      FirebaseDebug.runDiagnostics();
+                      console.log(
+                        "🔍 Running Complete Authentication Diagnostics...",
+                      );
+                      AuthDiagnostics.runCompleteDiagnostics();
                     }}
                   >
-                    Run Diagnostics
+                    Run Complete Diagnostics
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      console.log(
+                        "📝 Generating User Document Instructions...",
+                      );
+                      AuthDiagnostics.generateUserDocumentInstructions();
+                    }}
+                  >
+                    Show Setup Instructions
                   </Button>
                 </div>
               </div>
