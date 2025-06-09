@@ -249,6 +249,42 @@ src/
   - Monthly/yearly collection summaries
   - Employee-specific collection reports
 
+#### **`Packages.tsx`** 📦 **[FIRESTORE INTEGRATED]**
+
+- **Purpose**: Package management with real-time data and dynamic metrics
+- **Key Features**:
+  - **Real-Time Data**: Fetches packages and customers from Firestore
+  - **Dynamic Metrics**: Live calculation of package usage statistics
+  - **Role-Based Access**: Admin-only create/edit/delete, employee read-only
+  - **Smart Validation**: Prevents deletion of packages currently in use
+  - **Comprehensive Analytics**: Revenue tracking, market share, usage patterns
+- **Metrics Displayed**:
+  - **Package Statistics**: Total, active, inactive package counts
+  - **Revenue Analytics**: Monthly revenue, average per customer/package
+  - **Usage Metrics**: Customer count per package, market share percentage
+  - **Performance Indicators**: Yearly revenue projections, utilization reports
+- **Admin Operations**:
+  - **Create Package**: Full package creation with feature lists and pricing
+  - **Edit Package**: Update pricing, features, description, channel count
+  - **Delete Package**: Smart deletion with customer usage validation
+  - **Package Validation**: Server-side field validation and data integrity
+- **Package Service Integration**:
+
+  ```typescript
+  // Real-time metrics calculation
+  const metrics = packageService.calculatePackageMetrics(packages, customers);
+
+  // Customer usage tracking
+  const customerCount = packageService.getCustomerCount(packageName, customers);
+
+  // Revenue calculation
+  const revenue = packageService.getTotalRevenue(
+    packageName,
+    packages,
+    customers,
+  );
+  ```
+
 ---
 
 ## 🔧 **Service Layer**
@@ -492,7 +528,7 @@ if (userData.is_active === false) {
 
 ---
 
-## 🔐 **Security Implementation**
+## ��� **Security Implementation**
 
 ### **Server-Side Security Rules**
 
