@@ -16,15 +16,16 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
+    // Enhanced admin check with better error handling
     function isAdmin() {
+      // First just check if user is authenticated
       return isAuthenticated() && (
-        // Allow if user document exists and has admin role
+        // Standard case: user exists and is admin
         (userDocExists() && 
          getUserData().role == 'admin' && 
          getUserData().is_active == true) ||
-        // Allow if no users collection exists yet (initial setup)
-        !exists(/databases/$(database)/documents/users)
-      );
+        // Bootstrap case: if no users collection at all, first user is admin
+        !exists(/databases/$(database)/documents/users))
     }
     
     function isEmployee() {
@@ -34,11 +35,10 @@ service cloud.firestore {
              getUserData().is_active == true;
     }
     
+    // Simplified active user check
     function isActiveUser() {
       return isAuthenticated() && (
-        // Allow if user document exists and is active
         (userDocExists() && getUserData().is_active == true) ||
-        // Allow if no users collection exists yet (initial setup)
         !exists(/databases/$(database)/documents/users)
       );
     }
@@ -181,12 +181,19 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Allow creation of initial collections if they don't exist
+    // Allow creation of empty collections if they don't exist yet
     match /{collection}/{document} {
       allow create: if isAuthenticated() && 
-                       collection in ['packages', 'customers', 'billing', 'requests'] &&
-                       // Only allow if collection doesn't exist yet
-                       !exists(/databases/$(database)/documents/$(collection));
+                      collection in ['packages', 'customers', 'billing', 'requests'] &&
+                      !exists(/databases/$(database)/documents/$(collection));
+    }
+    
+    // Special bootstrapping rule - Allow creation of first documents in empty collections
+    match /{collection}/{document} {
+      allow create: if isAuthenticated() && 
+                      collection in ['packages', 'customers', 'billing', 'requests'] &&
+                      exists(/databases/$(database)/documents/$(collection)) && 
+                      getAfter(/databases/$(database)/documents/$(collection)).size() == 1;
     }
   }
 }

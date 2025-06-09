@@ -281,7 +281,7 @@ export default function Packages() {
     );
   }
 
-  // Show error state with comprehensive debugger
+  // Show error state with debugging options
   if (error) {
     return (
       <DashboardLayout title="Package Management - Debug Mode">
@@ -292,11 +292,52 @@ export default function Packages() {
               <div className="space-y-2">
                 <p className="font-medium">Failed to Load Package Data</p>
                 <p className="text-sm">{error}</p>
+                <div className="flex space-x-2 mt-3">
+                  <Button variant="outline" size="sm" onClick={loadData}>
+                    <Loader2 className="mr-2 h-4 w-4" />
+                    Try Again
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      console.log("🔍 Running Firebase Diagnostics...");
+                      FirebaseDebug.runDiagnostics();
+                    }}
+                  >
+                    Run Diagnostics
+                  </Button>
+                </div>
               </div>
             </AlertDescription>
           </Alert>
 
-          <PermissionDebugger onRetry={loadData} />
+          {error.includes("permission") && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-3">
+                  <p className="font-medium">🚨 Quick Fix Needed:</p>
+                  <div className="bg-muted p-3 rounded text-sm font-mono">
+                    <p>
+                      1. Run:{" "}
+                      <strong>firebase deploy --only firestore:rules</strong>
+                    </p>
+                    <p>2. Or use emergency rules in terminal:</p>
+                    <p className="text-xs mt-1">
+                      cp firestore-emergency.rules firestore.rules
+                    </p>
+                    <p className="text-xs">
+                      firebase deploy --only firestore:rules
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Check browser console for detailed diagnostic output.
+                  </p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </DashboardLayout>
     );
