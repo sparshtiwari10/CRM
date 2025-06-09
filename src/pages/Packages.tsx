@@ -498,7 +498,7 @@ export default function Packages() {
                     }}
                   >
                     Test Firebase Connection
-                  </Button>
+                      <Button
                         variant="outline"
                         size="sm"
                         className="flex-1"
