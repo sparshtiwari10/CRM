@@ -28,33 +28,12 @@ class PackageService {
    */
   async getAllPackages(): Promise<Package[]> {
     try {
-      return await firestoreService.getAllPackages();
+      console.log("📦 Fetching packages from Firestore...");
+      const packages = await firestoreService.getAllPackages();
+      console.log(`✅ Successfully loaded ${packages.length} packages`);
+      return packages;
     } catch (error) {
       console.error("❌ Failed to fetch packages:", error);
-
-      // Provide more helpful error messages for common issues
-      if (error instanceof Error) {
-        if (error.message.includes("Missing or insufficient permissions")) {
-          console.error("🔐 Firebase Security Rules Error:");
-          console.error("   1. Ensure you're logged in as an admin user");
-          console.error("   2. Check if Firestore security rules are deployed");
-          console.error(
-            "   3. Verify the 'packages' collection exists in Firestore",
-          );
-          console.error("   4. Run: firebase deploy --only firestore:rules");
-
-          throw new Error(
-            "Permission denied. Please ensure you're logged in as an admin and Firestore security rules are deployed.",
-          );
-        }
-
-        if (error.message.includes("PERMISSION_DENIED")) {
-          throw new Error(
-            "Access denied. Please check your user role and authentication status.",
-          );
-        }
-      }
-
       throw error;
     }
   }

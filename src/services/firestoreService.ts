@@ -109,43 +109,24 @@ class FirestoreService {
   // ================== CUSTOMERS ==================
 
   async getAllCustomers(): Promise<Customer[]> {
-    return await RoleValidator.validateAndLog(
-      "getAllCustomers",
-      () => RoleValidator.validateAuthentication("get all customers"),
-      async () => {
-        const currentUser = authService.getCurrentUser()!;
-        const customersRef = collection(db, "customers");
-        let q;
+    try {
+      const customersRef = collection(db, "customers");
+      const q = query(customersRef, orderBy("name"));
 
-        if (currentUser.role === "admin") {
-          // Admins can see all customers
-          q = query(customersRef, orderBy("name"));
-        } else {
-          // Employees can only see customers assigned to them
-          // Use collector_name OR name for compatibility (no orderBy to avoid composite index)
-          const employeeName = currentUser.collector_name || currentUser.name;
-          q = query(customersRef, where("collector_name", "==", employeeName));
-        }
+      const querySnapshot = await getDocs(q);
+      const customers: Customer[] = [];
 
-        const querySnapshot = await getDocs(q);
-        const customers: Customer[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as FirestoreCustomer;
+        customers.push(this.convertFirestoreCustomerToCustomer(doc.id, data));
+      });
 
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as FirestoreCustomer;
-          customers.push(this.convertFirestoreCustomerToCustomer(doc.id, data));
-        });
-
-        // Sort in memory for employees since we can't use orderBy with where clause
-        if (currentUser.role !== "admin") {
-          customers.sort((a, b) => a.name.localeCompare(b.name));
-        }
-
-        console.log(
-          `✅ Loaded ${customers.length} customers for ${currentUser.role === "admin" ? "admin" : `employee: ${currentUser.collector_name || currentUser.name}`}`,
-        );
-        return customers;
-      },
-    );
+      console.log(`✅ Loaded ${customers.length} customers`);
+      return customers;
+    } catch (error) {
+      console.error("❌ Failed to load customers:", error);
+      throw error;
+    }
   }
 
   async getCustomersByCollector(collectorName: string): Promise<Customer[]> {
@@ -571,173 +552,162 @@ class FirestoreService {
   // ================== PACKAGES ==================
 
   async getAllPackages(): Promise<Package[]> {
-    return await RoleValidator.validateAndLog(
-      "getAllPackages",
-      () => RoleValidator.validateAuthentication("get packages"),
-      async () => {
-        const packagesRef = collection(db, "packages");
-        const q = query(packagesRef, orderBy("name"));
+    try {
+      const packagesRef = collection(db, "packages");
+      const q = query(packagesRef, orderBy("name"));
 
-        const querySnapshot = await getDocs(q);
-        const packages: Package[] = [];
+      const querySnapshot = await getDocs(q);
+      const packages: Package[] = [];
 
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as FirestorePackage;
-          packages.push(this.convertFirestorePackageToPackage(doc.id, data));
-        });
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as FirestorePackage;
+        packages.push(this.convertFirestorePackageToPackage(doc.id, data));
+      });
 
-        console.log(`✅ Loaded ${packages.length} packages`);
-        return packages;
-      },
-    );
+      console.log(`✅ Loaded ${packages.length} packages`);
+      return packages;
+    } catch (error) {
+      console.error("❌ Failed to load packages:", error);
+      throw error;
+    }
   }
 
   async getPackage(packageId: string): Promise<Package> {
-    return await RoleValidator.validateAndLog(
-      "getPackage",
-      () => RoleValidator.validateAuthentication("get package"),
-      async () => {
-        const docRef = doc(db, "packages", packageId);
-        const docSnap = await getDoc(docRef);
+    try {
+      const docRef = doc(db, "packages", packageId);
+      const docSnap = await getDoc(docRef);
 
-        if (!docSnap.exists()) {
-          throw new Error("Package not found");
-        }
+      if (!docSnap.exists()) {
+        throw new Error("Package not found");
+      }
 
-        const data = docSnap.data() as FirestorePackage;
-        return this.convertFirestorePackageToPackage(docSnap.id, data);
-      },
-    );
+      const data = docSnap.data() as FirestorePackage;
+      return this.convertFirestorePackageToPackage(docSnap.id, data);
+    } catch (error) {
+      console.error("❌ Failed to get package:", error);
+      throw error;
+    }
   }
 
   async addPackage(packageData: Omit<Package, "id">): Promise<string> {
-    return await RoleValidator.validateAndLog(
-      "addPackage",
-      () => RoleValidator.validateAdminAccess("add package"),
-      async () => {
-        const currentUser = authService.getCurrentUser()!;
+    try {
+      // Validate package data
+      this.validatePackageData(packageData);
 
-        // Validate package data
-        this.validatePackageData(packageData);
+      const packagesRef = collection(db, "packages");
+      const firestorePackage: FirestorePackage = {
+        name: packageData.name.trim(),
+        price: packageData.price,
+        description: packageData.description.trim(),
+        channels: packageData.channels,
+        features: packageData.features.filter((f) => f.trim() !== ""),
+        is_active: packageData.isActive,
+        portal_amount: packageData.portalAmount,
+        created_at: Timestamp.now(),
+        updated_at: Timestamp.now(),
+      };
 
-        const packagesRef = collection(db, "packages");
-        const firestorePackage: FirestorePackage = {
-          name: packageData.name.trim(),
-          price: packageData.price,
-          description: packageData.description.trim(),
-          channels: packageData.channels,
-          features: packageData.features.filter((f) => f.trim() !== ""),
-          is_active: packageData.isActive,
-          portal_amount: packageData.portalAmount,
-          created_at: Timestamp.now(),
-          updated_at: Timestamp.now(),
-          created_by: currentUser.id,
-        };
-
-        const docRef = await addDoc(packagesRef, firestorePackage);
-        console.log(`✅ Package ${packageData.name} added successfully`);
-        return docRef.id;
-      },
-    );
+      const docRef = await addDoc(packagesRef, firestorePackage);
+      console.log(`✅ Package ${packageData.name} added successfully`);
+      return docRef.id;
+    } catch (error) {
+      console.error("❌ Failed to add package:", error);
+      throw error;
+    }
   }
 
   async updatePackage(
     packageId: string,
     packageData: Partial<Package>,
   ): Promise<void> {
-    return await RoleValidator.validateAndLog(
-      "updatePackage",
-      () => RoleValidator.validateAdminAccess("update package"),
-      async () => {
-        const currentUser = authService.getCurrentUser()!;
-        const docRef = doc(db, "packages", packageId);
+    try {
+      const docRef = doc(db, "packages", packageId);
 
-        let updateData: any = {};
+      let updateData: any = {};
 
-        if (packageData.name !== undefined)
-          updateData.name = packageData.name.trim();
-        if (packageData.price !== undefined)
-          updateData.price = packageData.price;
-        if (packageData.description !== undefined)
-          updateData.description = packageData.description.trim();
-        if (packageData.channels !== undefined)
-          updateData.channels = packageData.channels;
-        if (packageData.features !== undefined)
-          updateData.features = packageData.features.filter(
-            (f) => f.trim() !== "",
-          );
-        if (packageData.isActive !== undefined)
-          updateData.is_active = packageData.isActive;
-        if (packageData.portalAmount !== undefined)
-          updateData.portal_amount = packageData.portalAmount;
+      if (packageData.name !== undefined)
+        updateData.name = packageData.name.trim();
+      if (packageData.price !== undefined) updateData.price = packageData.price;
+      if (packageData.description !== undefined)
+        updateData.description = packageData.description.trim();
+      if (packageData.channels !== undefined)
+        updateData.channels = packageData.channels;
+      if (packageData.features !== undefined)
+        updateData.features = packageData.features.filter(
+          (f) => f.trim() !== "",
+        );
+      if (packageData.isActive !== undefined)
+        updateData.is_active = packageData.isActive;
+      if (packageData.portalAmount !== undefined)
+        updateData.portal_amount = packageData.portalAmount;
 
-        // Always update timestamp and user
-        updateData.updated_at = Timestamp.now();
-        updateData.updated_by = currentUser.id;
+      // Always update timestamp
+      updateData.updated_at = Timestamp.now();
 
-        await updateDoc(docRef, updateData);
-        console.log(`✅ Package ${packageId} updated successfully`);
-      },
-    );
+      await updateDoc(docRef, updateData);
+      console.log(`✅ Package ${packageId} updated successfully`);
+    } catch (error) {
+      console.error("❌ Failed to update package:", error);
+      throw error;
+    }
   }
 
   async deletePackage(packageId: string): Promise<void> {
-    return await RoleValidator.validateAndLog(
-      "deletePackage",
-      () => RoleValidator.validateAdminAccess("delete package"),
-      async () => {
-        // Check if package is being used by any customers
-        const customersRef = collection(db, "customers");
-        const packageRef = doc(db, "packages", packageId);
+    try {
+      // Check if package is being used by any customers
+      const customersRef = collection(db, "customers");
+      const packageRef = doc(db, "packages", packageId);
 
-        // Get package name first
-        const packageDoc = await getDoc(packageRef);
-        if (!packageDoc.exists()) {
-          throw new Error("Package not found");
-        }
+      // Get package name first
+      const packageDoc = await getDoc(packageRef);
+      if (!packageDoc.exists()) {
+        throw new Error("Package not found");
+      }
 
-        const packageData = packageDoc.data() as FirestorePackage;
-        const packageName = packageData.name;
+      const packageData = packageDoc.data() as FirestorePackage;
+      const packageName = packageData.name;
 
-        // Check if any customer is using this package
-        const customerQuery = query(
-          customersRef,
-          where("package", "==", packageName),
+      // Check if any customer is using this package
+      const customerQuery = query(
+        customersRef,
+        where("package", "==", packageName),
+      );
+      const customerSnapshot = await getDocs(customerQuery);
+
+      if (!customerSnapshot.empty) {
+        throw new Error(
+          `Cannot delete package "${packageName}". It is currently assigned to ${customerSnapshot.size} customer(s). Please reassign customers before deleting.`,
         );
-        const customerSnapshot = await getDocs(customerQuery);
+      }
 
-        if (!customerSnapshot.empty) {
-          throw new Error(
-            `Cannot delete package "${packageName}". It is currently assigned to ${customerSnapshot.size} customer(s). Please reassign customers before deleting.`,
-          );
+      // Also check connections for secondary packages
+      const allCustomersQuery = query(customersRef);
+      const allCustomersSnapshot = await getDocs(allCustomersQuery);
+
+      let usageCount = 0;
+      allCustomersSnapshot.forEach((doc) => {
+        const customer = doc.data() as FirestoreCustomer;
+        if (customer.connections) {
+          customer.connections.forEach((conn) => {
+            if (conn.planName === packageName) {
+              usageCount++;
+            }
+          });
         }
+      });
 
-        // Also check connections for secondary packages
-        const allCustomersQuery = query(customersRef);
-        const allCustomersSnapshot = await getDocs(allCustomersQuery);
+      if (usageCount > 0) {
+        throw new Error(
+          `Cannot delete package "${packageName}". It is currently used in ${usageCount} customer connection(s). Please update customer connections before deleting.`,
+        );
+      }
 
-        let usageCount = 0;
-        allCustomersSnapshot.forEach((doc) => {
-          const customer = doc.data() as FirestoreCustomer;
-          if (customer.connections) {
-            customer.connections.forEach((conn) => {
-              if (conn.planName === packageName) {
-                usageCount++;
-              }
-            });
-          }
-        });
-
-        if (usageCount > 0) {
-          throw new Error(
-            `Cannot delete package "${packageName}". It is currently used in ${usageCount} customer connection(s). Please update customer connections before deleting.`,
-          );
-        }
-
-        await deleteDoc(packageRef);
-        console.log(`✅ Package ${packageName} deleted successfully`);
-      },
-    );
+      await deleteDoc(packageRef);
+      console.log(`✅ Package ${packageName} deleted successfully`);
+    } catch (error) {
+      console.error("❌ Failed to delete package:", error);
+      throw error;
+    }
   }
 
   // ================== DATA IMPORT ==================
