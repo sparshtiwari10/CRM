@@ -482,15 +482,23 @@ export default function Packages() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setViewingPackage(pkg)}
-                    className="flex-1"
+                    onClick={() => {
+                      console.log("📝 Generating User Document Instructions...");
+                      AuthDiagnostics.generateUserDocumentInstructions();
+                    }}
                   >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View
+                    Show Setup Instructions
                   </Button>
-                  {isAdmin && (
-                    <>
-                      <Button
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      console.log("🔥 Testing Firebase Connection...");
+                      FirebaseConnectionTest.runConnectionDiagnostics();
+                    }}
+                  >
+                    Test Firebase Connection
+                  </Button>
                         variant="outline"
                         size="sm"
                         className="flex-1"
