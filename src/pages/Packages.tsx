@@ -281,74 +281,26 @@ export default function Packages() {
     );
   }
 
-  // Show error state
+  // Show error state with comprehensive debugger
   if (error) {
     return (
-      <DashboardLayout title="Package Management">
-        <div className="p-6 space-y-4">
+      <DashboardLayout title="Package Management - Debug Mode">
+        <div className="space-y-4">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               <div className="space-y-2">
-                <p className="font-medium">Error Loading Data</p>
-                <p>{error}</p>
-                <div className="flex space-x-2">
-                  <Button variant="outline" size="sm" onClick={loadData}>
-                    Try Again
-                  </Button>
-                </div>
+                <p className="font-medium">Failed to Load Package Data</p>
+                <p className="text-sm">{error}</p>
               </div>
             </AlertDescription>
           </Alert>
 
-          {error.includes("permission") && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <div className="space-y-2">
-                  <p className="font-medium">Debugging Steps:</p>
-                  <ol className="list-decimal list-inside space-y-1 text-sm">
-                    <li>Ensure you're logged in as an admin user</li>
-                    <li>Check if Firestore security rules are deployed</li>
-                    <li>
-                      Verify the 'packages' collection exists in Firestore
-                    </li>
-                    <li>
-                      Run: <code>firebase deploy --only firestore:rules</code>
-                    </li>
-                    <li>Check browser console for detailed error messages</li>
-                  </ol>
-                  <div className="flex space-x-2 mt-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => FirebaseDebug.runDiagnostics()}
-                    >
-                      Run Firebase Diagnostics
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => FirebaseDebug.testPermissions()}
-                    >
-                      Test Permissions
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Click "Run Firebase Diagnostics" and check the browser
-                    console for detailed information. If the 'packages'
-                    collection doesn't exist, create it manually in the Firebase
-                    Console.
-                  </p>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
+          <PermissionDebugger onRetry={loadData} />
         </div>
       </DashboardLayout>
     );
   }
-
   return (
     <DashboardLayout title="Package Management">
       <div className="p-6 space-y-6">
