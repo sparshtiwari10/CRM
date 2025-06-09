@@ -492,7 +492,80 @@ if (userData.is_active === false) {
 
 ---
 
-## 🛠️ **Development Guidelines**
+## 🔐 **Security Implementation**
+
+### **Server-Side Security Rules**
+
+The system uses comprehensive Firestore Security Rules for server-side validation:
+
+```javascript
+// Admin-only operations
+function isAdmin() {
+  return (
+    isAuthenticated() &&
+    getUserData().role == "admin" &&
+    getUserData().is_active == true
+  );
+}
+
+// Employee operations with customer access validation
+function canAccessCustomer(customerData) {
+  return (
+    isAdmin() ||
+    (isEmployee() &&
+      getUserData().collector_name == customerData.collector_name)
+  );
+}
+```
+
+**Key Security Rules**:
+
+- **User Management**: Admin-only user creation, modification, and deletion
+- **Customer Operations**: Role-based access with collector validation
+- **Billing Records**: Employee-scoped access with admin oversight
+- **Request Management**: Employee creation, admin approval workflow
+- **Package Management**: Admin-only CRUD operations
+- **Data Validation**: Server-side field validation and type checking
+
+### **Client-Side Role Validation**
+
+Enhanced permission checking through `RoleValidator` middleware:
+
+```typescript
+// Validate admin access
+RoleValidator.validateAdminAccess("operation_name");
+
+// Validate customer access with collector validation
+RoleValidator.validateCustomerAccess(customerId, collectorName);
+
+// Wrapped operations with audit logging
+await RoleValidator.validateAndLog(
+  "operation_name",
+  () => RoleValidator.validateAdminAccess("operation"),
+  async () => {
+    /* protected operation */
+  },
+);
+```
+
+**Permission Matrix**:
+
+- **Admin**: Full access to all operations and data
+- **Employee**: Read assigned customers, create requests, manage personal billing
+- **Inactive Users**: No system access, authentication required
+
+### **Security Best Practices**
+
+1. **Multi-Layer Validation**: Both client and server-side permission checks
+2. **Principle of Least Privilege**: Users only access necessary data
+3. **Audit Logging**: All security events tracked and logged
+4. **Error Context**: Detailed error messages for troubleshooting
+5. **Data Integrity**: Server-side validation of all data modifications
+6. **Session Management**: Active user status verification for all operations
+
+---
+
+## 🔧 **Development Guidelines**
 
 ### **User Management Development**
 
