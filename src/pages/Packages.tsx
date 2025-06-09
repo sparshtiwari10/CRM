@@ -36,6 +36,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { FirebaseDebug } from "@/utils/firebaseDebug";
 import { AuthDiagnostics } from "@/utils/authDiagnostics";
 import { FirebaseConnectionTest } from "@/utils/firebaseConnectionTest";
+import { testFirebaseConnection } from "@/utils/testFirebaseConnection";
 
 export default function Packages() {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -80,10 +81,14 @@ export default function Packages() {
 
       console.log("🔄 Starting package data load...");
 
-      // First, run diagnostics to check Firebase connection
-      console.log("🔍 Running Firebase diagnostics...");
-      const { FirebaseDebug } = await import("@/utils/firebaseDebug");
-      await FirebaseDebug.runDiagnostics();
+      // First, test basic Firebase connection
+      console.log("🔍 Testing Firebase connection...");
+      const connectionTest = await testFirebaseConnection();
+      console.log("🔥 Connection test result:", connectionTest);
+
+      if (!connectionTest.success) {
+        throw new Error(`Firebase connection failed: ${connectionTest.error}`);
+      }
 
       // Try to load packages first
       let packagesData: Package[] = [];
