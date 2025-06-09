@@ -1,14 +1,220 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Simple rules for AGV Cable TV Management - Custom Auth System
-    // Since we're using custom authentication (not Firebase Auth), we allow all operations
-    // and handle permissions in the application layer
+    
+    // Helper functions for user authentication and role validation
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().role == 'admin' &&
+             getUserData().is_active == true;
+    }
+    
+    function isEmployee() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().role == 'employee' &&
+             getUserData().is_active == true;
+    }
+    
+    function isActiveUser() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserData().is_active == true;
+    }
+    
+    function isOwnerOrAdmin(employeeId) {
+      return isAdmin() || (isEmployee() && request.auth.uid == employeeId);
+    }
+    
+    function canAccessCustomer(customerData) {
+      return isAdmin() || 
+             (isEmployee() && 
+              getUserData().collector_name == customerData.collector_name);
+    }
 
+    // Users collection - Admin and self-access only
+    match /users/{userId} {
+      // Read: Admin can read all, users can read themselves
+      allow read: if isAdmin() || 
+                     (isAuthenticated() && request.auth.uid == userId);
+      
+      // Create: Only admins can create users
+      allow create: if isAdmin() && 
+                       // Validate required fields
+                       request.resource.data.name is string &&
+                       request.resource.data.role in ['admin', 'employee'] &&
+                       request.resource.data.is_active == true &&
+                       request.resource.data.created_at == request.time;
+      
+      // Update: Only admins can update users, users cannot update themselves
+      allow update: if isAdmin() &&
+                       // Prevent unauthorized field modifications
+                       (!('role' in request.resource.data) || 
+                        request.resource.data.role in ['admin', 'employee']) &&
+                       // Update timestamp is required
+                       request.resource.data.updated_at == request.time;
+      
+      // Delete: Only admins can delete users, but not themselves
+      allow delete: if isAdmin() && request.auth.uid != userId;
+    }
+
+    // Customers collection - Role-based access with collector validation
+    match /customers/{customerId} {
+      // Read: Admin can read all, employees can read their assigned customers only
+      allow read: if isActiveUser() && 
+                     (isAdmin() || canAccessCustomer(resource.data));
+      
+      // List: Admin can list all, employees can list their customers only
+      allow list: if isActiveUser() && 
+                     (isAdmin() || 
+                      (isEmployee() && 
+                       query.where[0][0] == 'collector_name' && 
+                       query.where[0][2] == getUserData().collector_name));
+      
+      // Create: Only admins can create customers
+      allow create: if isAdmin() &&
+                       // Validate required fields
+                       request.resource.data.name is string &&
+                       request.resource.data.phone is string &&
+                       request.resource.data.vc_no is string &&
+                       request.resource.data.collector_name is string &&
+                       request.resource.data.created_at == request.time &&
+                       request.resource.data.updated_at == request.time;
+      
+      // Update: Only admins can update customers
+      allow update: if isAdmin() &&
+                       // Ensure timestamp updates
+                       request.resource.data.updated_at == request.time &&
+                       // Validate critical fields if present
+                       (!('status' in request.resource.data) || 
+                        request.resource.data.status in ['active', 'inactive', 'demo']);
+      
+      // Delete: Only admins can delete customers
+      allow delete: if isAdmin();
+    }
+
+    // Billing records collection - Role-based access with employee validation
+    match /billing/{billingId} {
+      // Read: Admin can read all, employees can read their own records
+      allow read: if isActiveUser() && 
+                     (isAdmin() || 
+                      (isEmployee() && resource.data.employee_id == request.auth.uid));
+      
+      // List: Admin can list all, employees can list their records only
+      allow list: if isActiveUser() && 
+                     (isAdmin() || 
+                      (isEmployee() && 
+                       query.where[0][0] == 'employee_id' && 
+                       query.where[0][2] == request.auth.uid));
+      
+      // Create: Active users can create billing records
+      allow create: if isActiveUser() &&
+                       // Validate required fields
+                       request.resource.data.customer_id is string &&
+                       request.resource.data.customer_name is string &&
+                       request.resource.data.amount > 0 &&
+                       request.resource.data.employee_id == request.auth.uid &&
+                       request.resource.data.created_at == request.time;
+      
+      // Update: Only admins can update billing records
+      allow update: if isAdmin();
+      
+      // Delete: Only admins can delete billing records
+      allow delete: if isAdmin();
+    }
+
+    // Requests collection - Role-based access with validation
+    match /requests/{requestId} {
+      // Read: Admin can read all, employees can read their own requests
+      allow read: if isActiveUser() && 
+                     (isAdmin() || 
+                      (isEmployee() && resource.data.employee_id == request.auth.uid));
+      
+      // List: Admin can list all, employees can list their requests only
+      allow list: if isActiveUser() && 
+                     (isAdmin() || 
+                      (isEmployee() && 
+                       query.where[0][0] == 'employee_id' && 
+                       query.where[0][2] == request.auth.uid));
+      
+      // Create: Active users can create requests
+      allow create: if isActiveUser() &&
+                       // Validate required fields
+                       request.resource.data.customer_id is string &&
+                       request.resource.data.customer_name is string &&
+                       request.resource.data.vc_number is string &&
+                       request.resource.data.action_type in ['activation', 'deactivation', 'plan_change'] &&
+                       request.resource.data.reason is string &&
+                       request.resource.data.employee_id == request.auth.uid &&
+                       request.resource.data.status == 'pending' &&
+                       request.resource.data.request_date == request.time &&
+                       request.resource.data.created_at == request.time;
+      
+      // Update: Only admins can update requests (approve/reject)
+      allow update: if isAdmin() &&
+                       // Only specific fields can be updated
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['status', 'review_date', 'reviewed_by', 'admin_notes', 'updated_at']) &&
+                       request.resource.data.status in ['pending', 'approved', 'rejected'] &&
+                       request.resource.data.updated_at == request.time;
+      
+      // Delete: Only admins can delete requests
+      allow delete: if isAdmin();
+    }
+
+    // Packages collection - Admin-only operations
+    match /packages/{packageId} {
+      // Read: All authenticated users can read packages
+      allow read: if isActiveUser();
+      
+      // List: All authenticated users can list packages
+      allow list: if isActiveUser();
+      
+      // Create: Only admins can create packages
+      allow create: if isAdmin() &&
+                       request.resource.data.name is string &&
+                       request.resource.data.price > 0 &&
+                       request.resource.data.channels > 0 &&
+                       request.resource.data.created_at == request.time;
+      
+      // Update: Only admins can update packages
+      allow update: if isAdmin() &&
+                       request.resource.data.updated_at == request.time;
+      
+      // Delete: Only admins can delete packages
+      allow delete: if isAdmin();
+    }
+
+    // System logs collection - Admin read-only access
+    match /system_logs/{logId} {
+      // Read: Only admins can read system logs
+      allow read: if isAdmin();
+      
+      // List: Only admins can list system logs
+      allow list: if isAdmin();
+      
+      // Create: System can create logs (for auditing)
+      allow create: if isActiveUser() &&
+                       request.resource.data.timestamp == request.time &&
+                       request.resource.data.user_id == request.auth.uid;
+      
+      // Update/Delete: No one can modify or delete logs
+      allow update, delete: if false;
+    }
+
+    // Catch-all: Deny all other operations
     match /{document=**} {
-      // Allow all read/write operations
-      // Security is handled by the application's custom authentication system
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

@@ -157,14 +157,16 @@ export default function Packages() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total Packages
               </CardTitle>
-              <PackageIcon className="h-4 w-4 text-gray-600" />
+              <PackageIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalPackages}</div>
-              <p className="text-xs text-gray-600">
+              <div className="text-2xl font-bold text-foreground">
+                {totalPackages}
+              </div>
+              <p className="text-xs text-muted-foreground">
                 {activePackages} active packages
               </p>
             </CardContent>
@@ -172,31 +174,31 @@ export default function Packages() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Monthly Revenue
               </CardTitle>
-              <DollarSign className="h-4 w-4 text-gray-600" />
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-bold text-foreground">
                 ₹{totalRevenue.toLocaleString()}
               </div>
-              <p className="text-xs text-gray-600">From all packages</p>
+              <p className="text-xs text-muted-foreground">From all packages</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Avg. Revenue per Customer
               </CardTitle>
-              <TrendingUp className="h-4 w-4 text-gray-600" />
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-bold text-foreground">
                 ₹{averageRevenuePerCustomer.toLocaleString()}
               </div>
-              <p className="text-xs text-gray-600">Monthly average</p>
+              <p className="text-xs text-muted-foreground">Monthly average</p>
             </CardContent>
           </Card>
         </div>
@@ -226,13 +228,15 @@ export default function Packages() {
               </CardHeader>
 
               <CardContent className="flex flex-col h-full space-y-4">
-                <p className="text-gray-600">{pkg.description}</p>
+                <p className="text-muted-foreground">{pkg.description}</p>
 
                 <div className="space-y-4">
                   {/* Channel Info */}
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Channels:</span>
-                    <span className="font-medium">{pkg.channels}</span>
+                    <span className="text-muted-foreground">Channels:</span>
+                    <span className="font-medium text-foreground">
+                      {pkg.channels}
+                    </span>
                   </div>
 
                   {/* Package Metrics */}
@@ -289,37 +293,39 @@ export default function Packages() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">
+                    <label className="text-sm font-medium text-muted-foreground">
                       Package Name
                     </label>
-                    <p className="text-lg font-medium">{viewingPackage.name}</p>
+                    <p className="text-lg font-medium text-foreground">
+                      {viewingPackage.name}
+                    </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">
+                    <label className="text-sm font-medium text-muted-foreground">
                       Monthly Price
                     </label>
-                    <p className="text-lg font-bold text-blue-600">
+                    <p className="text-lg font-bold text-primary">
                       ₹{viewingPackage.price}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">
+                    <label className="text-sm font-medium text-muted-foreground">
                       Portal Amount
                     </label>
-                    <p className="text-lg font-bold text-green-600">
+                    <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                       ₹{viewingPackage.portalAmount || 0}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">
+                    <label className="text-sm font-medium text-muted-foreground">
                       Total Channels
                     </label>
-                    <p className="text-lg font-medium">
+                    <p className="text-lg font-medium text-foreground">
                       {viewingPackage.channels}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">
+                    <label className="text-sm font-medium text-muted-foreground">
                       Status
                     </label>
                     <Badge
@@ -333,25 +339,25 @@ export default function Packages() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-500">
+                  <label className="text-sm font-medium text-muted-foreground">
                     Description
                   </label>
-                  <p className="mt-1 text-gray-900">
+                  <p className="mt-1 text-foreground">
                     {viewingPackage.description}
                   </p>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-500">
+                  <label className="text-sm font-medium text-muted-foreground">
                     Features
                   </label>
                   <ul className="mt-1 space-y-1">
                     {viewingPackage.features.map((feature, index) => (
                       <li
                         key={index}
-                        className="flex items-center text-gray-900"
+                        className="flex items-center text-foreground"
                       >
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2" />
+                        <div className="w-1.5 h-1.5 bg-primary rounded-full mr-2" />
                         {feature}
                       </li>
                     ))}
@@ -360,18 +366,18 @@ export default function Packages() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">
+                    <label className="text-sm font-medium text-muted-foreground">
                       Current Customers
                     </label>
-                    <p className="text-lg font-medium">
+                    <p className="text-lg font-medium text-foreground">
                       {getCustomerCount(viewingPackage.name)}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">
+                    <label className="text-sm font-medium text-muted-foreground">
                       Monthly Revenue
                     </label>
-                    <p className="text-lg font-bold text-green-600">
+                    <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                       ₹{getTotalRevenue(viewingPackage).toLocaleString()}
                     </p>
                   </div>
@@ -446,18 +452,20 @@ export default function Packages() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-sm font-medium">Package Name</label>
+                    <label className="text-sm font-medium text-foreground">
+                      Package Name
+                    </label>
                     <input
                       name="name"
                       type="text"
                       required
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full mt-1 px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                       placeholder="Enter package name"
                       defaultValue={editingPackage?.name || ""}
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">
+                    <label className="text-sm font-medium text-foreground">
                       Monthly Price (₹)
                     </label>
                     <input
@@ -466,13 +474,13 @@ export default function Packages() {
                       step="0.01"
                       required
                       min="0"
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full mt-1 px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                       placeholder="0.00"
                       defaultValue={editingPackage?.price || ""}
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">
+                    <label className="text-sm font-medium text-foreground">
                       Portal Amount (₹)
                     </label>
                     <input
@@ -480,21 +488,23 @@ export default function Packages() {
                       type="number"
                       step="0.01"
                       min="0"
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full mt-1 px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                       placeholder="0.00"
                       defaultValue={editingPackage?.portalAmount || ""}
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Auto-filled when customer selects package
                     </p>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">Description</label>
+                  <label className="text-sm font-medium text-foreground">
+                    Description
+                  </label>
                   <textarea
                     name="description"
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full mt-1 px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                     rows={3}
                     placeholder="Package description"
                     defaultValue={editingPackage?.description || ""}
@@ -503,7 +513,7 @@ export default function Packages() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium">
+                    <label className="text-sm font-medium text-foreground">
                       Number of Channels
                     </label>
                     <input
@@ -511,16 +521,18 @@ export default function Packages() {
                       type="number"
                       required
                       min="1"
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full mt-1 px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                       placeholder="0"
                       defaultValue={editingPackage?.channels || ""}
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Status</label>
+                    <label className="text-sm font-medium text-foreground">
+                      Status
+                    </label>
                     <select
                       name="status"
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full mt-1 px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
                       defaultValue={
                         editingPackage?.isActive ? "active" : "inactive"
                       }
@@ -532,15 +544,17 @@ export default function Packages() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium">Features</label>
+                  <label className="text-sm font-medium text-foreground">
+                    Features
+                  </label>
                   <textarea
                     name="features"
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full mt-1 px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring placeholder:text-muted-foreground"
                     rows={4}
                     placeholder="Enter features, one per line"
                     defaultValue={editingPackage?.features.join("\n") || ""}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Enter each feature on a new line
                   </p>
                 </div>
