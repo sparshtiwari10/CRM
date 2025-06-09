@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { Customer, BillingRecord, Connection } from "@/types";
 import { authService } from "./authService";
+import { RoleValidator } from "@/middleware/roleValidation";
 
 export interface FirestoreCustomer {
   name: string;
@@ -94,46 +95,43 @@ class FirestoreService {
   // ================== CUSTOMERS ==================
 
   async getAllCustomers(): Promise<Customer[]> {
-    try {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser) {
-        throw new Error("User not authenticated");
-      }
+    return await RoleValidator.validateAndLog(
+      "getAllCustomers",
+      () => RoleValidator.validateAuthentication("get all customers"),
+      async () => {
+        const currentUser = authService.getCurrentUser()!;
+        const customersRef = collection(db, "customers");
+        let q;
 
-      const customersRef = collection(db, "customers");
-      let q;
+        if (currentUser.role === "admin") {
+          // Admins can see all customers
+          q = query(customersRef, orderBy("name"));
+        } else {
+          // Employees can only see customers assigned to them
+          // Use collector_name OR name for compatibility (no orderBy to avoid composite index)
+          const employeeName = currentUser.collector_name || currentUser.name;
+          q = query(customersRef, where("collector_name", "==", employeeName));
+        }
 
-      if (currentUser.role === "admin") {
-        // Admins can see all customers
-        q = query(customersRef, orderBy("name"));
-      } else {
-        // Employees can only see customers assigned to them
-        // Use collector_name OR name for compatibility (no orderBy to avoid composite index)
-        const employeeName = currentUser.collector_name || currentUser.name;
-        q = query(customersRef, where("collector_name", "==", employeeName));
-      }
+        const querySnapshot = await getDocs(q);
+        const customers: Customer[] = [];
 
-      const querySnapshot = await getDocs(q);
-      const customers: Customer[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as FirestoreCustomer;
+          customers.push(this.convertFirestoreCustomerToCustomer(doc.id, data));
+        });
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data() as FirestoreCustomer;
-        customers.push(this.convertFirestoreCustomerToCustomer(doc.id, data));
-      });
+        // Sort in memory for employees since we can't use orderBy with where clause
+        if (currentUser.role !== "admin") {
+          customers.sort((a, b) => a.name.localeCompare(b.name));
+        }
 
-      // Sort in memory for employees since we can't use orderBy with where clause
-      if (currentUser.role !== "admin") {
-        customers.sort((a, b) => a.name.localeCompare(b.name));
-      }
-
-      console.log(
-        `✅ Loaded ${customers.length} customers for ${currentUser.role === "admin" ? "admin" : `employee: ${currentUser.collector_name || currentUser.name}`}`,
-      );
-      return customers;
-    } catch (error) {
-      console.error("❌ Failed to load customers:", error);
-      throw error;
-    }
+        console.log(
+          `✅ Loaded ${customers.length} customers for ${currentUser.role === "admin" ? "admin" : `employee: ${currentUser.collector_name || currentUser.name}`}`,
+        );
+        return customers;
+      },
+    );
   }
 
   async getCustomersByCollector(collectorName: string): Promise<Customer[]> {
@@ -166,121 +164,124 @@ class FirestoreService {
   }
 
   async getCustomer(customerId: string): Promise<Customer> {
-    try {
-      const docRef = doc(db, "customers", customerId);
-      const docSnap = await getDoc(docRef);
+    return await RoleValidator.validateAndLog(
+      "getCustomer",
+      () => RoleValidator.validateAuthentication("get customer"),
+      async () => {
+        const docRef = doc(db, "customers", customerId);
+        const docSnap = await getDoc(docRef);
 
-      if (!docSnap.exists()) {
-        throw new Error("Customer not found");
-      }
+        if (!docSnap.exists()) {
+          throw new Error("Customer not found");
+        }
 
-      const data = docSnap.data() as FirestoreCustomer;
-      return this.convertFirestoreCustomerToCustomer(docSnap.id, data);
-    } catch (error) {
-      console.error("❌ Failed to get customer:", error);
-      throw error;
-    }
+        const data = docSnap.data() as FirestoreCustomer;
+        const customer = this.convertFirestoreCustomerToCustomer(
+          docSnap.id,
+          data,
+        );
+
+        // Validate access to this specific customer
+        RoleValidator.validateCustomerAccess(
+          customerId,
+          customer.collectorName,
+          "get customer",
+        );
+
+        return customer;
+      },
+    );
   }
 
   async addCustomer(customer: Customer): Promise<string> {
-    try {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can add customers");
-      }
+    return await RoleValidator.validateAndLog(
+      "addCustomer",
+      () => RoleValidator.validateAdminAccess("add customer"),
+      async () => {
+        // Validate required fields before processing
+        this.validateCustomerData(customer);
 
-      // Validate required fields before processing
-      this.validateCustomerData(customer);
+        const customersRef = collection(db, "customers");
+        const customerData: FirestoreCustomer =
+          this.convertCustomerToFirestoreCustomer(customer);
 
-      const customersRef = collection(db, "customers");
-      const customerData: FirestoreCustomer =
-        this.convertCustomerToFirestoreCustomer(customer);
+        // Additional sanitization check
+        this.sanitizeFirestoreData(customerData);
 
-      // Additional sanitization check
-      this.sanitizeFirestoreData(customerData);
-
-      const docRef = await addDoc(customersRef, customerData);
-      console.log(`✅ Customer ${customer.name} added successfully`);
-      return docRef.id;
-    } catch (error) {
-      console.error("❌ Failed to add customer:", error);
-      throw error;
-    }
+        const docRef = await addDoc(customersRef, customerData);
+        console.log(`✅ Customer ${customer.name} added successfully`);
+        return docRef.id;
+      },
+    );
   }
 
   async updateCustomer(
     customerId: string,
     customer: Customer | Partial<Customer>,
   ): Promise<void> {
-    try {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can update customers");
-      }
+    return await RoleValidator.validateAndLog(
+      "updateCustomer",
+      () => RoleValidator.validateAdminAccess("update customer"),
+      async () => {
+        const docRef = doc(db, "customers", customerId);
 
-      const docRef = doc(db, "customers", customerId);
+        // For partial updates, only convert the provided fields
+        let updateData: any = {};
 
-      // For partial updates, only convert the provided fields
-      let updateData: any = {};
+        if (customer.name !== undefined) updateData.name = customer.name;
+        if (customer.phoneNumber !== undefined)
+          updateData.phone = customer.phoneNumber;
+        if (customer.address !== undefined)
+          updateData.address = customer.address;
+        if (customer.currentPackage !== undefined)
+          updateData.package = customer.currentPackage;
+        if (customer.vcNumber !== undefined)
+          updateData.vc_no = customer.vcNumber;
+        if (customer.collectorName !== undefined)
+          updateData.collector_name = customer.collectorName;
+        if (customer.previousOutstanding !== undefined)
+          updateData.prev_os = customer.previousOutstanding;
+        if (customer.packageAmount !== undefined)
+          updateData.bill_amount = customer.packageAmount;
+        if (customer.currentOutstanding !== undefined)
+          updateData.current_os = customer.currentOutstanding;
+        if (customer.email !== undefined) updateData.email = customer.email;
+        if (customer.isActive !== undefined)
+          updateData.status = customer.isActive ? "active" : "inactive";
+        if (customer.status !== undefined) {
+          updateData.status = customer.status;
+          updateData.is_active = customer.status === "active";
+        }
+        if (customer.statusLogs !== undefined)
+          updateData.status_logs = customer.statusLogs;
+        if (customer.billDueDate !== undefined)
+          updateData.bill_due_date = customer.billDueDate;
+        if (customer.numberOfConnections !== undefined)
+          updateData.number_of_connections = customer.numberOfConnections;
+        if (customer.connections !== undefined)
+          updateData.connections = customer.connections;
+        if (customer.customPlan !== undefined)
+          updateData.custom_plan = customer.customPlan;
 
-      if (customer.name !== undefined) updateData.name = customer.name;
-      if (customer.phoneNumber !== undefined)
-        updateData.phone = customer.phoneNumber;
-      if (customer.address !== undefined) updateData.address = customer.address;
-      if (customer.currentPackage !== undefined)
-        updateData.package = customer.currentPackage;
-      if (customer.vcNumber !== undefined) updateData.vc_no = customer.vcNumber;
-      if (customer.collectorName !== undefined)
-        updateData.collector_name = customer.collectorName;
-      if (customer.previousOutstanding !== undefined)
-        updateData.prev_os = customer.previousOutstanding;
-      if (customer.packageAmount !== undefined)
-        updateData.bill_amount = customer.packageAmount;
-      if (customer.currentOutstanding !== undefined)
-        updateData.current_os = customer.currentOutstanding;
-      if (customer.email !== undefined) updateData.email = customer.email;
-      if (customer.isActive !== undefined)
-        updateData.status = customer.isActive ? "active" : "inactive";
-      if (customer.status !== undefined) {
-        updateData.status = customer.status;
-        updateData.is_active = customer.status === "active";
-      }
-      if (customer.statusLogs !== undefined)
-        updateData.status_logs = customer.statusLogs;
-      if (customer.billDueDate !== undefined)
-        updateData.bill_due_date = customer.billDueDate;
-      if (customer.numberOfConnections !== undefined)
-        updateData.number_of_connections = customer.numberOfConnections;
-      if (customer.connections !== undefined)
-        updateData.connections = customer.connections;
-      if (customer.customPlan !== undefined)
-        updateData.custom_plan = customer.customPlan;
+        // Always update the timestamp
+        updateData.updated_at = Timestamp.now();
 
-      // Always update the timestamp
-      updateData.updated_at = Timestamp.now();
-
-      await updateDoc(docRef, updateData);
-      console.log(`✅ Customer updated successfully`);
-    } catch (error) {
-      console.error("❌ Failed to update customer:", error);
-      throw error;
-    }
+        await updateDoc(docRef, updateData);
+        console.log(`✅ Customer updated successfully`);
+      },
+    );
   }
 
   async deleteCustomer(customerId: string): Promise<void> {
-    try {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can delete customers");
-      }
-
-      const docRef = doc(db, "customers", customerId);
-      await deleteDoc(docRef);
-      console.log(`✅ Customer deleted successfully`);
-    } catch (error) {
-      console.error("❌ Failed to delete customer:", error);
-      throw error;
-    }
+    return await RoleValidator.validateAndLog(
+      "deleteCustomer",
+      () => RoleValidator.validateAdminAccess("delete customer"),
+      async () => {
+        const docRef = doc(db, "customers", customerId);
+        await deleteDoc(docRef);
+        console.log(`✅ Customer deleted successfully`);
+      },
+    );
   }
 
   // ================== BILLING ==================
@@ -366,56 +367,52 @@ class FirestoreService {
   }
 
   async addBillingRecord(record: Omit<BillingRecord, "id">): Promise<string> {
-    try {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser) {
-        throw new Error("User not authenticated");
-      }
+    return await RoleValidator.validateAndLog(
+      "addBillingRecord",
+      () => RoleValidator.validateAuthentication("add billing record"),
+      async () => {
+        // Validate billing record data
+        this.validateBillingRecordData(record);
 
-      // Validate billing record data
-      this.validateBillingRecordData(record);
+        const billingRef = collection(db, "billing");
 
-      const billingRef = collection(db, "billing");
+        // Build record data with proper handling of optional fields
+        const recordData: FirestoreBillingRecord = {
+          customer_id: record.customerId || "",
+          customer_name: record.customerName || "",
+          package_name: record.packageName || "",
+          amount: record.amount || 0,
+          due_date: Timestamp.fromDate(new Date(record.dueDate)),
+          status: record.status || "Pending",
+          invoice_number: record.invoiceNumber || "",
+          generated_date: Timestamp.fromDate(new Date(record.generatedDate)),
+          generated_by: record.generatedBy || "",
+          employee_id: record.employeeId || "",
+          billing_month: record.billingMonth || "",
+          billing_year: record.billingYear || "",
+          vc_number: record.vcNumber || "",
+          created_at: Timestamp.now(),
+        };
 
-      // Build record data with proper handling of optional fields
-      const recordData: FirestoreBillingRecord = {
-        customer_id: record.customerId || "",
-        customer_name: record.customerName || "",
-        package_name: record.packageName || "",
-        amount: record.amount || 0,
-        due_date: Timestamp.fromDate(new Date(record.dueDate)),
-        status: record.status || "Pending",
-        invoice_number: record.invoiceNumber || "",
-        generated_date: Timestamp.fromDate(new Date(record.generatedDate)),
-        generated_by: record.generatedBy || "",
-        employee_id: record.employeeId || "",
-        billing_month: record.billingMonth || "",
-        billing_year: record.billingYear || "",
-        vc_number: record.vcNumber || "",
-        created_at: Timestamp.now(),
-      };
+        // Only add optional fields if they have valid values
+        if (
+          record.customAmount !== undefined &&
+          record.customAmount !== null &&
+          record.customAmount > 0
+        ) {
+          recordData.custom_amount = record.customAmount;
+        }
 
-      // Only add optional fields if they have valid values
-      if (
-        record.customAmount !== undefined &&
-        record.customAmount !== null &&
-        record.customAmount > 0
-      ) {
-        recordData.custom_amount = record.customAmount;
-      }
+        // Additional sanitization check
+        this.sanitizeFirestoreData(recordData);
 
-      // Additional sanitization check
-      this.sanitizeFirestoreData(recordData);
-
-      const docRef = await addDoc(billingRef, recordData);
-      console.log(
-        `✅ Billing record ${record.invoiceNumber} added successfully`,
-      );
-      return docRef.id;
-    } catch (error) {
-      console.error("❌ Failed to add billing record:", error);
-      throw error;
-    }
+        const docRef = await addDoc(billingRef, recordData);
+        console.log(
+          `✅ Billing record ${record.invoiceNumber} added successfully`,
+        );
+        return docRef.id;
+      },
+    );
   }
 
   // ================== REQUESTS ==================
