@@ -637,7 +637,7 @@ function isAdmin() {
 **Version 2.0 (Current)**: Balanced security with usability
 
 - ✅ Handles missing collections and initial setup scenarios
-- ✅ Simplified validation while maintaining security
+- �� Simplified validation while maintaining security
 - ✅ Fallback mechanisms for edge cases
 - ✅ Production-ready with real-world compatibility
 
@@ -660,6 +660,135 @@ FirebaseDebug.runDiagnostics()
 - Ensure Firebase project is properly configured
 - Use built-in debugger: `FirebaseDebug.testPermissions()`
 - Check browser console for detailed error messages
+
+---
+
+## 🚨 **Troubleshooting Guide**
+
+### **Website Not Loading - Comprehensive Debug Process**
+
+#### **Phase 1: Immediate Checks**
+
+1. **Verify Dev Server**:
+
+   - Check server is running on correct port
+   - Clear browser cache and reload
+
+2. **Check Browser Console**:
+
+   ```javascript
+   // Run in browser console
+   FirebaseDebug.runDiagnostics();
+   ```
+
+3. **Verify Firebase Rules Deployment**:
+
+   ```bash
+   # Deploy rules even if they seem unchanged
+   firebase deploy --only firestore:rules
+
+   # Verify deployment
+   firebase firestore:rules get
+   ```
+
+#### **Phase 2: Firebase Console Verification**
+
+**Go to [Firebase Console](https://console.firebase.google.com):**
+
+1. **Check Collections**:
+
+   - Ensure `users`, `packages`, `customers` collections exist
+   - If missing, create them manually
+
+2. **Verify User Document**:
+
+   ```json
+   Collection: users
+   Document ID: <your-firebase-auth-uid>
+   {
+     "name": "Your Name",
+     "role": "admin",
+     "is_active": true,
+     "email": "your-email@example.com"
+   }
+   ```
+
+3. **Test Rules in Rules Playground**:
+   - Simulate read/write operations
+   - Verify rules logic works as expected
+
+#### **Phase 3: Emergency Debugging**
+
+If website still doesn't work, use emergency bypass rules:
+
+```bash
+# Backup current rules
+cp firestore.rules firestore.rules.backup
+
+# Use emergency rules (temporary)
+cp firestore-emergency.rules firestore.rules
+firebase deploy --only firestore:rules
+
+# Test website - if it works, issue was with rules
+# If still broken, issue is with auth/collections/config
+
+# IMMEDIATELY restore proper rules
+cp firestore.rules.backup firestore.rules
+firebase deploy --only firestore:rules
+```
+
+#### **Phase 4: Common Solutions**
+
+**Issue**: Permission errors persist
+**Solution**:
+
+- Check user is actually logged in: `FirebaseDebug.checkAuthStatus()`
+- Verify user document exists and has correct role
+- Ensure Firebase project is selected: `firebase use <project-id>`
+
+**Issue**: Collections don't exist
+**Solution**:
+
+- Create collections manually in Firebase Console
+- Add sample documents to initialize collections
+- Verify collection names match exactly (case-sensitive)
+
+**Issue**: Rules not deploying
+**Solution**:
+
+- Re-authenticate: `firebase login --reauth`
+- Check project permissions
+- Use debug deployment: `firebase deploy --only firestore:rules --debug`
+
+#### **Phase 5: Advanced Diagnostics**
+
+**Browser Network Tab**:
+
+- Look for 403/401 errors on Firestore requests
+- Check if requests are being made at all
+- Verify request headers include authentication
+
+**Firebase Console Monitoring**:
+
+- Check Usage tab for denied requests
+- Monitor Rules evaluation metrics
+- Review Authentication logs
+
+### **Success Indicators**
+
+✅ **Browser Console**: No permission errors
+✅ **Network Tab**: Successful Firestore requests (200 status)
+✅ **Diagnostics**: `FirebaseDebug.runDiagnostics()` shows all green
+✅ **Website**: Pages load with data or proper empty states
+
+### **Emergency Contact**
+
+If all debugging steps fail:
+
+1. **Share Diagnostic Output**: Results from `FirebaseDebug.runDiagnostics()`
+2. **Include Screenshots**: Firebase Console collections and user document
+3. **Provide Console Errors**: Complete browser console error log
+4. **Terminal Output**: Results from `firebase deploy --only firestore:rules --debug`
 
 ---
 
