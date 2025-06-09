@@ -14,7 +14,7 @@ import {
   Timestamp,
   writeBatch,
 } from "firebase/firestore";
-import { Customer, BillingRecord, Connection } from "@/types";
+import { Customer, BillingRecord, Connection, Package } from "@/types";
 import { authService } from "./authService";
 import { RoleValidator } from "@/middleware/roleValidation";
 
@@ -89,6 +89,20 @@ export interface FirestoreRequest {
   admin_notes?: string;
   created_at: Timestamp;
   updated_at: Timestamp;
+}
+
+export interface FirestorePackage {
+  name: string;
+  price: number;
+  description: string;
+  channels: number;
+  features: string[];
+  is_active: boolean;
+  portal_amount: number;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  created_by?: string;
+  updated_by?: string;
 }
 
 class FirestoreService {
@@ -554,6 +568,178 @@ class FirestoreService {
       },
     );
   }
+  // ================== PACKAGES ==================
+
+  async getAllPackages(): Promise<Package[]> {
+    return await RoleValidator.validateAndLog(
+      "getAllPackages",
+      () => RoleValidator.validateAuthentication("get packages"),
+      async () => {
+        const packagesRef = collection(db, "packages");
+        const q = query(packagesRef, orderBy("name"));
+
+        const querySnapshot = await getDocs(q);
+        const packages: Package[] = [];
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as FirestorePackage;
+          packages.push(this.convertFirestorePackageToPackage(doc.id, data));
+        });
+
+        console.log(`✅ Loaded ${packages.length} packages`);
+        return packages;
+      },
+    );
+  }
+
+  async getPackage(packageId: string): Promise<Package> {
+    return await RoleValidator.validateAndLog(
+      "getPackage",
+      () => RoleValidator.validateAuthentication("get package"),
+      async () => {
+        const docRef = doc(db, "packages", packageId);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+          throw new Error("Package not found");
+        }
+
+        const data = docSnap.data() as FirestorePackage;
+        return this.convertFirestorePackageToPackage(docSnap.id, data);
+      },
+    );
+  }
+
+  async addPackage(packageData: Omit<Package, "id">): Promise<string> {
+    return await RoleValidator.validateAndLog(
+      "addPackage",
+      () => RoleValidator.validateAdminAccess("add package"),
+      async () => {
+        const currentUser = authService.getCurrentUser()!;
+
+        // Validate package data
+        this.validatePackageData(packageData);
+
+        const packagesRef = collection(db, "packages");
+        const firestorePackage: FirestorePackage = {
+          name: packageData.name.trim(),
+          price: packageData.price,
+          description: packageData.description.trim(),
+          channels: packageData.channels,
+          features: packageData.features.filter((f) => f.trim() !== ""),
+          is_active: packageData.isActive,
+          portal_amount: packageData.portalAmount,
+          created_at: Timestamp.now(),
+          updated_at: Timestamp.now(),
+          created_by: currentUser.id,
+        };
+
+        const docRef = await addDoc(packagesRef, firestorePackage);
+        console.log(`✅ Package ${packageData.name} added successfully`);
+        return docRef.id;
+      },
+    );
+  }
+
+  async updatePackage(
+    packageId: string,
+    packageData: Partial<Package>,
+  ): Promise<void> {
+    return await RoleValidator.validateAndLog(
+      "updatePackage",
+      () => RoleValidator.validateAdminAccess("update package"),
+      async () => {
+        const currentUser = authService.getCurrentUser()!;
+        const docRef = doc(db, "packages", packageId);
+
+        let updateData: any = {};
+
+        if (packageData.name !== undefined)
+          updateData.name = packageData.name.trim();
+        if (packageData.price !== undefined)
+          updateData.price = packageData.price;
+        if (packageData.description !== undefined)
+          updateData.description = packageData.description.trim();
+        if (packageData.channels !== undefined)
+          updateData.channels = packageData.channels;
+        if (packageData.features !== undefined)
+          updateData.features = packageData.features.filter(
+            (f) => f.trim() !== "",
+          );
+        if (packageData.isActive !== undefined)
+          updateData.is_active = packageData.isActive;
+        if (packageData.portalAmount !== undefined)
+          updateData.portal_amount = packageData.portalAmount;
+
+        // Always update timestamp and user
+        updateData.updated_at = Timestamp.now();
+        updateData.updated_by = currentUser.id;
+
+        await updateDoc(docRef, updateData);
+        console.log(`✅ Package ${packageId} updated successfully`);
+      },
+    );
+  }
+
+  async deletePackage(packageId: string): Promise<void> {
+    return await RoleValidator.validateAndLog(
+      "deletePackage",
+      () => RoleValidator.validateAdminAccess("delete package"),
+      async () => {
+        // Check if package is being used by any customers
+        const customersRef = collection(db, "customers");
+        const packageRef = doc(db, "packages", packageId);
+
+        // Get package name first
+        const packageDoc = await getDoc(packageRef);
+        if (!packageDoc.exists()) {
+          throw new Error("Package not found");
+        }
+
+        const packageData = packageDoc.data() as FirestorePackage;
+        const packageName = packageData.name;
+
+        // Check if any customer is using this package
+        const customerQuery = query(
+          customersRef,
+          where("package", "==", packageName),
+        );
+        const customerSnapshot = await getDocs(customerQuery);
+
+        if (!customerSnapshot.empty) {
+          throw new Error(
+            `Cannot delete package "${packageName}". It is currently assigned to ${customerSnapshot.size} customer(s). Please reassign customers before deleting.`,
+          );
+        }
+
+        // Also check connections for secondary packages
+        const allCustomersQuery = query(customersRef);
+        const allCustomersSnapshot = await getDocs(allCustomersQuery);
+
+        let usageCount = 0;
+        allCustomersSnapshot.forEach((doc) => {
+          const customer = doc.data() as FirestoreCustomer;
+          if (customer.connections) {
+            customer.connections.forEach((conn) => {
+              if (conn.planName === packageName) {
+                usageCount++;
+              }
+            });
+          }
+        });
+
+        if (usageCount > 0) {
+          throw new Error(
+            `Cannot delete package "${packageName}". It is currently used in ${usageCount} customer connection(s). Please update customer connections before deleting.`,
+          );
+        }
+
+        await deleteDoc(packageRef);
+        console.log(`✅ Package ${packageName} deleted successfully`);
+      },
+    );
+  }
+
   // ================== DATA IMPORT ==================
 
   async importCustomersFromJson(customers: any[]): Promise<void> {
@@ -847,6 +1033,60 @@ class FirestoreService {
       vcNumber: data.vc_number,
       customAmount: data.custom_amount,
     };
+  }
+
+  private convertFirestorePackageToPackage(
+    id: string,
+    data: FirestorePackage,
+  ): Package {
+    return {
+      id,
+      name: data.name || "",
+      price: data.price || 0,
+      description: data.description || "",
+      channels: data.channels || 0,
+      features: data.features || [],
+      isActive: data.is_active !== false, // Default to true if not set
+      portalAmount: data.portal_amount || data.price || 0,
+    };
+  }
+
+  /**
+   * Validate package data before saving to Firestore
+   */
+  private validatePackageData(packageData: Omit<Package, "id">): void {
+    const errors: string[] = [];
+
+    if (!packageData.name || packageData.name.trim() === "") {
+      errors.push("Package name is required");
+    }
+
+    if (!packageData.price || packageData.price <= 0) {
+      errors.push("Package price must be greater than 0");
+    }
+
+    if (!packageData.description || packageData.description.trim() === "") {
+      errors.push("Package description is required");
+    }
+
+    if (!packageData.channels || packageData.channels <= 0) {
+      errors.push("Number of channels must be greater than 0");
+    }
+
+    if (!packageData.features || packageData.features.length === 0) {
+      errors.push("At least one feature is required");
+    }
+
+    if (
+      packageData.portalAmount !== undefined &&
+      packageData.portalAmount < 0
+    ) {
+      errors.push("Portal amount cannot be negative");
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Package validation failed: ${errors.join(", ")}`);
+    }
   }
 }
 
