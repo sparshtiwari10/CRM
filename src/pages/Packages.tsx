@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus,
   Eye,
@@ -8,6 +8,8 @@ import {
   Users,
   DollarSign,
   TrendingUp,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -22,110 +24,200 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { mockPackages, mockCustomers } from "@/data/mockData";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Package, Customer } from "@/types";
 import { PackageMetrics } from "@/components/packages/PackageMetrics";
+import {
+  packageService,
+  PackageMetrics as PackageMetricsType,
+} from "@/services/packageService";
+import { firestoreService } from "@/services/firestoreService";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Packages() {
-  const [packages, setPackages] = useState<Package[]>(mockPackages);
-  const [customers] = useState<Customer[]>(mockCustomers);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [metrics, setMetrics] = useState<PackageMetricsType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewingPackage, setViewingPackage] = useState<Package | null>(null);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Package | null>(
     null,
   );
+  const [deleteValidation, setDeleteValidation] = useState<{
+    canDelete: boolean;
+    reason?: string;
+    affectedCustomers?: string[];
+  } | null>(null);
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
+
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Recalculate metrics when packages or customers change
+  useEffect(() => {
+    if (packages.length > 0 || customers.length > 0) {
+      const calculatedMetrics = packageService.calculatePackageMetrics(
+        packages,
+        customers,
+      );
+      setMetrics(calculatedMetrics);
+    }
+  }, [packages, customers]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [packagesData, customersData] = await Promise.all([
+        packageService.getAllPackages(),
+        firestoreService.getAllCustomers(),
+      ]);
+
+      setPackages(packagesData);
+      setCustomers(customersData);
+    } catch (error) {
+      console.error("Failed to load data:", error);
+      setError(error instanceof Error ? error.message : "Failed to load data");
+      toast({
+        title: "Error Loading Data",
+        description:
+          "Failed to load packages and customer data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getCustomerCount = (packageName: string) => {
-    return customers.filter(
-      (customer) => customer.currentPackage === packageName,
-    ).length;
+    return packageService.getCustomerCount(packageName, customers);
   };
 
   const getTotalRevenue = (pkg: Package) => {
-    const customerCount = getCustomerCount(pkg.name);
-    return customerCount * pkg.price;
+    return packageService.getTotalRevenue(pkg.name, packages, customers);
   };
 
-  const totalPackages = packages.length;
-  const activePackages = packages.filter((pkg) => pkg.isActive).length;
-  const totalCustomers = customers.length;
-  const totalRevenue = packages.reduce(
-    (sum, pkg) => sum + getTotalRevenue(pkg),
-    0,
-  );
-  const averageRevenuePerCustomer =
-    totalCustomers > 0 ? totalRevenue / totalCustomers : 0;
-
-  const handleSavePackage = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSavePackage = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
 
-    const packageData = {
-      name: formData.get("name") as string,
-      price: parseFloat(formData.get("price") as string),
-      description: formData.get("description") as string,
-      channels: parseInt(formData.get("channels") as string),
-      isActive: formData.get("status") === "active",
-      features: (formData.get("features") as string)
-        .split("\n")
-        .filter((f) => f.trim()),
-      portalAmount: parseFloat(formData.get("portalAmount") as string) || 0,
-    };
+    try {
+      const formData = new FormData(event.currentTarget);
 
-    if (editingPackage) {
-      // Update existing package
-      setPackages((prev) =>
-        prev.map((pkg) =>
-          pkg.id === editingPackage.id ? { ...pkg, ...packageData } : pkg,
-        ),
-      );
-      toast({
-        title: "Package Updated",
-        description: `${packageData.name} has been successfully updated.`,
-      });
-    } else {
-      // Create new package
-      const newPackage: Package = {
-        id: Date.now().toString(),
-        ...packageData,
+      const packageData = {
+        name: formData.get("name") as string,
+        price: parseFloat(formData.get("price") as string),
+        description: formData.get("description") as string,
+        channels: parseInt(formData.get("channels") as string),
+        isActive: formData.get("status") === "active",
+        features: (formData.get("features") as string)
+          .split("\n")
+          .filter((f) => f.trim()),
+        portalAmount: parseFloat(formData.get("portalAmount") as string) || 0,
       };
-      setPackages((prev) => [...prev, newPackage]);
-      toast({
-        title: "Package Created",
-        description: `${packageData.name} has been successfully created.`,
-      });
-    }
 
-    setShowCreateModal(false);
-    setEditingPackage(null);
-  };
+      if (editingPackage) {
+        // Update existing package
+        await packageService.updatePackage(editingPackage.id, packageData);
 
-  const handleDeletePackage = (pkg: Package) => {
-    const customerCount = getCustomerCount(pkg.name);
-    if (customerCount > 0) {
+        // Update local state
+        setPackages((prev) =>
+          prev.map((pkg) =>
+            pkg.id === editingPackage.id ? { ...pkg, ...packageData } : pkg,
+          ),
+        );
+
+        toast({
+          title: "Package Updated",
+          description: `${packageData.name} has been successfully updated.`,
+        });
+      } else {
+        // Create new package
+        const newPackageId = await packageService.createPackage(packageData);
+
+        const newPackage: Package = {
+          id: newPackageId,
+          ...packageData,
+        };
+
+        setPackages((prev) => [...prev, newPackage]);
+
+        toast({
+          title: "Package Created",
+          description: `${packageData.name} has been successfully created.`,
+        });
+      }
+
+      setShowCreateModal(false);
+      setEditingPackage(null);
+    } catch (error) {
+      console.error("Failed to save package:", error);
       toast({
-        title: "Cannot Delete Package",
-        description: `${pkg.name} has ${customerCount} customers. Please reassign customers before deleting.`,
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to save package",
         variant: "destructive",
       });
-      return;
     }
-    setShowDeleteConfirm(pkg);
   };
 
-  const confirmDeletePackage = () => {
-    if (showDeleteConfirm) {
+  const handleDeletePackage = async (pkg: Package) => {
+    try {
+      // Validate deletion
+      const validation = await packageService.validatePackageDeletion(
+        pkg.id,
+        customers,
+      );
+      setDeleteValidation(validation);
+
+      if (!validation.canDelete) {
+        // Show validation error but still allow admin to see the delete dialog
+        setShowDeleteConfirm(pkg);
+        return;
+      }
+
+      setShowDeleteConfirm(pkg);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to validate package deletion",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const confirmDeletePackage = async () => {
+    if (!showDeleteConfirm) return;
+
+    try {
+      await packageService.deletePackage(showDeleteConfirm.id);
+
+      // Update local state
       setPackages((prev) =>
         prev.filter((pkg) => pkg.id !== showDeleteConfirm.id),
       );
+
       toast({
         title: "Package Deleted",
         description: `${showDeleteConfirm.name} has been successfully deleted.`,
+      });
+
+      setShowDeleteConfirm(null);
+      setDeleteValidation(null);
+    } catch (error) {
+      console.error("Failed to delete package:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to delete package",
         variant: "destructive",
       });
-      setShowDeleteConfirm(null);
     }
   };
 
@@ -133,6 +225,49 @@ export default function Packages() {
     setShowCreateModal(false);
     setEditingPackage(null);
   };
+
+  const closeDeleteModal = () => {
+    setShowDeleteConfirm(null);
+    setDeleteValidation(null);
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <DashboardLayout title="Package Management">
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading packages...</span>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <DashboardLayout title="Package Management">
+        <div className="p-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadData}
+                className="ml-4"
+              >
+                Try Again
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title="Package Management">
@@ -147,10 +282,12 @@ export default function Packages() {
               Manage your cable TV packages and pricing
             </p>
           </div>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Package
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Package
+            </Button>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -164,10 +301,11 @@ export default function Packages() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-foreground">
-                {totalPackages}
+                {metrics?.totalPackages || 0}
               </div>
               <p className="text-xs text-muted-foreground">
-                {activePackages} active packages
+                {metrics?.activePackages || 0} active,{" "}
+                {metrics?.inactivePackages || 0} inactive
               </p>
             </CardContent>
           </Card>
@@ -181,9 +319,11 @@ export default function Packages() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-foreground">
-                ₹{totalRevenue.toLocaleString()}
+                ₹{(metrics?.totalRevenue || 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">From all packages</p>
+              <p className="text-xs text-muted-foreground">
+                From {metrics?.totalCustomers || 0} customers
+              </p>
             </CardContent>
           </Card>
 
@@ -196,13 +336,21 @@ export default function Packages() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-foreground">
-                ₹{averageRevenuePerCustomer.toLocaleString()}
+                ₹
+                {Math.round(
+                  metrics?.averageRevenuePerCustomer || 0,
+                ).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">Monthly average</p>
+              <p className="text-xs text-muted-foreground">
+                ₹
+                {Math.round(
+                  metrics?.averageRevenuePerPackage || 0,
+                ).toLocaleString()}{" "}
+                per package
+              </p>
             </CardContent>
           </Card>
         </div>
-
         {/* Packages Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {packages.map((pkg) => (
@@ -405,10 +553,7 @@ export default function Packages() {
         </Dialog>
 
         {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={!!showDeleteConfirm}
-          onOpenChange={() => setShowDeleteConfirm(null)}
-        >
+        <Dialog open={!!showDeleteConfirm} onOpenChange={closeDeleteModal}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Delete Package</DialogTitle>
@@ -417,15 +562,49 @@ export default function Packages() {
                 This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
+
+            {deleteValidation && !deleteValidation.canDelete && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p>{deleteValidation.reason}</p>
+                    {deleteValidation.affectedCustomers && (
+                      <div>
+                        <p className="font-medium">Affected customers:</p>
+                        <ul className="list-disc list-inside space-y-1 text-sm">
+                          {deleteValidation.affectedCustomers
+                            .slice(0, 5)
+                            .map((customer, index) => (
+                              <li key={index}>{customer}</li>
+                            ))}
+                          {deleteValidation.affectedCustomers.length > 5 && (
+                            <li>
+                              ... and{" "}
+                              {deleteValidation.affectedCustomers.length - 5}{" "}
+                              more
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowDeleteConfirm(null)}
-              >
+              <Button variant="outline" onClick={closeDeleteModal}>
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={confirmDeletePackage}>
-                Delete Package
+              <Button
+                variant="destructive"
+                onClick={confirmDeletePackage}
+                disabled={deleteValidation && !deleteValidation.canDelete}
+              >
+                {deleteValidation && !deleteValidation.canDelete
+                  ? "Cannot Delete"
+                  : "Delete Package"}
               </Button>
             </DialogFooter>
           </DialogContent>
