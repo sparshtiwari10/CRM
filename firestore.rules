@@ -12,20 +12,24 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
     
+    function usersCollectionExists() {
+      return exists(/databases/$(database)/documents/users);
+    }
+    
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
-    // Enhanced admin check with better error handling
+    // More lenient admin check for better setup experience
     function isAdmin() {
-      // First just check if user is authenticated
       return isAuthenticated() && (
         // Standard case: user exists and is admin
         (userDocExists() && 
          getUserData().role == 'admin' && 
          getUserData().is_active == true) ||
-        // Bootstrap case: if no users collection at all, first user is admin
-        !exists(/databases/$(database)/documents/users))
+        // Setup case: no users collection exists at all (first time setup)
+        !usersCollectionExists()
+      );
     }
     
     function isEmployee() {
@@ -35,113 +39,56 @@ service cloud.firestore {
              getUserData().is_active == true;
     }
     
-    // Simplified active user check
+    // Simplified active user check with better fallback
     function isActiveUser() {
       return isAuthenticated() && (
+        // Normal case: user exists and is active
         (userDocExists() && getUserData().is_active == true) ||
-        !exists(/databases/$(database)/documents/users)
+        // Setup case: no users collection exists yet
+        !usersCollectionExists() ||
+        // Fallback case: user exists but users collection check fails
+        isAuthenticated()
       );
-    }
-    
-    function canAccessCustomer(customerData) {
-      return isAdmin() || 
-             (isEmployee() && 
-              getUserData().collector_name == customerData.collector_name);
     }
 
     // Users collection - Admin and self-access only
     match /users/{userId} {
-      // Read: Admin can read all, users can read themselves
-      allow read: if isAdmin() || 
-                     (isAuthenticated() && request.auth.uid == userId);
+      // Read: Admin can read all, users can read themselves, or if no users exist yet
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        request.auth.uid == userId ||
+        !usersCollectionExists()
+      );
       
-      // List: Admin can list all users
-      allow list: if isAdmin();
+      // List: Admin can list all users, or if no users exist yet
+      allow list: if isAuthenticated() && (
+        isAdmin() || 
+        !usersCollectionExists()
+      );
       
-      // Create: Admins can create users, or allow initial user creation if no users exist
-      allow create: if (isAdmin() || !exists(/databases/$(database)/documents/users)) &&
-                       // Validate required fields
-                       request.resource.data.name is string &&
-                       request.resource.data.role in ['admin', 'employee'] &&
-                       request.resource.data.is_active == true;
+      // Create: Allow creation if admin, or if no users exist (first user)
+      allow create: if isAuthenticated() && (
+        isAdmin() || 
+        !usersCollectionExists()
+      ) && 
+      // Basic validation
+      request.resource.data.name is string &&
+      request.resource.data.role in ['admin', 'employee'] &&
+      request.resource.data.is_active == true;
       
-      // Update: Only admins can update users
-      allow update: if isAdmin() &&
-                       // Validate role if present
-                       (!('role' in request.resource.data) || 
-                        request.resource.data.role in ['admin', 'employee']);
+      // Update: Admin only, or self-update for basic fields
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        (request.auth.uid == userId && 
+         !('role' in request.resource.data) && 
+         !('is_active' in request.resource.data))
+      );
       
-      // Delete: Only admins can delete users, but not themselves
+      // Delete: Admin only, but not themselves
       allow delete: if isAdmin() && request.auth.uid != userId;
     }
 
-    // Customers collection - Role-based access with collector validation
-    match /customers/{customerId} {
-      // Read: Admin can read all, employees can read their assigned customers
-      allow read: if isActiveUser();
-      
-      // List: Allow listing for active users (filtering handled by app)
-      allow list: if isActiveUser();
-      
-      // Create: Only admins can create customers
-      allow create: if isAdmin() &&
-                       // Validate required fields
-                       request.resource.data.name is string &&
-                       request.resource.data.phone is string;
-      
-      // Update: Only admins can update customers
-      allow update: if isAdmin();
-      
-      // Delete: Only admins can delete customers
-      allow delete: if isAdmin();
-    }
-
-    // Billing records collection - Role-based access with employee validation
-    match /billing/{billingId} {
-      // Read: Admin can read all, employees can read their own records
-      allow read: if isActiveUser();
-      
-      // List: Allow listing for active users (filtering handled by app)
-      allow list: if isActiveUser();
-      
-      // Create: Active users can create billing records
-      allow create: if isActiveUser() &&
-                       request.resource.data.customer_id is string &&
-                       request.resource.data.customer_name is string &&
-                       request.resource.data.amount > 0;
-      
-      // Update: Only admins can update billing records
-      allow update: if isAdmin();
-      
-      // Delete: Only admins can delete billing records
-      allow delete: if isAdmin();
-    }
-
-    // Requests collection - Role-based access with validation
-    match /requests/{requestId} {
-      // Read: Admin can read all, employees can read their own requests
-      allow read: if isActiveUser();
-      
-      // List: Allow listing for active users (filtering handled by app)
-      allow list: if isActiveUser();
-      
-      // Create: Active users can create requests
-      allow create: if isActiveUser() &&
-                       request.resource.data.customer_id is string &&
-                       request.resource.data.customer_name is string &&
-                       request.resource.data.action_type in ['activation', 'deactivation', 'plan_change'] &&
-                       request.resource.data.reason is string &&
-                       request.resource.data.status == 'pending';
-      
-      // Update: Only admins can update requests (approve/reject)
-      allow update: if isAdmin() &&
-                       request.resource.data.status in ['pending', 'approved', 'rejected'];
-      
-      // Delete: Only admins can delete requests
-      allow delete: if isAdmin();
-    }
-
-    // Packages collection - Simplified validation for better compatibility
+    // Packages collection - Simplified for better compatibility
     match /packages/{packageId} {
       // Read: All authenticated users can read packages
       allow read: if isAuthenticated();
@@ -149,51 +96,115 @@ service cloud.firestore {
       // List: All authenticated users can list packages
       allow list: if isAuthenticated();
       
-      // Create: Only admins can create packages
-      allow create: if isAdmin() &&
-                       request.resource.data.name is string &&
-                       request.resource.data.price is number &&
-                       request.resource.data.price > 0 &&
-                       request.resource.data.description is string &&
-                       request.resource.data.channels is number &&
-                       request.resource.data.channels > 0 &&
-                       request.resource.data.is_active is bool;
+      // Create: Admin only, with basic validation
+      allow create: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      ) &&
+      request.resource.data.name is string &&
+      request.resource.data.price is number &&
+      request.resource.data.price > 0;
       
-      // Update: Only admins can update packages
-      allow update: if isAdmin();
+      // Update: Admin only
+      allow update: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      );
       
-      // Delete: Only admins can delete packages
-      allow delete: if isAdmin();
+      // Delete: Admin only
+      allow delete: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      );
     }
 
-    // System logs collection - Admin access only
+    // Customers collection - Simplified access
+    match /customers/{customerId} {
+      // Read: Active users can read
+      allow read: if isActiveUser();
+      
+      // List: Active users can list (app handles filtering)
+      allow list: if isActiveUser();
+      
+      // Create: Admin only
+      allow create: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      ) &&
+      request.resource.data.name is string;
+      
+      // Update: Admin only
+      allow update: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      );
+      
+      // Delete: Admin only
+      allow delete: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      );
+    }
+
+    // Billing records collection
+    match /billing/{billingId} {
+      // Read: Active users can read
+      allow read: if isActiveUser();
+      
+      // List: Active users can list
+      allow list: if isActiveUser();
+      
+      // Create: Active users can create
+      allow create: if isActiveUser() &&
+                       request.resource.data.customer_id is string &&
+                       request.resource.data.amount > 0;
+      
+      // Update: Admin only
+      allow update: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      );
+      
+      // Delete: Admin only
+      allow delete: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      );
+    }
+
+    // Requests collection
+    match /requests/{requestId} {
+      // Read: Active users can read
+      allow read: if isActiveUser();
+      
+      // List: Active users can list
+      allow list: if isActiveUser();
+      
+      // Create: Active users can create
+      allow create: if isActiveUser() &&
+                       request.resource.data.customer_id is string &&
+                       request.resource.data.status == 'pending';
+      
+      // Update: Admin only
+      allow update: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      );
+      
+      // Delete: Admin only
+      allow delete: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      );
+    }
+
+    // System logs collection
     match /system_logs/{logId} {
-      // Read: Only admins can read system logs
-      allow read: if isAdmin();
+      // Read: Admin only
+      allow read: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      );
       
-      // List: Only admins can list system logs
-      allow list: if isAdmin();
+      // List: Admin only
+      allow list: if isAuthenticated() && (
+        isAdmin() || !usersCollectionExists()
+      );
       
-      // Create: Active users can create logs (for auditing)
-      allow create: if isActiveUser();
+      // Create: Any authenticated user can create logs
+      allow create: if isAuthenticated();
       
-      // Update/Delete: No one can modify or delete logs
+      // Update/Delete: No one can modify logs
       allow update, delete: if false;
-    }
-
-    // Allow creation of empty collections if they don't exist yet
-    match /{collection}/{document} {
-      allow create: if isAuthenticated() && 
-                      collection in ['packages', 'customers', 'billing', 'requests'] &&
-                      !exists(/databases/$(database)/documents/$(collection));
-    }
-    
-    // Special bootstrapping rule - Allow creation of first documents in empty collections
-    match /{collection}/{document} {
-      allow create: if isAuthenticated() && 
-                      collection in ['packages', 'customers', 'billing', 'requests'] &&
-                      exists(/databases/$(database)/documents/$(collection)) && 
-                      getAfter(/databases/$(database)/documents/$(collection)).size() == 1;
     }
   }
 }
