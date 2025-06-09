@@ -480,149 +480,139 @@ class FirestoreService {
   }
 
   async addRequest(request: any): Promise<string> {
-    try {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser) {
-        throw new Error("User not authenticated");
-      }
+    return await RoleValidator.validateAndLog(
+      "addRequest",
+      () => RoleValidator.validateAuthentication("add request"),
+      async () => {
+        const currentUser = authService.getCurrentUser()!;
+        const requestsRef = collection(db, "requests");
 
-      const requestsRef = collection(db, "requests");
-
-      // Build request data with proper undefined handling
-      const requestData: any = {
-        customer_id: request.customerId || "",
-        customer_name: request.customerName || "",
-        vc_number: request.vcNumber || "",
-        employee_id: currentUser.id || "",
-        employee_name: currentUser.name || "",
-        action_type: request.actionType || "",
-        current_plan: request.currentPlan || "",
-        reason: request.reason || "",
-        status: "pending",
-        request_date: Timestamp.now(),
-        created_at: Timestamp.now(),
-        updated_at: Timestamp.now(),
-      };
-
-      // Only add optional fields if they have valid values
-      if (request.currentStatus && request.currentStatus.trim() !== "") {
-        requestData.current_status = request.currentStatus;
-      }
-
-      if (request.requestedPlan && request.requestedPlan.trim() !== "") {
-        requestData.requested_plan = request.requestedPlan;
-      }
-
-      // Sanitize data to remove any remaining undefined values
-      this.sanitizeFirestoreData(requestData);
-
-      console.log("🔧 Adding request to Firestore:", {
-        customer_name: requestData.customer_name,
-        action_type: requestData.action_type,
-        has_requested_plan: !!requestData.requested_plan,
-      });
-
-      const docRef = await addDoc(requestsRef, requestData);
-      console.log(`✅ Request submitted successfully with ID: ${docRef.id}`);
-
-      return docRef.id;
-    } catch (error) {
-      console.error("❌ Failed to add request:", error);
-      throw error;
-    }
-  }
-
-  async updateRequest(requestId: string, request: any): Promise<void> {
-    try {
-      if (!db) {
-        throw new Error("Firebase not available");
-      }
-
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can update requests");
-      }
-
-      const requestRef = doc(db, "requests", requestId);
-      const updateData = {
-        status: request.status,
-        review_date: request.reviewDate
-          ? Timestamp.fromDate(new Date(request.reviewDate))
-          : undefined,
-        reviewed_by: request.reviewedBy,
-        admin_notes: request.adminNotes,
-        updated_at: Timestamp.now(),
-      };
-
-      await updateDoc(requestRef, updateData);
-      console.log(`✅ Request ${requestId} updated successfully`);
-    } catch (error) {
-      console.error("❌ Failed to update request:", error);
-      throw error;
-    }
-  }
-  // ================== DATA IMPORT ==================
-
-  async importCustomersFromJson(customers: any[]): Promise<void> {
-    try {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser || currentUser.role !== "admin") {
-        throw new Error("Only administrators can import data");
-      }
-
-      const batch = writeBatch(db);
-      const customersRef = collection(db, "customers");
-
-      for (const customerData of customers) {
-        const docRef = doc(customersRef);
-        const firestoreCustomer: FirestoreCustomer = {
-          name: customerData.name,
-          phone: customerData.phone,
-          address: customerData.address,
-          package: customerData.package,
-          vc_no: customerData.vc_no,
-          collector_name: customerData.collector_name,
-          prev_os: customerData.prev_os || 0,
-          date: customerData.date
-            ? Timestamp.fromDate(new Date(customerData.date))
-            : Timestamp.now(),
-          bill_amount: customerData.bill_amount || 0,
-          collected_cash: customerData.collected_cash || 0,
-          collected_online: customerData.collected_online || 0,
-          discount: customerData.discount || 0,
-          current_os: customerData.current_os || 0,
-          remark: customerData.remark || "",
-          status: customerData.status === "active" ? "active" : "inactive",
-          email: customerData.email,
-          billing_status: customerData.billing_status || "Pending",
-          last_payment_date: customerData.last_payment_date
-            ? Timestamp.fromDate(new Date(customerData.last_payment_date))
-            : Timestamp.now(),
-          join_date: customerData.join_date
-            ? Timestamp.fromDate(new Date(customerData.join_date))
-            : Timestamp.now(),
-          activation_date: customerData.activation_date
-            ? Timestamp.fromDate(new Date(customerData.activation_date))
-            : undefined,
-          deactivation_date: customerData.deactivation_date
-            ? Timestamp.fromDate(new Date(customerData.deactivation_date))
-            : undefined,
-          number_of_connections: customerData.number_of_connections || 1,
-          connections: customerData.connections || [],
-          custom_plan: customerData.custom_plan,
+        // Build request data with proper undefined handling
+        const requestData: any = {
+          customer_id: request.customerId || "",
+          customer_name: request.customerName || "",
+          vc_number: request.vcNumber || "",
+          employee_id: currentUser.id || "",
+          employee_name: currentUser.name || "",
+          action_type: request.actionType || "",
+          current_plan: request.currentPlan || "",
+          reason: request.reason || "",
+          status: "pending",
+          request_date: Timestamp.now(),
           created_at: Timestamp.now(),
           updated_at: Timestamp.now(),
         };
 
-        batch.set(docRef, firestoreCustomer);
-      }
+        // Only add optional fields if they have valid values
+        if (request.currentStatus && request.currentStatus.trim() !== "") {
+          requestData.current_status = request.currentStatus;
+        }
 
-      await batch.commit();
-      console.log(`✅ Successfully imported ${customers.length} customers`);
-    } catch (error) {
-      console.error("❌ Failed to import customers:", error);
-      throw error;
-    }
+        if (request.requestedPlan && request.requestedPlan.trim() !== "") {
+          requestData.requested_plan = request.requestedPlan;
+        }
+
+        // Sanitize data to remove any remaining undefined values
+        this.sanitizeFirestoreData(requestData);
+
+        console.log("🔧 Adding request to Firestore:", {
+          customer_name: requestData.customer_name,
+          action_type: requestData.action_type,
+          has_requested_plan: !!requestData.requested_plan,
+        });
+
+        const docRef = await addDoc(requestsRef, requestData);
+        console.log(`✅ Request submitted successfully with ID: ${docRef.id}`);
+
+        return docRef.id;
+      },
+    );
+  }
+
+  async updateRequest(requestId: string, request: any): Promise<void> {
+    return await RoleValidator.validateAndLog(
+      "updateRequest",
+      () => RoleValidator.validateAdminAccess("update request"),
+      async () => {
+        if (!db) {
+          throw new Error("Firebase not available");
+        }
+
+        const requestRef = doc(db, "requests", requestId);
+        const updateData = {
+          status: request.status,
+          review_date: request.reviewDate
+            ? Timestamp.fromDate(new Date(request.reviewDate))
+            : undefined,
+          reviewed_by: request.reviewedBy,
+          admin_notes: request.adminNotes,
+          updated_at: Timestamp.now(),
+        };
+
+        await updateDoc(requestRef, updateData);
+        console.log(`✅ Request ${requestId} updated successfully`);
+      },
+    );
+  }
+  // ================== DATA IMPORT ==================
+
+  async importCustomersFromJson(customers: any[]): Promise<void> {
+    return await RoleValidator.validateAndLog(
+      "importCustomersFromJson",
+      () => RoleValidator.validateAdminAccess("import customer data"),
+      async () => {
+        const batch = writeBatch(db);
+        const customersRef = collection(db, "customers");
+
+        for (const customerData of customers) {
+          const docRef = doc(customersRef);
+          const firestoreCustomer: FirestoreCustomer = {
+            name: customerData.name,
+            phone: customerData.phone,
+            address: customerData.address,
+            package: customerData.package,
+            vc_no: customerData.vc_no,
+            collector_name: customerData.collector_name,
+            prev_os: customerData.prev_os || 0,
+            date: customerData.date
+              ? Timestamp.fromDate(new Date(customerData.date))
+              : Timestamp.now(),
+            bill_amount: customerData.bill_amount || 0,
+            collected_cash: customerData.collected_cash || 0,
+            collected_online: customerData.collected_online || 0,
+            discount: customerData.discount || 0,
+            current_os: customerData.current_os || 0,
+            remark: customerData.remark || "",
+            status: customerData.status === "active" ? "active" : "inactive",
+            email: customerData.email,
+            billing_status: customerData.billing_status || "Pending",
+            last_payment_date: customerData.last_payment_date
+              ? Timestamp.fromDate(new Date(customerData.last_payment_date))
+              : Timestamp.now(),
+            join_date: customerData.join_date
+              ? Timestamp.fromDate(new Date(customerData.join_date))
+              : Timestamp.now(),
+            activation_date: customerData.activation_date
+              ? Timestamp.fromDate(new Date(customerData.activation_date))
+              : undefined,
+            deactivation_date: customerData.deactivation_date
+              ? Timestamp.fromDate(new Date(customerData.deactivation_date))
+              : undefined,
+            number_of_connections: customerData.number_of_connections || 1,
+            connections: customerData.connections || [],
+            custom_plan: customerData.custom_plan,
+            bill_due_date: customerData.bill_due_date || 1,
+            created_at: Timestamp.now(),
+            updated_at: Timestamp.now(),
+          };
+
+          batch.set(docRef, firestoreCustomer);
+        }
+
+        await batch.commit();
+        console.log(`✅ Successfully imported ${customers.length} customers`);
+      },
+    );
   }
 
   // ================== HELPER METHODS ==================
