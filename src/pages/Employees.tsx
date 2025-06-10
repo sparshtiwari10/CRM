@@ -47,6 +47,7 @@ import {
   Settings,
   Check,
   X,
+  MoreHorizontal,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authService } from "@/services/authService";
