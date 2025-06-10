@@ -5,7 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
-import { Eye, EyeOff, Mail, Lock, LogIn, AlertCircle } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  LogIn,
+  AlertCircle,
+  Settings,
+  RefreshCw,
+} from "lucide-react";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -17,7 +26,13 @@ export function Login() {
   const [resetEmail, setResetEmail] = useState("");
   const [resetMessage, setResetMessage] = useState("");
 
-  const { login, sendPasswordReset } = useAuth();
+  const {
+    login,
+    sendPasswordReset,
+    permissionsError,
+    fixPermissions,
+    clearPermissionsError,
+  } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,6 +65,26 @@ export function Login() {
       setResetEmail("");
     } catch (error: any) {
       setError(error.message || "Failed to send password reset email.");
+    }
+  };
+
+  const handleFixPermissions = async () => {
+    setError("");
+    setIsLoading(true);
+
+    try {
+      await fixPermissions();
+      clearPermissionsError();
+      setError("");
+
+      // Show success message
+      setResetMessage("Permissions fixed! You can now try logging in again.");
+    } catch (error: any) {
+      setError(
+        "Could not auto-fix permissions. Please check the console for manual instructions.",
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -130,6 +165,30 @@ export function Login() {
           </p>
         </CardHeader>
         <CardContent>
+          {/* Permissions Error Alert */}
+          {permissionsError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="space-y-2">
+                <p>{permissionsError}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleFixPermissions}
+                  disabled={isLoading}
+                  className="mt-2"
+                >
+                  {isLoading ? (
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Settings className="mr-2 h-4 w-4" />
+                  )}
+                  Fix Permissions
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
@@ -188,7 +247,7 @@ export function Login() {
             {resetMessage && (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="text-green-700">
+                <AlertDescription className="text-green-700 dark:text-green-400">
                   {resetMessage}
                 </AlertDescription>
               </Alert>
@@ -229,6 +288,20 @@ export function Login() {
               <br />
               <em>Please change password after first login</em>
             </p>
+          </div>
+
+          {/* Debug Tools */}
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                console.log("🔧 Running Firebase diagnostics...");
+                (window as any).quickFixFirebase?.();
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Run Firebase Diagnostics (Check Console)
+            </button>
           </div>
         </CardContent>
       </Card>

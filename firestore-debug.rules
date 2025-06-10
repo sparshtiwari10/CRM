@@ -1,35 +1,13 @@
 rules_version = '2';
-
-// TEMPORARY DEBUG RULES - Use these to test the app functionality
-// IMPORTANT: These rules allow any authenticated user full access
-// Only use for debugging, then restore proper security rules!
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to read/write everything (TEMPORARY)
+    // EMERGENCY DEBUG RULES - DO NOT USE IN PRODUCTION
+    // These rules allow all operations for authenticated users
+    // Use only for debugging the permission issues
+    
     match /{document=**} {
+      // Allow all operations for any authenticated user
       allow read, write: if request.auth != null;
     }
   }
 }
-
-/*
-To use these debug rules:
-
-1. Backup your current rules:
-   cp firestore.rules firestore-backup.rules
-
-2. Replace with debug rules:
-   cp firestore-debug.rules firestore.rules
-
-3. Deploy debug rules:
-   firebase deploy --only firestore:rules
-
-4. Test your app - should work now
-
-5. Restore proper rules:
-   cp firestore-backup.rules firestore.rules
-   firebase deploy --only firestore:rules
-
-NEVER use these rules in production!
-*/
