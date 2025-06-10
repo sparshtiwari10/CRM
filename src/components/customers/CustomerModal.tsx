@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Customer, Connection, CustomerStatus } from "@/types";
 import { authService } from "@/services/authService";
+import { firestoreService } from "@/services/firestoreService";
 
 interface CustomerModalProps {
   open: boolean;
@@ -79,7 +80,8 @@ export default function CustomerModal({
 }: CustomerModalProps) {
   const [formData, setFormData] = useState<CustomerFormData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [availableEmployees, setAvailableEmployees] = useState<string[]>([]);
+  const [availableAreas, setAvailableAreas] = useState<string[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
 
   // Reset form when modal opens/closes or customer changes
   useEffect(() => {
@@ -100,25 +102,14 @@ export default function CustomerModal({
           previousOutstanding: customer.previousOutstanding || 0,
           connections:
             customer.connections && customer.connections.length > 0
-              ? customer.connections.map((conn) => ({
-                  ...conn,
-                  vcNumber: conn.vcNumber || "",
-                  planName: conn.planName || "",
-                  planPrice: conn.planPrice || 0,
-                  isCustomPlan: conn.isCustomPlan || false,
-                  isPrimary: conn.isPrimary || false,
-                  status: conn.status || "active",
-                  packageAmount: conn.packageAmount || 0,
-                  previousOutstanding: conn.previousOutstanding || 0,
-                  currentOutstanding: conn.currentOutstanding || 0,
-                }))
+              ? customer.connections
               : [
                   {
                     id: "conn-1",
                     vcNumber: customer.vcNumber || "",
                     planName: customer.currentPackage || "",
                     planPrice: customer.packageAmount || 0,
-                    isCustomPlan: !!customer.customPlan,
+                    isCustomPlan: false,
                     isPrimary: true,
                     connectionIndex: 0,
                     status: customer.status || "active",
@@ -129,47 +120,64 @@ export default function CustomerModal({
                 ],
         });
       } else {
-        // Adding new customer
+        // Creating new customer
         setFormData(initialFormData);
       }
       setErrors({});
     }
   }, [open, customer]);
 
-  // Load available employees
+  // Load available areas and packages
   useEffect(() => {
     if (open) {
-      let mounted = true;
-
-      const loadEmployees = async () => {
+      const loadData = async () => {
         try {
-          // Get all active employees from Firebase
-          const allUsers = await authService.getAllUsers();
-          const activeEmployees = allUsers
-            .filter((user) => user.is_active)
-            .map((user) => user.name);
+          // Load areas from existing customers
+          const customers = await firestoreService.getAllCustomers();
+          const areas = customers
+            .map((c) => c.collectorName)
+            .filter(Boolean)
+            .filter((area, index, arr) => arr.indexOf(area) === index) // Remove duplicates
+            .sort();
 
-          if (mounted) {
-            setAvailableEmployees(activeEmployees);
-          }
+          // Also get areas from employees
+          const employees = await authService.getAllEmployees();
+          const employeeAreas = employees
+            .map((e) => e.collector_name)
+            .filter(Boolean);
+
+          // Combine and deduplicate
+          const allAreas = [...new Set([...areas, ...employeeAreas])].sort();
+          setAvailableAreas(allAreas);
+
+          console.log("📍 Available areas:", allAreas);
         } catch (error) {
-          console.error("Failed to load employees:", error);
-          if (mounted) {
-            // Fallback to empty array if loading fails
-            setAvailableEmployees([]);
-          }
+          console.error("Failed to load areas:", error);
+          // Set some default areas if loading fails
+          setAvailableAreas([
+            "Area 1",
+            "Area 2",
+            "Area 3",
+            "Downtown",
+            "Suburb",
+          ]);
+        }
+
+        try {
+          // Load packages
+          const packagesData = await firestoreService.getAllPackages();
+          setPackages(packagesData);
+        } catch (error) {
+          console.error("Failed to load packages:", error);
+          setPackages([]);
         }
       };
 
-      loadEmployees();
-
-      return () => {
-        mounted = false;
-      };
+      loadData();
     }
   }, [open]);
 
-  const handleInputChange = (field: keyof CustomerFormData, value: any) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -184,11 +192,7 @@ export default function CustomerModal({
     }
   };
 
-  const handleConnectionChange = (
-    index: number,
-    field: keyof Connection,
-    value: any,
-  ) => {
+  const handleConnectionChange = (index: number, field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
       connections: prev.connections.map((conn, i) =>
@@ -198,23 +202,25 @@ export default function CustomerModal({
   };
 
   const addConnection = () => {
-    const newConnection: Connection = {
-      id: `conn-${formData.connections.length + 1}`,
-      vcNumber: "",
-      planName: "",
-      planPrice: 0,
-      isCustomPlan: false,
-      isPrimary: false,
-      connectionIndex: formData.connections.length,
-      status: "active",
-      packageAmount: 0,
-      previousOutstanding: 0,
-      currentOutstanding: 0,
-    };
-
+    const newConnectionIndex = formData.connections.length;
     setFormData((prev) => ({
       ...prev,
-      connections: [...prev.connections, newConnection],
+      connections: [
+        ...prev.connections,
+        {
+          id: `conn-${newConnectionIndex + 1}`,
+          vcNumber: "",
+          planName: "",
+          planPrice: 0,
+          isCustomPlan: false,
+          isPrimary: false,
+          connectionIndex: newConnectionIndex,
+          status: "active",
+          packageAmount: 0,
+          previousOutstanding: 0,
+          currentOutstanding: 0,
+        },
+      ],
     }));
   };
 
@@ -230,37 +236,32 @@ export default function CustomerModal({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) newErrors.name = "Customer name is required";
-    if (!formData.phoneNumber.trim())
+    if (!formData.name.trim()) {
+      newErrors.name = "Customer name is required";
+    }
+
+    if (!formData.phoneNumber.trim()) {
       newErrors.phoneNumber = "Phone number is required";
-    if (!formData.address.trim()) newErrors.address = "Address is required";
-    if (!formData.collectorName)
-      newErrors.collectorName = "Employee selection is required";
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = "Address is required";
+    }
+
+    if (!formData.collectorName.trim()) {
+      newErrors.collectorName = "Area selection is required";
+    }
 
     // Validate connections
-    formData.connections.forEach((connection, index) => {
-      if (!connection.vcNumber?.trim())
-        newErrors[`vcNumber_${index}`] = "VC Number is required";
-      if (!connection.planName?.trim())
-        newErrors[`planName_${index}`] = "Plan name is required";
-      if ((connection.planPrice || 0) <= 0)
-        newErrors[`planPrice_${index}`] = "Plan price must be greater than 0";
+    formData.connections.forEach((conn, index) => {
+      if (!conn.vcNumber.trim()) {
+        newErrors[`connection_${index}_vcNumber`] = "VC Number is required";
+      }
+
+      if (!conn.planName.trim()) {
+        newErrors[`connection_${index}_planName`] = "Plan is required";
+      }
     });
-
-    // Validate that at least one connection is marked as primary
-    const hasPrimary = formData.connections.some((conn) => conn.isPrimary);
-    if (!hasPrimary) {
-      newErrors.primaryConnection = "At least one connection must be primary";
-    }
-
-    // Check for duplicate VC numbers
-    const vcNumbers = formData.connections
-      .map((conn) => (conn.vcNumber || "").trim())
-      .filter(Boolean);
-    const uniqueVcNumbers = new Set(vcNumbers);
-    if (vcNumbers.length !== uniqueVcNumbers.size) {
-      newErrors.duplicateVcNumbers = "VC Numbers must be unique";
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -268,22 +269,15 @@ export default function CustomerModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+
+    if (!validateForm()) {
+      return;
+    }
 
     try {
-      const totalPackageAmount = formData.connections.reduce(
-        (sum, conn) => sum + (conn.planPrice || 0),
-        0,
-      );
-
-      const totalCurrentOutstanding = formData.connections.reduce(
-        (sum, conn) => sum + (conn.currentOutstanding || 0),
-        0,
-      );
-
-      const primaryConnection = formData.connections.find(
-        (conn) => conn.isPrimary,
-      );
+      const primaryConnection =
+        formData.connections.find((conn) => conn.isPrimary) ||
+        formData.connections[0];
 
       const customerData: Customer = {
         id: customer?.id || "",
@@ -294,196 +288,192 @@ export default function CustomerModal({
         joinDate: formData.joinDate,
         billDueDate: formData.billDueDate,
         status: formData.status,
-        collectorName: formData.collectorName,
+        isActive: formData.status === "active",
+        collectorName: formData.collectorName.trim(),
         previousOutstanding: formData.previousOutstanding,
-
-        // Legacy fields for backward compatibility
+        currentOutstanding: primaryConnection?.currentOutstanding || 0,
         vcNumber: primaryConnection?.vcNumber || "",
         currentPackage: primaryConnection?.planName || "",
-        packageAmount: totalPackageAmount,
-        currentOutstanding: totalCurrentOutstanding,
-        lastPaymentDate: customer?.lastPaymentDate || "",
-        portalBill: totalPackageAmount,
-        isActive: formData.status === "active",
-        activationDate: customer?.activationDate || formData.joinDate,
-        deactivationDate:
-          formData.status === "inactive"
-            ? new Date().toISOString().split("T")[0]
-            : undefined,
-
-        // New connection-based structure
+        packageAmount: primaryConnection?.packageAmount || 0,
+        connections: formData.connections,
         numberOfConnections: formData.connections.length,
-        connections: formData.connections.map((conn, index) => ({
-          ...conn,
-          connectionIndex: index,
-          packageAmount: conn.planPrice || 0,
-          currentOutstanding: conn.currentOutstanding || conn.planPrice || 0,
-        })),
-
-        // Custom plan for legacy compatibility
-        customPlan: formData.connections.some((conn) => conn.isCustomPlan)
-          ? {
-              name:
-                formData.connections.find((conn) => conn.isCustomPlan)
-                  ?.planName || "",
-              price:
-                formData.connections.find((conn) => conn.isCustomPlan)
-                  ?.planPrice || 0,
-              description: "Custom plan",
-            }
-          : undefined,
-
-        // Invoice history
-        invoiceHistory: customer?.invoiceHistory || [],
+        portalBill: primaryConnection?.packageAmount || 0,
+        billingStatus: "Pending",
+        lastPaymentDate: new Date().toISOString().split("T")[0],
       };
 
       await onSave(customerData);
       onOpenChange(false);
     } catch (error) {
-      console.error("Failed to save customer:", error);
+      console.error("Error saving customer:", error);
     }
   };
 
-  const predefinedPlans = [
-    { name: "Basic", price: 299 },
-    { name: "Standard", price: 499 },
-    { name: "Premium HD", price: 599 },
-    { name: "Premium", price: 799 },
-    { name: "Ultimate", price: 999 },
-  ];
+  const billDueDateOptions = Array.from({ length: 28 }, (_, i) => i + 1);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {customer ? "Edit Customer" : "Add New Customer"}
           </DialogTitle>
           <DialogDescription>
             {customer
-              ? "Update customer information and connections."
-              : "Add a new customer with their connection details."}
+              ? "Update customer information and connections"
+              : "Add a new customer to the system"}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Customer Name *</Label>
-              <Input
-                id="name"
-                value={formData.name || ""}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                placeholder="Enter customer name"
-                className={errors.name ? "border-red-500" : ""}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-500">{errors.name}</p>
-              )}
-            </div>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Basic Information</h3>
 
-            <div className="space-y-2">
-              <Label htmlFor="phoneNumber">Phone Number *</Label>
-              <Input
-                id="phoneNumber"
-                value={formData.phoneNumber || ""}
-                onChange={(e) =>
-                  handleInputChange("phoneNumber", e.target.value)
-                }
-                placeholder="Enter phone number"
-                className={errors.phoneNumber ? "border-red-500" : ""}
-              />
-              {errors.phoneNumber && (
-                <p className="text-sm text-red-500">{errors.phoneNumber}</p>
-              )}
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Customer Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  placeholder="Enter customer name"
+                  className={errors.name ? "border-red-500" : ""}
+                />
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name}</p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email || ""}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                placeholder="Enter email address"
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Phone Number *</Label>
+                <Input
+                  id="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={(e) =>
+                    handleInputChange("phoneNumber", e.target.value)
+                  }
+                  placeholder="Enter phone number"
+                  className={errors.phoneNumber ? "border-red-500" : ""}
+                />
+                {errors.phoneNumber && (
+                  <p className="text-sm text-red-500">{errors.phoneNumber}</p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="joinDate">Join Date *</Label>
-              <Input
-                id="joinDate"
-                type="date"
-                value={formData.joinDate || ""}
-                onChange={(e) => handleInputChange("joinDate", e.target.value)}
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  placeholder="Enter email address (optional)"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="billDueDate">Bill Due Date *</Label>
-              <Select
-                value={formData.billDueDate?.toString() || "1"}
-                onValueChange={(value) =>
-                  handleInputChange("billDueDate", parseInt(value))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select due date" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
-                    <SelectItem key={day} value={day.toString()}>
-                      {day}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Status *</Label>
-              <Select
-                value={formData.status || "active"}
-                onValueChange={(value) =>
-                  handleInputChange("status", value as CustomerStatus)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="demo">Demo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="collectorName">Employee *</Label>
-              <Select
-                value={formData.collectorName || ""}
-                onValueChange={(value) =>
-                  handleInputChange("collectorName", value)
-                }
-              >
-                <SelectTrigger
-                  className={errors.collectorName ? "border-red-500" : ""}
+              <div className="space-y-2">
+                <Label htmlFor="collectorName">Area *</Label>
+                <Select
+                  value={formData.collectorName || ""}
+                  onValueChange={(value) =>
+                    handleInputChange("collectorName", value)
+                  }
                 >
-                  <SelectValue placeholder="Select an employee" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableEmployees.map((employee) => (
-                    <SelectItem key={employee} value={employee}>
-                      {employee}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.collectorName && (
-                <p className="text-sm text-red-500">{errors.collectorName}</p>
+                  <SelectTrigger
+                    className={errors.collectorName ? "border-red-500" : ""}
+                  >
+                    <SelectValue placeholder="Select an area" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableAreas.map((area) => (
+                      <SelectItem key={area} value={area}>
+                        {area}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.collectorName && (
+                  <p className="text-sm text-red-500">{errors.collectorName}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">Address *</Label>
+              <Textarea
+                id="address"
+                value={formData.address}
+                onChange={(e) => handleInputChange("address", e.target.value)}
+                placeholder="Enter full address"
+                className={errors.address ? "border-red-500" : ""}
+                rows={3}
+              />
+              {errors.address && (
+                <p className="text-sm text-red-500">{errors.address}</p>
               )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="joinDate">Join Date</Label>
+                <Input
+                  id="joinDate"
+                  type="date"
+                  value={formData.joinDate}
+                  onChange={(e) =>
+                    handleInputChange("joinDate", e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="billDueDate">Bill Due Date</Label>
+                <Select
+                  value={formData.billDueDate.toString()}
+                  onValueChange={(value) =>
+                    handleInputChange("billDueDate", parseInt(value))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {billDueDateOptions.map((day) => (
+                      <SelectItem key={day} value={day.toString()}>
+                        {day}
+                        {day === 1
+                          ? "st"
+                          : day === 2
+                            ? "nd"
+                            : day === 3
+                              ? "rd"
+                              : "th"}{" "}
+                        of month
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: CustomerStatus) =>
+                    handleInputChange("status", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="demo">Demo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -491,59 +481,24 @@ export default function CustomerModal({
               <Input
                 id="previousOutstanding"
                 type="number"
-                value={formData.previousOutstanding || 0}
+                step="0.01"
+                min="0"
+                value={formData.previousOutstanding}
                 onChange={(e) =>
                   handleInputChange(
                     "previousOutstanding",
                     parseFloat(e.target.value) || 0,
                   )
                 }
-                placeholder="0"
-                min="0"
-                step="0.01"
+                placeholder="0.00"
               />
             </div>
           </div>
 
-          {/* Address */}
-          <div className="space-y-2">
-            <Label htmlFor="address">Address *</Label>
-            <Textarea
-              id="address"
-              value={formData.address || ""}
-              onChange={(e) => handleInputChange("address", e.target.value)}
-              placeholder="Enter complete address"
-              className={errors.address ? "border-red-500" : ""}
-              rows={3}
-            />
-            {errors.address && (
-              <p className="text-sm text-red-500">{errors.address}</p>
-            )}
-          </div>
-
-          {/* Error Messages */}
-          {errors.primaryConnection && (
-            <div className="p-3 border border-red-200 bg-red-50 dark:bg-red-900/20 rounded-md">
-              <p className="text-sm text-red-600 dark:text-red-400">
-                {errors.primaryConnection}
-              </p>
-            </div>
-          )}
-
-          {errors.duplicateVcNumbers && (
-            <div className="p-3 border border-red-200 bg-red-50 dark:bg-red-900/20 rounded-md">
-              <p className="text-sm text-red-600 dark:text-red-400">
-                {errors.duplicateVcNumbers}
-              </p>
-            </div>
-          )}
-
           {/* Connections */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-base font-semibold">
-                Connections ({formData.connections.length})
-              </Label>
+              <h3 className="text-lg font-semibold">Connections</h3>
               <Button
                 type="button"
                 variant="outline"
@@ -556,27 +511,40 @@ export default function CustomerModal({
 
             {formData.connections.map((connection, index) => (
               <div
-                key={connection.id}
-                className="p-4 border rounded-lg space-y-4 bg-muted/30"
+                key={index}
+                className="border rounded-lg p-4 space-y-4 relative"
               >
+                {formData.connections.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2"
+                    onClick={() => removeConnection(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">
                     Connection {index + 1}
                     {connection.isPrimary && (
-                      <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded">
-                        PRIMARY
+                      <span className="ml-2 text-sm text-blue-600">
+                        (Primary)
                       </span>
                     )}
                   </h4>
-                  {formData.connections.length > 1 && (
+                  {index > 0 && (
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={() => removeConnection(index)}
-                      className="text-red-600 hover:text-red-700"
+                      onClick={() =>
+                        handleConnectionChange(index, "isPrimary", true)
+                      }
                     >
-                      <X className="h-4 w-4" />
+                      Make Primary
                     </Button>
                   )}
                 </div>
@@ -585,7 +553,7 @@ export default function CustomerModal({
                   <div className="space-y-2">
                     <Label>VC Number *</Label>
                     <Input
-                      value={connection.vcNumber || ""}
+                      value={connection.vcNumber}
                       onChange={(e) =>
                         handleConnectionChange(
                           index,
@@ -595,106 +563,137 @@ export default function CustomerModal({
                       }
                       placeholder="Enter VC number"
                       className={
-                        errors[`vcNumber_${index}`] ? "border-red-500" : ""
+                        errors[`connection_${index}_vcNumber`]
+                          ? "border-red-500"
+                          : ""
                       }
                     />
-                    {errors[`vcNumber_${index}`] && (
+                    {errors[`connection_${index}_vcNumber`] && (
                       <p className="text-sm text-red-500">
-                        {errors[`vcNumber_${index}`]}
+                        {errors[`connection_${index}_vcNumber`]}
                       </p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Plan Name *</Label>
+                    <Label>Package *</Label>
                     <Select
-                      value={connection.planName || ""}
-                      onValueChange={(value) =>
-                        handleConnectionChange(index, "planName", value)
-                      }
+                      value={connection.planName}
+                      onValueChange={(value) => {
+                        const selectedPackage = packages.find(
+                          (pkg) => pkg.name === value,
+                        );
+                        handleConnectionChange(index, "planName", value);
+                        if (selectedPackage) {
+                          handleConnectionChange(
+                            index,
+                            "packageAmount",
+                            selectedPackage.price,
+                          );
+                          handleConnectionChange(
+                            index,
+                            "planPrice",
+                            selectedPackage.price,
+                          );
+                        }
+                      }}
                     >
                       <SelectTrigger
                         className={
-                          errors[`planName_${index}`] ? "border-red-500" : ""
+                          errors[`connection_${index}_planName`]
+                            ? "border-red-500"
+                            : ""
                         }
                       >
-                        <SelectValue placeholder="Select plan" />
+                        <SelectValue placeholder="Select package" />
                       </SelectTrigger>
                       <SelectContent>
-                        {predefinedPlans.map((plan) => (
-                          <SelectItem key={plan.name} value={plan.name}>
-                            {plan.name} - ₹{plan.price}
+                        {packages.map((pkg) => (
+                          <SelectItem key={pkg.id} value={pkg.name}>
+                            {pkg.name} - ₹{pkg.price}
                           </SelectItem>
                         ))}
-                        <SelectItem value="custom">Custom Plan</SelectItem>
                       </SelectContent>
                     </Select>
-                    {errors[`planName_${index}`] && (
+                    {errors[`connection_${index}_planName`] && (
                       <p className="text-sm text-red-500">
-                        {errors[`planName_${index}`]}
+                        {errors[`connection_${index}_planName`]}
                       </p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Plan Price *</Label>
+                    <Label>Package Amount</Label>
                     <Input
                       type="number"
-                      value={connection.planPrice || 0}
+                      step="0.01"
+                      min="0"
+                      value={connection.packageAmount}
                       onChange={(e) =>
                         handleConnectionChange(
                           index,
-                          "planPrice",
+                          "packageAmount",
                           parseFloat(e.target.value) || 0,
                         )
                       }
-                      placeholder="Enter price"
-                      min="0"
-                      step="0.01"
-                      className={
-                        errors[`planPrice_${index}`] ? "border-red-500" : ""
-                      }
+                      placeholder="0.00"
                     />
-                    {errors[`planPrice_${index}`] && (
-                      <p className="text-sm text-red-500">
-                        {errors[`planPrice_${index}`]}
-                      </p>
-                    )}
                   </div>
-                </div>
 
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={connection.isPrimary || false}
+                  <div className="space-y-2">
+                    <Label>Previous Outstanding</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={connection.previousOutstanding}
                       onChange={(e) =>
                         handleConnectionChange(
                           index,
-                          "isPrimary",
-                          e.target.checked,
+                          "previousOutstanding",
+                          parseFloat(e.target.value) || 0,
                         )
                       }
-                      className="rounded"
+                      placeholder="0.00"
                     />
-                    <span className="text-sm">Primary Connection</span>
-                  </label>
+                  </div>
 
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={connection.isCustomPlan || false}
+                  <div className="space-y-2">
+                    <Label>Current Outstanding</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={connection.currentOutstanding}
                       onChange={(e) =>
                         handleConnectionChange(
                           index,
-                          "isCustomPlan",
-                          e.target.checked,
+                          "currentOutstanding",
+                          parseFloat(e.target.value) || 0,
                         )
                       }
-                      className="rounded"
+                      placeholder="0.00"
                     />
-                    <span className="text-sm">Custom Plan</span>
-                  </label>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select
+                      value={connection.status}
+                      onValueChange={(value: CustomerStatus) =>
+                        handleConnectionChange(index, "status", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="demo">Demo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             ))}
@@ -705,12 +704,12 @@ export default function CustomerModal({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isLoading}
             >
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : customer ? "Update" : "Save"}
+              {isLoading ? "Saving..." : customer ? "Update" : "Create"}{" "}
+              Customer
             </Button>
           </DialogFooter>
         </form>
