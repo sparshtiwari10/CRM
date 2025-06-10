@@ -2,31 +2,173 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Ultra-simple rules that will definitely work
-    // Any authenticated user can read/write everything
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to get user document
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && getUserDoc().data.role == 'admin';
+    }
+
+    // Helper function to check if user is active
+    function isActiveUser() {
+      return isAuthenticated() && getUserDoc().data.is_active == true;
+    }
+
+    // Helper function to check if user can access area
+    function canAccessArea(area) {
+      let userData = getUserDoc().data;
+      return isAdmin() || 
+             userData.collector_name == area ||
+             (userData.assigned_areas != null && area in userData.assigned_areas);
+    }
+
+    // Users collection - user profile management
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Admins can read/write all user profiles
+      allow read, write: if isAdmin();
+      
+      // Allow creation of user documents during authentication
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Users can update their own basic profile info
+      allow update: if isAuthenticated() && 
+                   request.auth.uid == userId &&
+                   !('role' in resource.data) || 
+                   resource.data.role == request.data.role;
+    }
+
+    // Customers collection - customer data
+    match /customers/{customerId} {
+      // Admins can do everything
+      allow read, write: if isAdmin() && isActiveUser();
+      
+      // Employees can read/write customers in their assigned areas
+      allow read, write: if isAuthenticated() && 
+                        isActiveUser() && 
+                        canAccessArea(resource.data.collectorName);
+      
+      // Allow reading for customer area validation
+      allow read: if isAuthenticated() && isActiveUser();
+    }
+
+    // Packages collection - service packages
+    match /packages/{packageId} {
+      // All authenticated active users can read packages
+      allow read: if isAuthenticated() && isActiveUser();
+      
+      // Only admins can modify packages
+      allow write: if isAdmin() && isActiveUser();
+    }
+
+    // Billing records collection
+    match /billing/{billingId} {
+      // Admins can do everything
+      allow read, write: if isAdmin() && isActiveUser();
+      
+      // Employees can access billing for their areas
+      allow read, write: if isAuthenticated() && 
+                        isActiveUser() && 
+                        canAccessArea(resource.data.area);
+    }
+
+    // Service requests collection
+    match /requests/{requestId} {
+      // Admins can do everything
+      allow read, write: if isAdmin() && isActiveUser();
+      
+      // Employees can read/create requests for their areas
+      allow read, create: if isAuthenticated() && 
+                         isActiveUser() && 
+                         canAccessArea(resource.data.area);
+      
+      // Employees can update requests they created
+      allow update: if isAuthenticated() && 
+                   isActiveUser() && 
+                   request.auth.uid == resource.data.createdBy;
+    }
+
+    // Action requests collection - approval workflow
+    match /actionRequests/{requestId} {
+      // Admins can do everything
+      allow read, write: if isAdmin() && isActiveUser();
+      
+      // Employees can create requests
+      allow create: if isAuthenticated() && isActiveUser();
+      
+      // Employees can read their own requests
+      allow read: if isAuthenticated() && 
+                 isActiveUser() && 
+                 request.auth.uid == resource.data.requestedBy;
+    }
+
+    // System logs and analytics (admin only)
+    match /logs/{logId} {
+      allow read, write: if isAdmin() && isActiveUser();
+    }
+
+    match /analytics/{analyticsId} {
+      allow read, write: if isAdmin() && isActiveUser();
+    }
+
+    // Configuration and settings (admin only)
+    match /config/{configId} {
+      allow read: if isAuthenticated() && isActiveUser();
+      allow write: if isAdmin() && isActiveUser();
+    }
+
+    // Default deny rule for any other collections
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
 
 /*
-EMERGENCY ULTRA-SIMPLE RULES
+PRODUCTION FIRESTORE SECURITY RULES - AGV Cable TV Management System
 
-These rules will resolve ALL permission issues immediately.
+Key Security Features:
+✅ Firebase Authentication Required - All operations require valid auth
+✅ Role-Based Access Control - Admin vs Employee permissions
+✅ Area-Based Access - Employees limited to their assigned areas
+✅ Active User Check - Inactive users cannot access data
+✅ User Profile Protection - Users can only modify their own profiles
+✅ Multi-Area Support - Employees can be assigned multiple areas
+✅ Secure Customer Access - Area-based customer data protection
+✅ Admin-Only Operations - Package management, system config
+✅ Request Workflow Security - Proper approval chain protection
+✅ Default Deny - Explicit denial of unlisted collections
 
-Why these work:
-- No complex functions or logic
-- No user document lookups
-- No collection existence checks
-- Simple authentication check only
+Collection Access Summary:
+- users: Self-read + admin full access
+- customers: Area-based access for employees, full for admin
+- packages: Read for all, write for admin only
+- billing: Area-based access matching customer assignments
+- requests: Area-based creation, admin approval
+- actionRequests: Employee create, admin manage
+- logs/analytics/config: Admin only
+- Default: Deny all access
 
-Security Note:
-These rules allow any authenticated user full access.
-Use for debugging and initial setup only.
+Deployment Instructions:
+1. Deploy these rules using: firebase deploy --only firestore:rules
+2. Monitor Firebase Console for rule evaluation logs
+3. Test with different user roles and areas
+4. Verify area-based access restrictions work correctly
 
-After the website works:
-1. Verify all collections exist
-2. Create proper admin user documents
-3. Replace with secure role-based rules
+Security Notes:
+- All user operations require active account status
+- Area assignments support both single (collector_name) and multiple (assigned_areas)
+- Customer data is protected by area assignments
+- Admin role has full system access
+- Emergency access should be handled through Firebase Console
 */

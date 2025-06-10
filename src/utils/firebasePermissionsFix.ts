@@ -209,7 +209,7 @@ export class FirebasePermissionsFix {
       // Import Firebase Auth functions
       const { createUserWithEmailAndPassword } = await import("firebase/auth");
 
-      const emergencyEmail = "admin@agvcabletv.com";
+      const emergencyEmail = "admin@company.com"; // Change to your admin email
       const emergencyPassword = "admin123";
 
       // Create Firebase Auth user
@@ -238,7 +238,7 @@ export class FirebasePermissionsFix {
     } catch (error: any) {
       if (error.code === "auth/email-already-in-use") {
         console.log("✅ Emergency admin already exists");
-        console.log("📧 Try signing in with: admin@agvcabletv.com");
+        console.log("📧 Contact your administrator for login credentials");
         console.log("🔑 Password: admin123");
       } else {
         console.error("❌ Failed to create emergency admin:", error);

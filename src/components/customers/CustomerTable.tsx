@@ -110,6 +110,23 @@ export default function CustomerTable({
   const { user, isAdmin } = useAuth();
   const { toast } = useToast();
 
+  // Check if current user can edit a specific customer
+  const canEditCustomer = useCallback(
+    (customer: Customer): boolean => {
+      if (!user) return false;
+
+      // Admins can edit all customers
+      if (isAdmin) return true;
+
+      // Employees can only edit customers in their assigned areas
+      const userAreas =
+        user.assigned_areas ||
+        (user.collector_name ? [user.collector_name] : []);
+      return userAreas.includes(customer.collectorName);
+    },
+    [user, isAdmin],
+  );
+
   // Generate status change request
   const handleStatusChangeRequest = useCallback(
     (customer: Customer, status: CustomerStatus) => {
@@ -123,11 +140,10 @@ export default function CustomerTable({
         employeeId: user.id,
         employeeName: user.name,
         actionType: status === "active" ? "activation" : "deactivation",
-        currentPlan: customer.currentPackage,
         currentStatus: customer.status,
-        reason: `Status change request to ${status}`,
+        reason: `Status change from ${customer.status} to ${status}`,
         status: "pending",
-        requestDate: new Date().toISOString().split("T")[0],
+        requestDate: new Date().toISOString(),
       };
 
       setSelectedRequest(request);
@@ -147,6 +163,7 @@ export default function CustomerTable({
           description: `${customer.name} status changed to ${status}`,
         });
       } catch (error) {
+        console.error("Failed to update status:", error);
         toast({
           title: "Error",
           description: "Failed to update customer status",
@@ -157,12 +174,12 @@ export default function CustomerTable({
     [isAdmin, onCustomerUpdate, toast],
   );
 
-  // Load billing history for a customer
+  // Load billing history for expanded customer
   const loadBillingHistory = useCallback(
     async (customerId: string) => {
       if (billingHistory[customerId]) return; // Already loaded
 
-      setLoadingBilling((prev) => new Set(prev).add(customerId));
+      setLoadingBilling((prev) => new Set([...prev, customerId]));
 
       try {
         const history = await CustomerService.getBillingHistory(customerId);
@@ -172,10 +189,11 @@ export default function CustomerTable({
         }));
       } catch (error) {
         console.error("Failed to load billing history:", error);
-        setBillingHistory((prev) => ({
-          ...prev,
-          [customerId]: [],
-        }));
+        toast({
+          title: "Error",
+          description: "Failed to load billing history",
+          variant: "destructive",
+        });
       } finally {
         setLoadingBilling((prev) => {
           const newSet = new Set(prev);
@@ -184,10 +202,10 @@ export default function CustomerTable({
         });
       }
     },
-    [billingHistory],
+    [billingHistory, toast],
   );
 
-  // Toggle row expansion
+  // Toggle row expansion and load billing history
   const toggleRowExpansion = useCallback(
     (customerId: string) => {
       setExpandedRows((prev) => {
@@ -196,7 +214,6 @@ export default function CustomerTable({
           newSet.delete(customerId);
         } else {
           newSet.add(customerId);
-          // Load billing history when expanding
           loadBillingHistory(customerId);
         }
         return newSet;
@@ -300,33 +317,30 @@ export default function CustomerTable({
             <TableRow>
               <TableHead className="w-[50px]"></TableHead>
               <TableHead>Customer</TableHead>
-              <TableHead>Contact</TableHead>
+              <TableHead>VC Number</TableHead>
               <TableHead>Package</TableHead>
               <TableHead>Area</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Outstanding</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right">Outstanding</TableHead>
+              <TableHead className="w-[70px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredCustomers.map((customer) => {
               const isExpanded = expandedRows.has(customer.id);
               const totalOutstanding = calculateTotalOutstanding(customer);
+              const customerBilling = billingHistory[customer.id] || [];
+              const isLoadingBilling = loadingBilling.has(customer.id);
 
               return (
                 <React.Fragment key={customer.id}>
-                  <TableRow
-                    className={cn(
-                      "cursor-pointer hover:bg-muted/50",
-                      isExpanded && "bg-muted/30",
-                    )}
-                  >
+                  <TableRow className="group">
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0"
                         onClick={() => toggleRowExpansion(customer.id)}
+                        className="h-8 w-8 p-0"
                       >
                         {isExpanded ? (
                           <ChevronDown className="h-4 w-4" />
@@ -339,15 +353,7 @@ export default function CustomerTable({
                     <TableCell>
                       <div className="space-y-1">
                         <div className="font-medium">{customer.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          VC: {customer.vcNumber}
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center text-sm">
+                        <div className="flex items-center text-sm text-muted-foreground">
                           <Phone className="mr-1 h-3 w-3" />
                           {customer.phoneNumber}
                         </div>
@@ -361,20 +367,27 @@ export default function CustomerTable({
                     </TableCell>
 
                     <TableCell>
+                      <div className="flex items-center">
+                        <Tv className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <span className="font-mono">{customer.vcNumber}</span>
+                      </div>
+                    </TableCell>
+
+                    <TableCell>
                       <div className="space-y-1">
                         <div className="flex items-center">
-                          <Package className="mr-1 h-3 w-3" />
+                          <Package className="mr-2 h-4 w-4 text-muted-foreground" />
                           {customer.currentPackage}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {formatCurrency(customer.packageAmount)}
+                          {formatCurrency(customer.packageAmount || 0)}/month
                         </div>
                       </div>
                     </TableCell>
 
                     <TableCell>
                       <div className="flex items-center">
-                        <User className="mr-1 h-3 w-3" />
+                        <User className="mr-2 h-4 w-4 text-muted-foreground" />
                         {customer.collectorName}
                       </div>
                     </TableCell>
@@ -382,14 +395,14 @@ export default function CustomerTable({
                     <TableCell>
                       <Badge
                         variant={getStatusVariant(customer.status)}
-                        className="flex items-center gap-1 w-fit"
+                        className="capitalize"
                       >
                         {getStatusIcon(customer.status)}
-                        {customer.status}
+                        <span className="ml-1">{customer.status}</span>
                       </Badge>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="text-right">
                       <div
                         className={cn(
                           "font-medium",
@@ -418,9 +431,7 @@ export default function CustomerTable({
                             View Details
                           </DropdownMenuItem>
 
-                          {(isAdmin ||
-                            customer.collectorName === user?.collector_name ||
-                            customer.collectorName === user?.name) && (
+                          {canEditCustomer(customer) && (
                             <DropdownMenuItem onClick={() => onEdit(customer)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Customer
@@ -452,7 +463,6 @@ export default function CustomerTable({
                                   );
                                 }
                               }}
-                              className="text-orange-600 dark:text-orange-400"
                             >
                               <PowerOff className="mr-2 h-4 w-4" />
                               {isAdmin ? "Deactivate" : "Request Deactivation"}
@@ -466,7 +476,6 @@ export default function CustomerTable({
                                   handleStatusChangeRequest(customer, "active");
                                 }
                               }}
-                              className="text-green-600 dark:text-green-400"
                             >
                               <Power className="mr-2 h-4 w-4" />
                               {isAdmin ? "Activate" : "Request Activation"}
@@ -490,15 +499,52 @@ export default function CustomerTable({
                     </TableCell>
                   </TableRow>
 
-                  {/* Expanded Row Content */}
+                  {/* Expanded row content */}
                   {isExpanded && (
                     <TableRow>
                       <TableCell colSpan={8} className="p-0">
-                        <div className="px-6 py-4 bg-muted/30 border-t">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {/* Address */}
-                            <div className="space-y-2">
-                              <h4 className="font-medium flex items-center">
+                        <div className="border-t bg-muted/25 p-6">
+                          {/* Customer Details */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                              <h4 className="font-semibold mb-3 flex items-center">
+                                <User className="mr-2 h-4 w-4" />
+                                Customer Information
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    Join Date:
+                                  </span>
+                                  <span>{customer.joinDate}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    Last Payment:
+                                  </span>
+                                  <span>{customer.lastPaymentDate}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">
+                                    Bill Due:
+                                  </span>
+                                  <span>
+                                    {customer.billDueDate}
+                                    {customer.billDueDate === 1
+                                      ? "st"
+                                      : customer.billDueDate === 2
+                                        ? "nd"
+                                        : customer.billDueDate === 3
+                                          ? "rd"
+                                          : "th"}{" "}
+                                    of month
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <h4 className="font-semibold mb-3 flex items-center">
                                 <MapPin className="mr-2 h-4 w-4" />
                                 Address
                               </h4>
@@ -506,101 +552,103 @@ export default function CustomerTable({
                                 {customer.address}
                               </p>
                             </div>
-
-                            {/* Package Details */}
-                            <div className="space-y-2">
-                              <h4 className="font-medium flex items-center">
-                                <Package className="mr-2 h-4 w-4" />
-                                Package Details
-                              </h4>
-                              <div className="text-sm space-y-1">
-                                <div>Package: {customer.currentPackage}</div>
-                                <div>
-                                  Amount:{" "}
-                                  {formatCurrency(customer.packageAmount)}
-                                </div>
-                                <div>Due Date: {customer.billDueDate}th</div>
-                              </div>
-                            </div>
-
-                            {/* Connections */}
-                            {customer.connections &&
-                              customer.connections.length > 1 && (
-                                <div className="space-y-2">
-                                  <h4 className="font-medium flex items-center">
-                                    <Tv className="mr-2 h-4 w-4" />
-                                    Connections ({customer.connections.length})
-                                  </h4>
-                                  <div className="text-sm space-y-1">
-                                    {customer.connections.map((conn, index) => (
-                                      <div
-                                        key={index}
-                                        className="flex justify-between"
-                                      >
-                                        <span>
-                                          {conn.isPrimary
-                                            ? "Primary"
-                                            : "Secondary"}{" "}
-                                          - {conn.vcNumber}
-                                        </span>
-                                        <span>{conn.planName}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
                           </div>
 
-                          {/* Recent Billing History */}
-                          <div className="mt-4 pt-4 border-t">
-                            <h4 className="font-medium mb-2 flex items-center">
-                              <FileText className="mr-2 h-4 w-4" />
-                              Recent Billing
-                              {loadingBilling.has(customer.id) && (
-                                <RefreshCw className="ml-2 h-3 w-3 animate-spin" />
-                              )}
-                            </h4>
-
-                            {billingHistory[customer.id] ? (
-                              billingHistory[customer.id].length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                  {billingHistory[customer.id]
-                                    .slice(0, 3)
-                                    .map((bill, index) => (
+                          {/* Connections */}
+                          {customer.connections &&
+                            customer.connections.length > 1 && (
+                              <div className="mb-6">
+                                <h4 className="font-semibold mb-3 flex items-center">
+                                  <Tv className="mr-2 h-4 w-4" />
+                                  Additional Connections
+                                </h4>
+                                <div className="grid gap-3">
+                                  {customer.connections
+                                    .filter((conn) => !conn.isPrimary)
+                                    .map((connection, index) => (
                                       <div
-                                        key={index}
-                                        className="text-sm p-2 bg-background rounded border"
+                                        key={connection.id}
+                                        className="flex items-center justify-between p-3 border rounded-lg bg-background"
                                       >
-                                        <div className="flex justify-between">
-                                          <span>{bill.billingMonth}</span>
-                                          <Badge
-                                            variant={
-                                              bill.status === "Paid"
-                                                ? "default"
-                                                : bill.status === "Pending"
-                                                  ? "secondary"
-                                                  : "destructive"
-                                            }
-                                            className="text-xs"
-                                          >
-                                            {bill.status}
-                                          </Badge>
+                                        <div>
+                                          <div className="font-medium">
+                                            VC: {connection.vcNumber}
+                                          </div>
+                                          <div className="text-sm text-muted-foreground">
+                                            {connection.planName} -{" "}
+                                            {formatCurrency(
+                                              connection.packageAmount || 0,
+                                            )}
+                                            /month
+                                          </div>
                                         </div>
-                                        <div className="font-medium">
-                                          {formatCurrency(bill.amount)}
-                                        </div>
+                                        <Badge
+                                          variant={getStatusVariant(
+                                            connection.status || "active",
+                                          )}
+                                        >
+                                          {getStatusIcon(
+                                            connection.status || "active",
+                                          )}
+                                          <span className="ml-1">
+                                            {connection.status || "active"}
+                                          </span>
+                                        </Badge>
                                       </div>
                                     ))}
                                 </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">
-                                  No billing history available
-                                </p>
-                              )
-                            ) : (
+                              </div>
+                            )}
+
+                          {/* Billing History */}
+                          <div className="mb-6">
+                            <h4 className="font-semibold mb-3 flex items-center">
+                              <CreditCard className="mr-2 h-4 w-4" />
+                              Recent Billing History
+                            </h4>
+                            {isLoadingBilling ? (
                               <div className="flex items-center text-sm text-muted-foreground">
                                 <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
                                 Loading billing history...
+                              </div>
+                            ) : customerBilling.length > 0 ? (
+                              <div className="space-y-2">
+                                {customerBilling.slice(0, 5).map((record) => (
+                                  <div
+                                    key={record.id}
+                                    className="flex items-center justify-between p-3 border rounded-lg bg-background"
+                                  >
+                                    <div>
+                                      <div className="font-medium">
+                                        {record.billingMonth}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {record.paymentMethod} •{" "}
+                                        {record.paymentDate}
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="font-medium">
+                                        {formatCurrency(record.amountPaid)}
+                                      </div>
+                                      <Badge
+                                        variant={
+                                          record.paymentStatus === "Paid"
+                                            ? "default"
+                                            : "destructive"
+                                        }
+                                        className="text-xs"
+                                      >
+                                        {record.paymentStatus}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <FileText className="mr-2 h-3 w-3" />
+                                No billing history available
                               </div>
                             )}
                           </div>
@@ -617,10 +665,7 @@ export default function CustomerTable({
                                 Full Details
                               </Button>
 
-                              {(isAdmin ||
-                                customer.collectorName ===
-                                  user?.collector_name ||
-                                customer.collectorName === user?.name) && (
+                              {canEditCustomer(customer) && (
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -656,62 +701,18 @@ export default function CustomerTable({
       {selectedRequest && (
         <ActionRequestModal
           open={!!selectedRequest}
-          onOpenChange={() => setSelectedRequest(null)}
+          onOpenChange={(open) => !open && setSelectedRequest(null)}
           request={selectedRequest}
-          onSave={async (request) => {
-            // Handle request submission
-            try {
-              // Here you would typically save the request to your backend
-              console.log("Submitting request:", request);
-
-              toast({
-                title: "Request Submitted",
-                description:
-                  "Your request has been submitted for admin approval.",
-              });
-
-              setSelectedRequest(null);
-            } catch (error) {
-              toast({
-                title: "Error",
-                description: "Failed to submit request",
-                variant: "destructive",
-              });
-            }
+          onRequestSubmitted={() => {
+            setSelectedRequest(null);
+            toast({
+              title: "Request Submitted",
+              description:
+                "Your request has been submitted for admin approval.",
+            });
           }}
         />
       )}
-
-      {/* Status Change Confirmation Dialog */}
-      <AlertDialog
-        open={!!statusChangeCustomer}
-        onOpenChange={() => setStatusChangeCustomer(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to change {statusChangeCustomer?.name}'s
-              status to {newStatus}?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setStatusChangeCustomer(null)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (statusChangeCustomer) {
-                  handleDirectStatusChange(statusChangeCustomer, newStatus);
-                  setStatusChangeCustomer(null);
-                }
-              }}
-            >
-              Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

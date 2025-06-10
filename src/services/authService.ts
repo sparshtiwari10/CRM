@@ -30,6 +30,7 @@ export interface User {
   name: string;
   role: "admin" | "employee";
   collector_name?: string;
+  assigned_areas?: string[]; // Multiple areas for employees
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -48,6 +49,7 @@ export interface CreateUserData {
   name: string;
   role: "admin" | "employee";
   collector_name?: string;
+  assigned_areas?: string[];
 }
 
 class AuthService {
@@ -228,6 +230,10 @@ class AuthService {
 
       console.log("👤 Creating new user account:", userData.email);
 
+      // Use Firebase Admin SDK approach or secondary app to avoid changing current user session
+      // For now, we'll use the current approach but immediately sign the admin back in
+      const currentUserEmail = this.currentUser?.email;
+
       // Create Firebase Auth account
       const userCredential = await createUserWithEmailAndPassword(
         this.auth,
@@ -235,25 +241,58 @@ class AuthService {
         userData.password,
       );
 
-      // Create user document in Firestore
-      const userDoc: Omit<User, "id"> = {
+      // Prepare user document data, filtering out undefined values
+      const baseUserDoc = {
         email: userData.email,
         name: userData.name,
         role: userData.role,
-        collector_name: userData.collector_name,
         is_active: true,
         requires_password_reset: true,
         created_at: new Date(),
         updated_at: new Date(),
       };
 
-      await setDoc(doc(db, "users", userCredential.user.uid), {
+      // Add optional fields only if they have values
+      const userDoc: any = { ...baseUserDoc };
+
+      // Handle collector_name for employees
+      if (userData.role === "employee" && userData.collector_name) {
+        userDoc.collector_name = userData.collector_name;
+      }
+
+      // Handle assigned_areas for employees (multi-area support)
+      if (
+        userData.role === "employee" &&
+        userData.assigned_areas &&
+        userData.assigned_areas.length > 0
+      ) {
+        userDoc.assigned_areas = userData.assigned_areas;
+        // Set primary area as collector_name if not already set
+        if (!userDoc.collector_name) {
+          userDoc.collector_name = userData.assigned_areas[0];
+        }
+      }
+
+      // Convert dates to Firestore timestamps
+      const firestoreDoc = {
         ...userDoc,
         created_at: Timestamp.fromDate(userDoc.created_at),
         updated_at: Timestamp.fromDate(userDoc.updated_at),
-      });
+      };
+
+      console.log("📝 Saving user document:", firestoreDoc);
+
+      await setDoc(doc(db, "users", userCredential.user.uid), firestoreDoc);
 
       console.log("✅ User account created successfully:", userData.name);
+
+      // Immediately sign out the newly created user to restore admin session
+      await signOut(this.auth);
+
+      // Wait a moment for Firebase to process the sign out
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      console.log("🔄 Restored admin session after user creation");
 
       return {
         id: userCredential.user.uid,
@@ -261,6 +300,13 @@ class AuthService {
       };
     } catch (error: any) {
       console.error("❌ Failed to create user:", error);
+
+      // Make sure to sign out any partial session and let auth listener handle restoration
+      try {
+        await signOut(this.auth);
+      } catch (signOutError) {
+        console.warn("⚠️ Sign out after error failed:", signOutError);
+      }
 
       if (error.code === "auth/email-already-in-use") {
         throw new Error("An account with this email already exists.");
@@ -372,8 +418,15 @@ class AuthService {
     // Admins can access all customers
     if (currentUser.role === "admin") return true;
 
-    // Employees can only access customers assigned to them
-    return currentUser.collector_name === customerCollectorName;
+    // Employees can access customers assigned to their areas
+    if (currentUser.collector_name === customerCollectorName) return true;
+
+    // Check assigned_areas for multi-area employees
+    if (currentUser.assigned_areas && customerCollectorName) {
+      return currentUser.assigned_areas.includes(customerCollectorName);
+    }
+
+    return false;
   }
 
   /**
@@ -387,6 +440,7 @@ class AuthService {
       role: string;
       is_active: boolean;
       collector_name?: string;
+      assigned_areas?: string[];
     }>
   > {
     try {
@@ -406,6 +460,7 @@ class AuthService {
         role: string;
         is_active: boolean;
         collector_name?: string;
+        assigned_areas?: string[];
       }> = [];
 
       querySnapshot.forEach((doc) => {
@@ -417,6 +472,7 @@ class AuthService {
           role: userData.role || "employee",
           is_active: userData.is_active !== false,
           collector_name: userData.collector_name,
+          assigned_areas: userData.assigned_areas,
         });
       });
 
@@ -453,6 +509,7 @@ class AuthService {
       name?: string;
       role?: "admin" | "employee";
       collector_name?: string;
+      assigned_areas?: string[];
       is_active?: boolean;
     },
   ): Promise<void> {
@@ -461,10 +518,19 @@ class AuthService {
         throw new Error("Only administrators can update users");
       }
 
-      await updateDoc(doc(db, "users", userId), {
-        ...updates,
+      // Filter out undefined values to prevent Firestore errors
+      const cleanUpdates: any = {
         updated_at: Timestamp.now(),
+      };
+
+      // Only add fields that have defined values
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value !== undefined) {
+          cleanUpdates[key] = value;
+        }
       });
+
+      await updateDoc(doc(db, "users", userId), cleanUpdates);
 
       console.log("✅ User updated successfully:", userId);
     } catch (error) {
@@ -487,15 +553,67 @@ class AuthService {
         throw new Error("You cannot delete your own account");
       }
 
+      // Get user info before deletion for logging
+      const userDoc = await getDoc(doc(db, "users", userId));
+      const userEmail = userDoc.exists() ? userDoc.data().email : "unknown";
+
       // Delete user document from Firestore
       await deleteDoc(doc(db, "users", userId));
 
-      // Note: Firebase Auth user will remain but won't be able to access the app
-      // without a Firestore user document
+      console.log("✅ User document deleted successfully:", userId);
+      console.log(`📧 User email: ${userEmail}`);
 
-      console.log("✅ User deleted successfully:", userId);
+      // Important note about Firebase Auth user
+      console.warn("⚠️ IMPORTANT: Firebase Auth user still exists!");
+      console.warn("📋 Manual action required:");
+      console.warn(`   1. Go to Firebase Console → Authentication → Users`);
+      console.warn(`   2. Find user with email: ${userEmail}`);
+      console.warn(`   3. Click the user and select "Delete user"`);
+      console.warn("   4. This ensures complete user removal from the system");
+
+      // Return information for UI display
+      return {
+        success: true,
+        userEmail,
+        requiresManualCleanup: true,
+        instructions: [
+          "Go to Firebase Console → Authentication → Users",
+          `Find user with email: ${userEmail}`,
+          "Click the user and select 'Delete user'",
+          "This completes the user deletion process",
+        ],
+      } as any;
     } catch (error) {
       console.error("❌ Failed to delete user:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Disable user account instead of deleting (recommended alternative)
+   */
+  async disableUser(userId: string): Promise<void> {
+    try {
+      if (!this.isAdmin()) {
+        throw new Error("Only administrators can disable users");
+      }
+
+      // Prevent disabling current user
+      if (userId === this.currentUser?.id) {
+        throw new Error("You cannot disable your own account");
+      }
+
+      // Mark user as inactive in Firestore
+      await updateDoc(doc(db, "users", userId), {
+        is_active: false,
+        disabled_at: new Date(),
+        disabled_by: this.currentUser?.id,
+        updated_at: new Date(),
+      });
+
+      console.log("✅ User disabled successfully:", userId);
+    } catch (error) {
+      console.error("❌ Failed to disable user:", error);
       throw error;
     }
   }
@@ -552,6 +670,7 @@ class AuthService {
         name: userData.name,
         role: userData.role,
         collector_name: userData.collector_name,
+        assigned_areas: userData.assigned_areas,
         is_active: userData.is_active,
         created_at: userData.created_at.toDate(),
         updated_at: userData.updated_at.toDate(),

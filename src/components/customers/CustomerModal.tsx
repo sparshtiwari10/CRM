@@ -82,6 +82,7 @@ export default function CustomerModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [availableAreas, setAvailableAreas] = useState<string[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Reset form when modal opens/closes or customer changes
   useEffect(() => {
@@ -124,6 +125,7 @@ export default function CustomerModal({
         setFormData(initialFormData);
       }
       setErrors({});
+      setIsSaving(false);
     }
   }, [open, customer]);
 
@@ -270,11 +272,13 @@ export default function CustomerModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    if (!validateForm() || isSaving) {
       return;
     }
 
     try {
+      setIsSaving(true);
+
       const primaryConnection =
         formData.connections.find((conn) => conn.isPrimary) ||
         formData.connections[0];
@@ -302,10 +306,16 @@ export default function CustomerModal({
         lastPaymentDate: new Date().toISOString().split("T")[0],
       };
 
+      // Call the onSave function and wait for it to complete
       await onSave(customerData);
+
+      // Only close modal if save was successful
       onOpenChange(false);
     } catch (error) {
       console.error("Error saving customer:", error);
+      // Error is handled by parent component, don't close modal
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -704,12 +714,12 @@ export default function CustomerModal({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={isSaving}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : customer ? "Update" : "Create"}{" "}
-              Customer
+            <Button type="submit" disabled={isSaving || isLoading}>
+              {isSaving ? "Saving..." : customer ? "Update" : "Create"} Customer
             </Button>
           </DialogFooter>
         </form>

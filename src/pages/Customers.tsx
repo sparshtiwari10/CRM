@@ -21,6 +21,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import CustomerModal from "@/components/customers/CustomerModal";
 import CustomerTable from "@/components/customers/CustomerTable";
 import { CustomerImportExport } from "@/components/customers/CustomerImportExport";
@@ -42,6 +49,16 @@ export default function Customers() {
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showImportExport, setShowImportExport] = useState(false);
+
+  // Customer details modal
+  const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  // Customer history modal
+  const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [customerHistory, setCustomerHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const { user, isAdmin } = useContext(AuthContext);
   const { toast } = useToast();
@@ -85,9 +102,11 @@ export default function Customers() {
         } else {
           // For employees, get customers assigned to them
           // Use collector_name if available, otherwise fall back to name
-          const collectorName = user?.collector_name || user?.name || "";
+          const userAreas =
+            user?.assigned_areas ||
+            (user?.collector_name ? [user.collector_name] : []);
           console.log(
-            `🔍 Employee user - looking for customers assigned to: "${collectorName}"`,
+            `🔍 Employee user - looking for customers assigned to areas: ${userAreas.join(", ")}`,
           );
 
           // First, get ALL customers to debug assignment
@@ -99,29 +118,31 @@ export default function Customers() {
             );
           });
 
-          // Filter customers for this employee
-          customerData = allCustomers.filter(
-            (customer) => customer.collectorName === collectorName,
+          // Filter customers for this employee's areas
+          customerData = allCustomers.filter((customer) =>
+            userAreas.includes(customer.collectorName),
           );
 
           console.log(
-            `📊 Filtered customers for "${collectorName}": ${customerData.length}`,
+            `📊 Filtered customers for areas "${userAreas.join(", ")}": ${customerData.length}`,
           );
 
           if (customerData.length === 0) {
             console.log("⚠️ No customers found for this employee");
             console.log("🔧 Possible solutions:");
             console.log(
-              "     a) Check customer data: ensure collectorName matches employee name",
+              "     a) Check customer data: ensure collectorName matches employee areas",
             );
             console.log(
-              "     b) Check employee profile: ensure collector_name is set correctly in Firebase",
+              "     b) Check employee profile: ensure assigned_areas is set correctly in Firebase",
             );
-            console.log("     c) Add customers and assign them to this area");
+            console.log(
+              "     c) Add customers and assign them to employee areas",
+            );
 
             toast({
               title: "No Customers Assigned",
-              description: `No customers found assigned to your area "${collectorName}". Contact admin to assign customers to your area.`,
+              description: `No customers found assigned to your areas: ${userAreas.join(", ")}. Contact admin to assign customers to your areas.`,
               variant: "destructive",
             });
           }
@@ -192,13 +213,48 @@ export default function Customers() {
   };
 
   const handleViewCustomer = (customer: Customer) => {
-    // Implement view customer details
-    console.log("View customer:", customer);
+    console.log("📋 Opening customer details for:", customer.name);
+    setViewingCustomer(customer);
+    setShowDetailsModal(true);
   };
 
-  const handleViewHistory = (customer: Customer) => {
-    // Implement view customer history
-    console.log("View history for:", customer);
+  const handleViewHistory = async (customer: Customer) => {
+    console.log("📈 Loading customer history for:", customer.name);
+    setHistoryCustomer(customer);
+    setShowHistoryModal(true);
+    setLoadingHistory(true);
+
+    try {
+      // Load customer billing history and other historical data
+      const billingHistory = await CustomerService.getBillingHistory(
+        customer.id,
+      );
+
+      // Create a comprehensive history from different sources
+      const history = [
+        ...billingHistory.map((record) => ({
+          type: "billing",
+          date: record.paymentDate,
+          description: `Payment of ₹${record.amountPaid} for ${record.billingMonth}`,
+          amount: record.amountPaid,
+          status: record.paymentStatus,
+          details: record,
+        })),
+        // Add more history types here (status changes, plan changes, etc.)
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      setCustomerHistory(history);
+    } catch (error) {
+      console.error("Failed to load customer history:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load customer history",
+        variant: "destructive",
+      });
+      setCustomerHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   const handleSaveCustomer = async (customerData: Customer) => {
@@ -312,7 +368,7 @@ export default function Customers() {
             <p className="text-muted-foreground">
               {isAdmin
                 ? "Manage all customers in the system"
-                : `Manage customers in your area: ${user?.collector_name || user?.name}`}
+                : `Manage customers in your areas: ${user?.assigned_areas?.join(", ") || user?.collector_name || user?.name}`}
             </p>
           </div>
           <div className="flex space-x-2">
@@ -372,17 +428,21 @@ export default function Customers() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                {isAdmin ? "Total Areas" : "Your Area"}
+                {isAdmin ? "Total Areas" : "Your Areas"}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {isAdmin ? uniqueAreas.length : 1}
+                {isAdmin
+                  ? uniqueAreas.length
+                  : user?.assigned_areas?.length || 1}
               </div>
               <p className="text-xs text-muted-foreground">
                 {isAdmin
                   ? `${uniqueAreas.length} areas covered`
-                  : user?.collector_name || user?.name}
+                  : user?.assigned_areas?.join(", ") ||
+                    user?.collector_name ||
+                    user?.name}
               </p>
             </CardContent>
           </Card>
@@ -471,6 +531,177 @@ export default function Customers() {
           onSave={handleSaveCustomer}
           isLoading={isSaving}
         />
+
+        {/* Customer Details Modal */}
+        <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Customer Details - {viewingCustomer?.name}
+              </DialogTitle>
+              <DialogDescription>
+                Complete customer information and service details
+              </DialogDescription>
+            </DialogHeader>
+
+            {viewingCustomer && (
+              <div className="space-y-6">
+                {/* Basic Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-semibold mb-3">Contact Information</h3>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <strong>Phone:</strong> {viewingCustomer.phoneNumber}
+                      </div>
+                      {viewingCustomer.email && (
+                        <div>
+                          <strong>Email:</strong> {viewingCustomer.email}
+                        </div>
+                      )}
+                      <div>
+                        <strong>Address:</strong> {viewingCustomer.address}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold mb-3">Service Information</h3>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <strong>VC Number:</strong> {viewingCustomer.vcNumber}
+                      </div>
+                      <div>
+                        <strong>Package:</strong>{" "}
+                        {viewingCustomer.currentPackage}
+                      </div>
+                      <div>
+                        <strong>Monthly Amount:</strong> ₹
+                        {viewingCustomer.packageAmount || 0}
+                      </div>
+                      <div>
+                        <strong>Status:</strong> {viewingCustomer.status}
+                      </div>
+                      <div>
+                        <strong>Area:</strong> {viewingCustomer.collectorName}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Billing Info */}
+                <div>
+                  <h3 className="font-semibold mb-3">Billing Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <strong>Join Date:</strong> {viewingCustomer.joinDate}
+                    </div>
+                    <div>
+                      <strong>Last Payment:</strong>{" "}
+                      {viewingCustomer.lastPaymentDate}
+                    </div>
+                    <div>
+                      <strong>Outstanding:</strong> ₹
+                      {viewingCustomer.currentOutstanding || 0}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Connections */}
+                {viewingCustomer.connections &&
+                  viewingCustomer.connections.length > 1 && (
+                    <div>
+                      <h3 className="font-semibold mb-3">All Connections</h3>
+                      <div className="space-y-2">
+                        {viewingCustomer.connections.map((conn, index) => (
+                          <div key={conn.id} className="border rounded p-3">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <strong>VC: {conn.vcNumber}</strong>{" "}
+                                {conn.isPrimary && (
+                                  <span className="text-blue-600">
+                                    (Primary)
+                                  </span>
+                                )}
+                                <div className="text-sm text-muted-foreground">
+                                  {conn.planName} - ₹{conn.packageAmount || 0}
+                                  /month
+                                </div>
+                              </div>
+                              <div className="text-sm">
+                                Status: {conn.status || "active"}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Customer History Modal */}
+        <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Customer History - {historyCustomer?.name}
+              </DialogTitle>
+              <DialogDescription>
+                Complete transaction and service history
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {loadingHistory ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <p className="mt-2 text-muted-foreground">
+                    Loading history...
+                  </p>
+                </div>
+              ) : customerHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {customerHistory.map((record, index) => (
+                    <div key={index} className="border rounded p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium">
+                            {record.description}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(record.date).toLocaleDateString()} •{" "}
+                            {record.type}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {record.amount && (
+                            <div className="font-medium">₹{record.amount}</div>
+                          )}
+                          {record.status && (
+                            <div
+                              className={`text-sm ${record.status === "Paid" ? "text-green-600" : "text-red-600"}`}
+                            >
+                              {record.status}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    No history records found
+                  </p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Import/Export Modal */}
         {isAdmin && (

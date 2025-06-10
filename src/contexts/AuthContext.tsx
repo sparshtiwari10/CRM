@@ -178,6 +178,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     name: string;
     role: "admin" | "employee";
     collector_name?: string;
+    assigned_areas?: string[];
   }): Promise<User> => {
     try {
       setIsLoading(true);
