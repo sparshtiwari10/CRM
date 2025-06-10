@@ -38,7 +38,7 @@ export interface User {
 }
 
 export interface LoginCredentials {
-  email: string; // Changed from username to email
+  email: string;
   password: string;
 }
 
@@ -73,8 +73,27 @@ class AuthService {
           this.setCurrentUser(user);
         } catch (error) {
           console.error("Failed to load user data:", error);
-          // Sign out the user if we can't load their data
-          await this.signOut();
+
+          // If user document doesn't exist, try to create it
+          if (
+            error instanceof Error &&
+            error.message.includes("User profile not found")
+          ) {
+            console.log("🔧 User document missing, attempting to create...");
+            try {
+              const newUser =
+                await this.createUserDocumentForFirebaseUser(firebaseUser);
+              this.setCurrentUser(newUser);
+              console.log("✅ User document created successfully");
+            } catch (createError) {
+              console.error("❌ Failed to create user document:", createError);
+              // Sign out the user if we can't create their document
+              await this.signOut();
+            }
+          } else {
+            // Sign out the user for other errors
+            await this.signOut();
+          }
         }
       } else {
         // User signed out
@@ -101,8 +120,26 @@ class AuthService {
         credentials.password,
       );
 
+      console.log("✅ Firebase Auth successful, loading user data...");
+
       // Load user data from Firestore
-      const user = await this.loadUserData(userCredential.user);
+      let user: User;
+      try {
+        user = await this.loadUserData(userCredential.user);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.includes("User profile not found")
+        ) {
+          console.log("🔧 User document missing, creating it now...");
+          user = await this.createUserDocumentForFirebaseUser(
+            userCredential.user,
+          );
+          console.log("✅ User document created successfully");
+        } else {
+          throw error;
+        }
+      }
 
       // Check if user is active
       if (!user.is_active) {
@@ -112,7 +149,7 @@ class AuthService {
         );
       }
 
-      console.log("✅ Firebase Auth login successful:", user.name);
+      console.log("✅ Login successful:", user.name);
       return user;
     } catch (error: any) {
       console.error("❌ Firebase Auth login failed:", error);
@@ -128,11 +165,54 @@ class AuthService {
         throw new Error(
           "Too many failed login attempts. Please try again later.",
         );
-      } else if (error.message.includes("Account is deactivated")) {
+      } else if (error.message?.includes("Account is deactivated")) {
         throw error; // Re-throw our custom deactivated message
       } else {
         throw new Error(error.message || "Login failed. Please try again.");
       }
+    }
+  }
+
+  /**
+   * Create user document for Firebase Auth user
+   */
+  private async createUserDocumentForFirebaseUser(
+    firebaseUser: FirebaseUser,
+  ): Promise<User> {
+    try {
+      console.log("🔨 Creating user document for:", firebaseUser.email);
+
+      const userData = {
+        email: firebaseUser.email || "",
+        name: firebaseUser.email?.split("@")[0] || "User",
+        role: "admin" as const, // Make new users admin by default for now
+        is_active: true,
+        requires_password_reset: false,
+        created_at: Timestamp.now(),
+        updated_at: Timestamp.now(),
+        auto_created: true,
+      };
+
+      await setDoc(doc(db, "users", firebaseUser.uid), userData);
+
+      const user: User = {
+        id: firebaseUser.uid,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        is_active: userData.is_active,
+        requires_password_reset: userData.requires_password_reset,
+        created_at: userData.created_at.toDate(),
+        updated_at: userData.updated_at.toDate(),
+      };
+
+      console.log("✅ User document created successfully");
+      return user;
+    } catch (error) {
+      console.error("❌ Failed to create user document:", error);
+      throw new Error(
+        "Failed to create user profile. Please contact administrator.",
+      );
     }
   }
 
@@ -500,11 +580,11 @@ class AuthService {
   }
 
   /**
-   * Seed default admin user (migration helper)
+   * Seed default admin user (for backwards compatibility)
    */
   async seedDefaultAdmin(): Promise<void> {
     try {
-      console.log("🌱 Checking for default admin user...");
+      console.log("🌱 Checking for admin users...");
 
       // Check if any admin users exist
       const usersRef = collection(db, "users");
@@ -516,61 +596,14 @@ class AuthService {
         return;
       }
 
-      console.log("🌱 No admin users found, creating default admin...");
-
-      // Create default admin user
-      const defaultAdminEmail = "admin@agvcabletv.com";
-      const defaultAdminPassword = "admin123";
-
-      await this.createUserWithoutAdminCheck({
-        email: defaultAdminEmail,
-        password: defaultAdminPassword,
-        name: "System Administrator",
-        role: "admin",
-      });
-
-      console.log("✅ Default admin user created:", defaultAdminEmail);
-      console.log("🔑 Default password:", defaultAdminPassword);
-      console.log("⚠️ Please change the default password after first login");
+      console.log("⚠️ No admin users found");
+      console.log(
+        "💡 Please create an admin user manually or sign in with an existing Firebase Auth account",
+      );
     } catch (error) {
-      console.error("❌ Failed to seed default admin:", error);
+      console.warn("Could not check for admin users:", error);
       // Don't throw error as this is optional
     }
-  }
-
-  /**
-   * Create user without admin check (for seeding)
-   */
-  private async createUserWithoutAdminCheck(
-    userData: CreateUserData,
-  ): Promise<User> {
-    const userCredential = await createUserWithEmailAndPassword(
-      this.auth,
-      userData.email,
-      userData.password,
-    );
-
-    const userDoc: Omit<User, "id"> = {
-      email: userData.email,
-      name: userData.name,
-      role: userData.role,
-      collector_name: userData.collector_name,
-      is_active: true,
-      requires_password_reset: true,
-      created_at: new Date(),
-      updated_at: new Date(),
-    };
-
-    await setDoc(doc(db, "users", userCredential.user.uid), {
-      ...userDoc,
-      created_at: Timestamp.fromDate(userDoc.created_at),
-      updated_at: Timestamp.fromDate(userDoc.updated_at),
-    });
-
-    return {
-      id: userCredential.user.uid,
-      ...userDoc,
-    };
   }
 }
 

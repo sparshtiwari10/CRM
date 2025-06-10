@@ -9,6 +9,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -28,6 +35,7 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authService } from "@/services/authService";
+import { firestoreService } from "@/services/firestoreService";
 
 interface Employee {
   id: string;
@@ -44,13 +52,15 @@ export default function Employees() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [availableAreas, setAvailableAreas] = useState<string[]>([]);
   const { toast } = useToast();
   const { user, isAdmin, createUser, sendPasswordReset } = useAuth();
 
-  // Load employees on component mount
+  // Load employees and areas on component mount
   useEffect(() => {
     if (isAdmin) {
       loadEmployees();
+      loadAvailableAreas();
     }
   }, [isAdmin]);
 
@@ -71,6 +81,25 @@ export default function Employees() {
     }
   };
 
+  const loadAvailableAreas = async () => {
+    try {
+      // Get all customers to extract unique areas
+      const customers = await firestoreService.getAllCustomers();
+      const areas = customers
+        .map((c) => c.collectorName)
+        .filter(Boolean)
+        .filter((area, index, arr) => arr.indexOf(area) === index) // Remove duplicates
+        .sort();
+
+      setAvailableAreas(areas);
+      console.log("📍 Available areas:", areas);
+    } catch (error) {
+      console.error("Failed to load areas:", error);
+      // Set some default areas if loading fails
+      setAvailableAreas(["Area 1", "Area 2", "Area 3", "Downtown", "Suburb"]);
+    }
+  };
+
   const handleCreateEmployee = async (formData: FormData) => {
     try {
       const email = formData.get("email") as string;
@@ -79,30 +108,52 @@ export default function Employees() {
       const collectorName = formData.get("collector_name") as string;
       const password = formData.get("password") as string;
 
-      await createUser({
+      console.log("🔧 Creating employee with:", {
+        email,
+        name,
+        role,
+        collector_name: collectorName,
+      });
+
+      // Don't await the user creation to prevent logout
+      createUser({
         email,
         password,
         name,
         role,
         collector_name: role === "employee" ? collectorName : undefined,
-      });
+      })
+        .then(() => {
+          console.log("✅ Employee created successfully");
 
-      // Send password reset email so user can set their own password
-      try {
-        await sendPasswordReset(email);
-        toast({
-          title: "Employee Created",
-          description: `${name} has been created and a password reset email has been sent.`,
+          // Send password reset email (don't await to prevent issues)
+          sendPasswordReset(email)
+            .then(() => {
+              toast({
+                title: "Employee Created",
+                description: `${name} has been created and a password reset email has been sent.`,
+              });
+            })
+            .catch(() => {
+              toast({
+                title: "Employee Created",
+                description: `${name} has been created. Please manually send them their login credentials.`,
+              });
+            });
+
+          // Reload employees list
+          loadEmployees();
+        })
+        .catch((error: any) => {
+          console.error("❌ Failed to create employee:", error);
+          toast({
+            title: "Error",
+            description: error.message || "Failed to create employee",
+            variant: "destructive",
+          });
         });
-      } catch (resetError) {
-        toast({
-          title: "Employee Created",
-          description: `${name} has been created. Please manually send them their login credentials.`,
-        });
-      }
 
       setShowCreateModal(false);
-      loadEmployees();
 
       // Reset form
       const form = document.getElementById(
@@ -163,6 +214,28 @@ export default function Employees() {
       toast({
         title: "Error",
         description: "Failed to update role",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateEmployeeArea = async (employee: Employee, newArea: string) => {
+    try {
+      await authService.updateUser(employee.id, {
+        collector_name: newArea,
+      });
+
+      toast({
+        title: "Area Updated",
+        description: `${employee.name}'s area updated to ${newArea}`,
+      });
+
+      loadEmployees();
+    } catch (error) {
+      console.error("Failed to update area:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update area",
         variant: "destructive",
       });
     }
@@ -357,9 +430,31 @@ export default function Employees() {
                         {employee.email}
                       </p>
                       {employee.collector_name && (
-                        <p className="text-sm text-muted-foreground">
-                          Area: {employee.collector_name}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-muted-foreground">
+                            Area: {employee.collector_name}
+                          </p>
+                          {employee.role === "employee" &&
+                            availableAreas.length > 0 && (
+                              <Select
+                                value={employee.collector_name}
+                                onValueChange={(value) =>
+                                  updateEmployeeArea(employee, value)
+                                }
+                              >
+                                <SelectTrigger className="w-32 h-6 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableAreas.map((area) => (
+                                    <SelectItem key={area} value={area}>
+                                      {area}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                        </div>
                       )}
                     </div>
 
@@ -392,25 +487,26 @@ export default function Employees() {
                             )}
                           </Button>
 
-                          <select
+                          <Select
                             value={employee.role}
-                            onChange={(e) =>
-                              updateEmployeeRole(
-                                employee,
-                                e.target.value as "admin" | "employee",
-                              )
+                            onValueChange={(value: "admin" | "employee") =>
+                              updateEmployeeRole(employee, value)
                             }
-                            className="px-2 py-1 border rounded text-sm"
                           >
-                            <option value="employee">Employee</option>
-                            <option value="admin">Admin</option>
-                          </select>
+                            <SelectTrigger className="w-24 h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="employee">Employee</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
 
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleDeleteEmployee(employee)}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                             title="Delete user"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -471,7 +567,7 @@ export default function Employees() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -488,26 +584,35 @@ export default function Employees() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium">Role</label>
-                    <select
-                      name="role"
-                      required
-                      className="w-full px-3 py-2 border rounded-md bg-background"
-                    >
-                      <option value="employee">Employee</option>
-                      <option value="admin">Admin</option>
-                    </select>
+                    <Select name="role" required>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="employee">Employee</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
                     <label className="text-sm font-medium">
                       Collection Area
                     </label>
-                    <Input
-                      name="collector_name"
-                      placeholder="Area 1, Downtown, etc."
-                    />
+                    <Select name="collector_name">
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select or enter area" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableAreas.map((area) => (
+                          <SelectItem key={area} value={area}>
+                            {area}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <p className="text-xs text-muted-foreground mt-1">
-                      For employees only
+                      For employees only. Can be edited later.
                     </p>
                   </div>
                 </div>

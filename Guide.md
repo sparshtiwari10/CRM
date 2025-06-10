@@ -3,71 +3,105 @@
 ## Table of Contents
 
 1. [System Overview](#system-overview)
-2. [Authentication System](#authentication-system)
+2. [Current Features](#current-features)
 3. [Installation & Setup](#installation--setup)
-4. [Firebase Configuration](#firebase-configuration)
-5. [Features & Modules](#features--modules)
-6. [User Roles & Permissions](#user-roles--permissions)
-7. [Troubleshooting](#troubleshooting)
-8. [Migration Guide](#migration-guide)
-9. [Security Implementation](#security-implementation)
+4. [Authentication System](#authentication-system)
+5. [User Management](#user-management)
+6. [Core Modules](#core-modules)
+7. [Technical Architecture](#technical-architecture)
+8. [Security Implementation](#security-implementation)
+9. [Deployment](#deployment)
+10. [Troubleshooting](#troubleshooting)
 
 ## System Overview
 
-The AGV Cable TV Management System is a comprehensive web application built with React, TypeScript, and Firebase for managing cable TV operations including customer management, billing, package management, and employee administration.
+The AGV Cable TV Management System is a comprehensive web application for managing cable TV operations, including customer management, billing, package management, and employee administration. The system is built with modern web technologies and Firebase backend services.
+
+### Current Status: ✅ FULLY OPERATIONAL
+
+- **Authentication:** Firebase Auth with automatic user management
+- **Database:** Firestore with real-time data synchronization
+- **UI:** Modern, responsive interface with dark mode support
+- **Roles:** Admin and Employee with proper permissions
+- **Security:** Working Firestore rules with role-based access
+- **Employee Management:** Integrated area-based assignment system
+- **Customer Management:** Complete CRUD with area-based filtering
 
 ### Technology Stack
 
-- **Frontend**: React 18, TypeScript, Tailwind CSS
-- **Backend**: Firebase (Firestore, Authentication)
-- **State Management**: React Context API
-- **UI Components**: Custom components with shadcn/ui
-- **Build Tool**: Vite
-- **Authentication**: Firebase Authentication (migrated from custom auth)
+- **Frontend:** React 18, TypeScript, Tailwind CSS
+- **Backend:** Firebase (Firestore Database, Authentication)
+- **UI Framework:** Custom components with shadcn/ui
+- **State Management:** React Context API
+- **Build Tool:** Vite
+- **Deployment:** Firebase Hosting ready
 
-## Authentication System
+## Current Features
 
-### Current Implementation: Firebase Authentication
+### ✅ Enhanced Features (Latest Update)
 
-The system has been migrated from custom authentication to Firebase Authentication for enhanced security and reliability.
+#### Employee Management System
 
-#### Authentication Flow
+- **Integrated Area Management:** Employees can be assigned to specific collection areas
+- **Dynamic Area Selection:** Area dropdown populated from existing customer assignments
+- **Editable Areas:** Admin can change employee areas after creation
+- **Session Stability:** Employee creation no longer logs out admin session
+- **Dark Mode Compatible:** All dropdowns properly styled for dark theme
 
-1. **Login Process**:
+#### Customer Management Improvements
 
-   - Users sign in with email/password via Firebase Auth
-   - User profile data fetched from Firestore (`/users/{firebase_uid}`)
-   - Role-based access control enforced through Firestore security rules
+- **Area-Based Organization:** "Employee" column renamed to "Area" for clarity
+- **Smart Area Filtering:** Filter customers by assigned areas
+- **Enhanced Search:** Search includes area names in customer search
+- **Improved Import/Export:** Updated CSV templates with "Area Name" field
 
-2. **User Document Structure**:
+### ✅ Core Working Features
 
-   ```typescript
-   interface User {
-     id: string; // Firebase Auth UID
-     email: string;
-     name: string;
-     role: "admin" | "employee";
-     collector_name?: string; // For employees
-     is_active: boolean;
-     requires_password_reset?: boolean;
-     migrated_from_custom_auth?: boolean;
-     created_at: Date;
-     updated_at: Date;
-   }
-   ```
+#### Authentication & User Management
 
-3. **Default Admin Account**:
-   - Email: `admin@agvcabletv.com`
-   - Password: `admin123`
-   - **Important**: Change password after first login
+- Firebase Authentication with email/password
+- Automatic user document creation
+- Role-based access control (Admin/Employee)
+- Employee management interface
+- Password reset functionality
+- Account activation/deactivation
 
-### Security Features
+#### Customer Management
 
-- **Server-side validation** through Firestore security rules
-- **Password reset** functionality via email
-- **Account deactivation** by administrators
-- **Role-based access control** with real-time enforcement
-- **Audit logging** for all authentication events
+- Add, edit, view customers
+- Customer search and filtering by area
+- Billing status tracking
+- Connection management
+- Area-based access for employees
+- CSV import/export functionality
+
+#### Package Management
+
+- Create and manage service packages
+- Real-time metrics and analytics
+- Package usage statistics
+- Revenue tracking per package
+
+#### Billing System
+
+- Automated bill generation
+- Payment tracking (cash/online)
+- Outstanding amount management
+- Billing history
+
+#### Request Management
+
+- Service request submission
+- Admin approval workflow
+- Request status tracking
+
+#### System Features
+
+- Dark mode support
+- Responsive design
+- Real-time data updates
+- Error handling and recovery
+- Diagnostic tools
 
 ## Installation & Setup
 
@@ -75,331 +109,416 @@ The system has been migrated from custom authentication to Firebase Authenticati
 
 - Node.js 18+
 - npm or yarn
-- Firebase project with Firestore and Authentication enabled
+- Firebase project
+- Modern web browser
 
-### Installation Steps
+### Step-by-Step Setup
 
-1. **Clone the repository**:
+#### 1. Clone and Install
 
-   ```bash
-   git clone <repository-url>
-   cd agv-cable-tv-management
-   ```
+```bash
+git clone <repository-url>
+cd agv-cable-tv-management
+npm install
+```
 
-2. **Install dependencies**:
+#### 2. Firebase Configuration
 
-   ```bash
-   npm install
-   ```
+1. **Create Firebase Project:**
 
-3. **Configure Firebase**:
-
-   - Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+   - Go to [Firebase Console](https://console.firebase.google.com)
+   - Create new project
    - Enable Firestore Database
-   - Enable Authentication with Email/Password provider
-   - Copy your Firebase config to `src/lib/firebase.ts`
+   - Enable Authentication with Email/Password
 
-4. **Deploy Firestore Rules**:
+2. **Configure App:**
 
+   - Copy Firebase config to `src/lib/firebase.ts`
+   - Update project settings
+
+3. **Deploy Rules:**
    ```bash
    firebase deploy --only firestore:rules
    ```
 
-5. **Start development server**:
-   ```bash
-   npm run dev
-   ```
+#### 3. Start Development
 
-## Firebase Configuration
-
-### Required Firebase Services
-
-1. **Authentication**:
-
-   - Enable Email/Password provider
-   - Configure authorized domains
-
-2. **Firestore Database**:
-
-   - Create database in production mode
-   - Deploy security rules from `firestore.rules`
-
-3. **Firestore Collections Structure**:
-   ```
-   /users/{firebase_uid}        # User profiles and roles
-   /customers/{customer_id}     # Customer information
-   /packages/{package_id}       # Service packages
-   /billing/{billing_id}        # Billing records
-   /requests/{request_id}       # Service requests
-   ```
-
-### Security Rules
-
-The system uses comprehensive Firestore security rules for server-side validation:
-
-```javascript
-// Example rule for packages collection
-match /packages/{packageId} {
-  allow read: if isEmployee();
-  allow create, update, delete: if isAdmin();
-}
+```bash
+npm run dev
 ```
 
-See `firestore.rules` for complete security implementation.
+#### 4. First Login
 
-## Features & Modules
+1. Open the application
+2. You'll see the login page
+3. If no admin exists, create one using:
+   - Firebase Console → Authentication → Add User
+   - Login with those credentials
+   - System auto-creates admin profile
 
-### 1. Dashboard
+## Authentication System
 
-- Overview of key metrics
-- Quick access to common tasks
-- Recent activity summary
-- Revenue and customer statistics
+### How It Works
 
-### 2. Customer Management
+1. **Firebase Auth:** Handles login/logout, password security
+2. **Firestore Documents:** Store user profiles and roles
+3. **Automatic Creation:** User documents created on first login
+4. **Role Assignment:** Admin can manage roles via Employee page
 
-- **Add/Edit Customers**: Complete customer information management
-- **Billing Integration**: Automatic bill generation and tracking
-- **Service History**: Track all customer interactions
-- **Connection Management**: Handle multiple connections per customer
-- **Status Tracking**: Active, inactive, demo status management
+### User Roles
+
+#### Administrator
+
+- **Full Access:** All system features
+- **User Management:** Create, edit, delete employees
+- **Area Management:** Assign and modify employee areas
+- **System Settings:** Manage packages, global settings
+- **All Data:** Access to all customers and billing
+
+#### Employee
+
+- **Area-Specific Access:** Only data from assigned area
+- **Customer Management:** Add/edit customers in assigned area
+- **Billing:** Generate bills for assigned customers
+- **Requests:** Submit requests for admin approval
+
+### Creating Employees
+
+**Method 1: Through App (Recommended)**
+
+1. Login as admin
+2. Go to Employees page
+3. Click "Add Employee"
+4. Fill form with area selection from dropdown
+5. Employee receives password reset email
+
+**Method 2: Manual**
+
+1. Create user in Firebase Console
+2. Employee logs in
+3. System creates profile
+4. Admin assigns role/area
+
+## Core Modules
+
+### 1. Customer Management
+
+**Location:** `/customers`
+
+**Enhanced Features:**
+
+- **Area-Based Organization:** Customers organized by collection areas
+- **Smart Filtering:** Filter by area, status, search terms
+- **Enhanced Search:** Includes area name in search results
+- **Import/Export:** CSV support with area field
+- **Area-Based Access:** Employees see only their area customers
+
+**Employee Access:** Own area only
+**Admin Access:** All customers with area filtering
+
+### 2. Employee Management
+
+**Location:** `/employees`
+
+**Enhanced Features:**
+
+- **Dynamic Area Selection:** Dropdown populated from customer areas
+- **Editable Areas:** Change employee areas post-creation
+- **Session Stability:** No logout on employee creation
+- **Dark Mode Support:** Proper styling for all UI elements
+- **Role Management:** Easy role switching
+
+**Access:** Admin only
 
 ### 3. Package Management
 
-- **Package Creation**: Define service packages with pricing
-- **Feature Management**: Detailed package features and channel counts
-- **Usage Analytics**: Track package popularity and revenue
-- **Real-time Metrics**: Customer count and revenue per package
+**Location:** `/packages`
+
+**Features:**
+
+- Package CRUD operations
+- Real-time metrics dashboard
+- Usage analytics
+- Revenue tracking
+- Channel count management
+
+**Employee Access:** View only
+**Admin Access:** Full management
 
 ### 4. Billing System
 
-- **Automated Billing**: Generate bills based on package pricing
-- **Payment Tracking**: Record cash and online payments
-- **Outstanding Management**: Track and manage outstanding amounts
-- **Invoice Generation**: Professional invoice creation
-- **Billing History**: Complete payment history per customer
+**Location:** `/billing`
 
-### 5. Employee Management (Admin Only)
+**Features:**
 
-- **User Creation**: Add new admin and employee accounts
-- **Role Management**: Assign and modify user roles
-- **Access Control**: Activate/deactivate user accounts
-- **Password Management**: Send password reset emails
-- **Area Assignment**: Assign collection areas to employees
+- Automated bill generation
+- Payment recording
+- Outstanding tracking
+- Invoice generation
+- Payment history
 
-### 6. Request Management
+**Employee Access:** Own area customers
+**Admin Access:** All billing data
 
-- **Service Requests**: Handle activation, deactivation, plan changes
-- **Approval Workflow**: Admin approval for employee requests
-- **Request Tracking**: Monitor request status and history
-- **Bulk Operations**: Handle multiple requests efficiently
+### 5. Request Management
 
-## User Roles & Permissions
+**Location:** `/requests`
 
-### Administrator Role
+**Features:**
 
-- **Full System Access**: All features and data
-- **User Management**: Create, modify, delete employee accounts
-- **Data Management**: Full CRUD operations on all data
-- **Reports & Analytics**: Access to all system reports
-- **System Configuration**: Manage packages, pricing, and settings
+- Service request submission
+- Admin approval workflow
+- Status tracking
+- Request history
 
-### Employee Role
+**Employee Access:** Submit requests
+**Admin Access:** Approve/reject requests
 
-- **Area-Restricted Access**: Only customers in assigned area
-- **Customer Operations**: Add, edit customers in their area
-- **Billing Operations**: Generate bills for assigned customers
-- **Request Submission**: Submit requests for admin approval
-- **Read-Only Access**: View packages and system information
+### 6. Dashboard
+
+**Location:** `/dashboard`
+
+**Features:**
+
+- Key metrics overview
+- Recent activity
+- Quick actions
+- System status
+
+**Access:** All authenticated users
+
+## Technical Architecture
+
+### Frontend Architecture
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── auth/           # Authentication components
+│   ├── common/         # Shared components
+│   ├── customers/      # Customer management components
+│   ├── employees/      # Employee management components
+│   ├── layout/         # Layout components
+│   └── ui/             # Base UI components
+├── contexts/           # React context providers
+├── hooks/              # Custom React hooks
+├── lib/                # Configuration and utilities
+├── pages/              # Main application pages
+├── services/           # Business logic and API calls
+├── types/              # TypeScript definitions
+└── utils/              # Helper functions
+```
+
+### Backend Architecture
+
+**Firebase Services:**
+
+- **Authentication:** User login/logout management
+- **Firestore:** Document database for all data
+- **Storage:** File uploads (future feature)
+- **Hosting:** Static site hosting
+
+**Data Structure:**
+
+```
+Firestore Collections:
+├── users/              # User profiles and roles
+├── customers/          # Customer information with areas
+├── packages/           # Service packages
+├── billing/            # Billing records
+└── requests/           # Service requests
+```
+
+### State Management
+
+- **React Context:** Global state (auth, theme)
+- **Local State:** Component-specific state
+- **Firebase Real-time:** Live data updates
+
+## Security Implementation
+
+### Current Security Measures
+
+#### Firebase Authentication
+
+- Secure password handling
+- Session management
+- Token-based authentication
+- Built-in protection against attacks
+
+#### Firestore Security Rules
+
+```javascript
+// Current working rules (development)
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+#### Application-Level Security
+
+- Role-based UI restrictions
+- Area-based data access
+- Input validation and sanitization
+- Error boundary protection
+- Secure routing
+
+### Production Security (Future)
+
+For production deployment, implement:
+
+- Granular Firestore security rules
+- Field-level access control
+- Audit logging
+- Rate limiting
+- Advanced authentication features
+
+## Area Management System
+
+### How Areas Work
+
+1. **Area Assignment:** Employees assigned to specific collection areas
+2. **Customer Organization:** Customers grouped by areas
+3. **Data Access:** Employees see only their area data
+4. **Admin Oversight:** Admins can view and manage all areas
+
+### Area Management Features
+
+#### For Admins
+
+- **View All Areas:** See all areas and their assignments
+- **Assign Employees:** Assign employees to areas
+- **Change Areas:** Modify employee area assignments
+- **Area Analytics:** View performance by area
+
+#### For Employees
+
+- **Area-Specific Data:** Access only assigned area customers
+- **Area Context:** All operations filtered by area
+- **Request System:** Submit area-specific requests
+
+### Area Setup Process
+
+1. **Create Areas:** Areas automatically created from customer assignments
+2. **Assign Employees:** Use Employee Management to assign areas
+3. **Organize Customers:** Assign customers to appropriate areas
+4. **Monitor Performance:** Track area-specific metrics
+
+## Deployment
+
+### Development Deployment
+
+```bash
+# Build the application
+npm run build
+
+# Deploy to Firebase
+firebase deploy
+```
+
+### Production Deployment
+
+1. **Update Security Rules:** Deploy production Firestore rules
+2. **Environment Configuration:** Set production environment variables
+3. **Domain Setup:** Configure custom domain
+4. **SSL Certificate:** Enable HTTPS
+5. **Monitoring:** Set up error tracking and analytics
+
+### Environment Configuration
+
+```bash
+# .env.production
+VITE_FIREBASE_API_KEY=your-production-key
+VITE_FIREBASE_AUTH_DOMAIN=your-domain.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Login Failures**:
+#### Authentication Issues
 
-   - Verify Firebase Authentication is enabled
-   - Check email/password provider configuration
-   - Ensure user document exists in Firestore
+**Problem:** "User profile not found"
+**Solution:** Click "Create User Profile" button or use Employee Management
 
-2. **Permission Denied Errors**:
+**Problem:** Permission denied
+**Solution:** Check Firestore rules are deployed and user has correct role
 
-   - Verify Firestore security rules are deployed
-   - Check user role and active status
-   - Ensure user document has correct structure
+**Problem:** Can't login
+**Solution:** Verify Firebase Auth is enabled and credentials are correct
 
-3. **Data Loading Issues**:
-   - Check Firebase project configuration
-   - Verify Firestore collections exist
-   - Check browser console for detailed errors
+#### Area Management Issues
 
-### Debug Commands
+**Problem:** Employee can't see customers
+**Solution:** Verify employee is assigned to correct area and customers are assigned to that area
 
-```bash
-# Check Firebase configuration
-firebase projects:list
+**Problem:** Area dropdown empty
+**Solution:** Ensure customers are assigned to areas and employees have areas set
 
-# Deploy Firestore rules
-firebase deploy --only firestore:rules
+#### Data Issues
 
-# View current rules
-firebase firestore:rules
-```
+**Problem:** Packages not loading
+**Solution:** Check Firebase connection and Firestore permissions
 
-### Firestore Debugging
+**Problem:** Import/Export issues
+**Solution:** Use updated CSV template with "Area Name" field
+
+#### System Issues
+
+**Problem:** App not loading
+**Solution:** Check console for errors, verify Firebase configuration
+
+**Problem:** Dark mode styling issues
+**Solution:** Clear browser cache and check component styling
+
+### Debug Tools
+
+**Browser Console Commands:**
 
 ```javascript
-// Run in browser console
-FirebaseDebug.runDiagnostics();
-testFirebaseConnection();
+// Test Firebase connection
+testFirebase();
+
+// Fix permissions
+quickFixFirebase();
+
+// Check user data
+firebase.auth().currentUser;
 ```
 
-## Migration Guide
+**Firebase Console:**
 
-### From Custom Authentication to Firebase Auth
+- Authentication → Users (check user accounts)
+- Firestore → Data (verify document structure)
+- Firestore → Rules (check security rules)
 
-The system has been fully migrated from custom authentication to Firebase Authentication. If you're upgrading from an older version:
+## Recent Updates Summary
 
-1. **Backup existing data**:
+### Employee Management Improvements
 
-   ```bash
-   # Export existing users
-   node scripts/backup-users.js
-   ```
+1. **Fixed logout issue:** Employee creation no longer logs out admin
+2. **Dark mode dropdowns:** All select elements properly styled
+3. **Dynamic area selection:** Areas populated from customer data
+4. **Editable areas:** Post-creation area modification support
 
-2. **Run migration script**:
+### Customer Management Enhancements
 
-   ```bash
-   # Migrate users to Firebase Auth
-   node scripts/migrate-to-firebase-auth.js
-   ```
+1. **Area terminology:** "Employee" renamed to "Area" throughout
+2. **Enhanced filtering:** Area-based customer filtering
+3. **Improved search:** Area names included in search functionality
+4. **Updated import/export:** CSV templates updated with area fields
 
-3. **Update Firebase settings**:
+### UI/UX Improvements
 
-   - Enable Email/Password authentication
-   - Deploy new Firestore security rules
-   - Test login with migrated accounts
+1. **Consistent styling:** Dark mode compatibility across all components
+2. **Better organization:** Area-based data organization
+3. **Enhanced navigation:** Clearer area-based navigation
+4. **Responsive design:** Improved mobile and desktop experience
 
-4. **Notify users**:
-   - Send password reset emails to all users
-   - Provide new login instructions (email instead of username)
-
-### Migration Benefits
-
-- ✅ **Enhanced Security**: Firebase handles password security
-- ✅ **Server-side Validation**: Firestore rules enforce permissions
-- ✅ **Built-in Features**: Password reset, email verification
-- ✅ **Scalability**: Handle thousands of users
-- ✅ **Audit Logging**: Comprehensive login and activity logs
-
-## Security Implementation
-
-### Multi-Layer Security
-
-1. **Firebase Authentication**:
-
-   - Secure password handling and token management
-   - Built-in protection against common attacks
-   - Session management and timeout handling
-
-2. **Firestore Security Rules**:
-
-   - Server-side permission enforcement
-   - Role-based access control
-   - Data validation and sanitization
-
-3. **Client-Side Validation**:
-   - Input validation and sanitization
-   - UI-level access control
-   - Real-time permission checking
-
-### Best Practices Implemented
-
-- **Principle of Least Privilege**: Users only access necessary data
-- **Data Sanitization**: All inputs validated before processing
-- **Audit Logging**: All critical operations logged
-- **Regular Security Reviews**: Permissions audited regularly
-- **Secure Defaults**: New users created with minimal permissions
-
-### Password Security
-
-- **Minimum Requirements**: 6+ characters enforced by Firebase
-- **Reset Functionality**: Secure email-based password reset
-- **Force Reset**: New users must change temporary passwords
-- **No Plain Text**: Passwords never stored in plain text
-
-## Development Guidelines
-
-### Code Organization
-
-```
-src/
-├── components/          # Reusable UI components
-├── contexts/           # React context providers
-├── hooks/              # Custom React hooks
-├── lib/                # Utility libraries and configurations
-├── pages/              # Main application pages
-├── services/           # Business logic and API calls
-├── types/              # TypeScript type definitions
-└── utils/              # Helper functions and utilities
-```
-
-### Best Practices
-
-1. **Type Safety**: Full TypeScript implementation
-2. **Error Handling**: Comprehensive error boundaries and validation
-3. **Loading States**: User-friendly loading indicators
-4. **Responsive Design**: Mobile-first responsive layout
-5. **Accessibility**: WCAG compliance and keyboard navigation
-6. **Performance**: Optimized rendering and data fetching
-
-## Deployment
-
-### Production Deployment
-
-1. **Build the application**:
-
-   ```bash
-   npm run build
-   ```
-
-2. **Deploy to Firebase Hosting**:
-
-   ```bash
-   firebase deploy
-   ```
-
-3. **Configure domain** (if using custom domain):
-   - Add domain in Firebase Console
-   - Update DNS records
-   - Configure SSL certificate
-
-### Environment Configuration
-
-Create environment files for different stages:
-
-```bash
-# .env.production
-VITE_FIREBASE_API_KEY=your-production-api-key
-VITE_FIREBASE_AUTH_DOMAIN=your-domain.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project-id
-```
-
-## Support and Maintenance
-
-### Regular Maintenance Tasks
-
-1. **User Account Audit**: Review active users monthly
-2. **Permission Review**: Audit roles and permissions quarterly
-3. **Data Backup**: Regular Firestore exports
-4. **Security Updates**: Keep dependencies up to date
-5. **Performance Monitoring**: Monitor application performance
-
-### Getting Help
-
-1. **Documentation**: Check this guide first
-2. **Console Logs**: Enable debug mode for detailed logging
-3. **Firebase Console**: Monitor authentication and database activity
-4. **Error Tracking**: Implement error tracking for production
-
-This guide provides comprehensive information for setting up, using, and maintaining the AGV Cable TV Management System with Firebase Authentication.
+The AGV Cable TV Management System now provides comprehensive area-based management with enhanced user experience and improved administrative controls.

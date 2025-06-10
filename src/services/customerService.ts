@@ -63,6 +63,23 @@ export class CustomerService {
     }
   }
 
+  static async createCustomer(customer: Customer): Promise<Customer> {
+    try {
+      const customerId = await firestoreService.addCustomer(customer);
+      return { ...customer, id: customerId };
+    } catch (error) {
+      console.error("CustomerService: Failed to create customer:", error);
+
+      // Fallback behavior if Firestore is not available
+      if (error?.message?.includes("Firebase not available")) {
+        // In mock mode, just return the customer with a random ID
+        return { ...customer, id: `mock_${Date.now()}` };
+      }
+
+      throw error;
+    }
+  }
+
   static async addCustomer(customer: Customer): Promise<string> {
     try {
       return await firestoreService.addCustomer(customer);
@@ -148,6 +165,22 @@ export class CustomerService {
         `Returning empty billing records for customer ${customerId} due to error:`,
         error,
       );
+      return [];
+    }
+  }
+
+  // Alias method for backward compatibility with CustomerTable
+  static async getBillingHistory(customerId: string): Promise<BillingRecord[]> {
+    try {
+      console.log(`📋 Loading billing history for customer: ${customerId}`);
+      const billingRecords = await this.getBillingRecordsByCustomer(customerId);
+      console.log(
+        `✅ Found ${billingRecords.length} billing records for customer ${customerId}`,
+      );
+      return billingRecords;
+    } catch (error) {
+      console.error("CustomerService: Failed to get billing history:", error);
+      // Return empty array to prevent UI crashes
       return [];
     }
   }
@@ -244,7 +277,7 @@ export class CustomerService {
         email: "john.smith@email.com",
         joinDate: "2023-06-15",
         vcNumber: "VC001234",
-        collectorName: "John Collector",
+        collectorName: "Area 1",
         portalBill: 599,
         isActive: true,
         status: "active",
@@ -269,6 +302,7 @@ export class CustomerService {
         previousOutstanding: 150,
         currentOutstanding: 749,
         billDueDate: 15,
+        billingStatus: "Paid",
         invoiceHistory: [
           {
             id: "inv-1",
@@ -280,7 +314,7 @@ export class CustomerService {
             status: "Paid",
             invoiceNumber: "INV-2024-001",
             generatedDate: "2024-01-15",
-            generatedBy: "John Collector",
+            generatedBy: "Area 1 Collector",
             employeeId: "emp-1",
             billingMonth: "January",
             billingYear: "2024",
@@ -298,7 +332,7 @@ export class CustomerService {
         email: "priya.sharma@email.com",
         joinDate: "2023-03-10",
         vcNumber: "VC001235",
-        collectorName: "John Collector",
+        collectorName: "Area 1",
         portalBill: 299,
         isActive: true,
         status: "active",
@@ -323,6 +357,7 @@ export class CustomerService {
         previousOutstanding: 0,
         currentOutstanding: 299,
         billDueDate: 10,
+        billingStatus: "Pending",
         invoiceHistory: [
           {
             id: "inv-2",
@@ -334,7 +369,7 @@ export class CustomerService {
             status: "Pending",
             invoiceNumber: "INV-2024-002",
             generatedDate: "2024-01-10",
-            generatedBy: "John Collector",
+            generatedBy: "Area 1 Collector",
             employeeId: "emp-1",
             billingMonth: "January",
             billingYear: "2024",
@@ -352,7 +387,7 @@ export class CustomerService {
         email: "raj.patel@email.com",
         joinDate: "2022-12-05",
         vcNumber: "VC001236",
-        collectorName: "Sarah Collector",
+        collectorName: "Area 2",
         portalBill: 899,
         isActive: false,
         status: "inactive",
@@ -396,6 +431,7 @@ export class CustomerService {
         previousOutstanding: 899,
         currentOutstanding: 1798,
         billDueDate: 5,
+        billingStatus: "Overdue",
         invoiceHistory: [],
       },
     ];
@@ -404,6 +440,9 @@ export class CustomerService {
   private static getMockBillingRecords(): BillingRecord[] {
     const today = new Date().toISOString().split("T")[0];
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+    const lastMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
 
@@ -418,7 +457,23 @@ export class CustomerService {
         status: "Paid",
         invoiceNumber: "INV-2024-001",
         generatedDate: today,
-        generatedBy: "John Collector",
+        generatedBy: "Area 1 Collector",
+        employeeId: "emp-1",
+        billingMonth: "February",
+        billingYear: "2024",
+        vcNumber: "VC001234",
+      },
+      {
+        id: "1-prev",
+        customerId: "1",
+        customerName: "John Smith",
+        packageName: "Premium HD",
+        amount: 599,
+        dueDate: "2024-01-15",
+        status: "Paid",
+        invoiceNumber: "INV-2024-001-prev",
+        generatedDate: lastMonth,
+        generatedBy: "Area 1 Collector",
         employeeId: "emp-1",
         billingMonth: "January",
         billingYear: "2024",
@@ -434,11 +489,43 @@ export class CustomerService {
         status: "Pending",
         invoiceNumber: "INV-2024-002",
         generatedDate: yesterday,
-        generatedBy: "John Collector",
+        generatedBy: "Area 1 Collector",
+        employeeId: "emp-1",
+        billingMonth: "February",
+        billingYear: "2024",
+        vcNumber: "VC001235",
+      },
+      {
+        id: "2-prev",
+        customerId: "2",
+        customerName: "Priya Sharma",
+        packageName: "Basic",
+        amount: 299,
+        dueDate: "2024-01-10",
+        status: "Paid",
+        invoiceNumber: "INV-2024-002-prev",
+        generatedDate: lastMonth,
+        generatedBy: "Area 1 Collector",
         employeeId: "emp-1",
         billingMonth: "January",
         billingYear: "2024",
         vcNumber: "VC001235",
+      },
+      {
+        id: "3",
+        customerId: "3",
+        customerName: "Raj Patel",
+        packageName: "Enterprise Package",
+        amount: 1798,
+        dueDate: "2024-01-05",
+        status: "Overdue",
+        invoiceNumber: "INV-2024-003",
+        generatedDate: "2023-12-05",
+        generatedBy: "Area 2 Collector",
+        employeeId: "emp-2",
+        billingMonth: "January",
+        billingYear: "2024",
+        vcNumber: "VC001236",
       },
     ];
   }
@@ -450,7 +537,7 @@ export class CustomerService {
         customerId: "3",
         customerName: "Raj Patel",
         employeeId: "emp-2",
-        employeeName: "Sarah Collector",
+        employeeName: "Area 2 Collector",
         actionType: "activation",
         reason: "Customer has paid overdue amount and requested reactivation",
         status: "pending",

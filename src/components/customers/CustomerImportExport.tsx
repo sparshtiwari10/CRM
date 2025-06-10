@@ -1,35 +1,32 @@
 import React, { useState, useRef } from "react";
-import {
-  Download,
-  Upload,
-  FileText,
-  AlertCircle,
-  CheckCircle,
-} from "lucide-react";
+import { Upload, Download, FileSpreadsheet, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Customer } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { Customer } from "@/types";
 
 interface CustomerImportExportProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   customers: Customer[];
-  onImport: (customers: Customer[]) => void;
+  onImport: (customers: Customer[]) => Promise<void>;
+  isLoading?: boolean;
 }
 
 interface ImportResult {
-  success: Customer[];
-  errors: { row: number; error: string; data: any }[];
+  success: number;
+  failed: number;
+  errors: string[];
 }
 
 export function CustomerImportExport({
@@ -37,118 +34,69 @@ export function CustomerImportExport({
   onOpenChange,
   customers,
   onImport,
+  isLoading = false,
 }: CustomerImportExportProps) {
-  const [importing, setImporting] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const [activeTab, setActiveTab] = useState<"import" | "export">("export");
+  const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Export customers to CSV
   const handleExport = () => {
-    setExporting(true);
-
     try {
-      // Define CSV headers including secondary connection fields
       const headers = [
-        "Name",
+        "Customer Name",
         "Phone Number",
         "Email",
         "Address",
         "VC Number",
-        "Current Package",
+        "Package",
         "Package Amount",
+        "Area Name",
+        "Join Date",
+        "Bill Due Date",
+        "Status",
         "Previous Outstanding",
         "Current Outstanding",
-        "Bill Due Date",
-        "Employee Name",
-        "Is Active",
-        "Last Payment Date",
-        "Join Date",
         "Number of Connections",
-        "Portal Bill",
-        // Secondary connection fields (up to 4 secondary connections)
-        "Secondary VC 1",
-        "Secondary Desc 1",
-        "Secondary Plan 1",
-        "Secondary Price 1",
-        "Secondary VC 2",
-        "Secondary Desc 2",
-        "Secondary Plan 2",
-        "Secondary Price 2",
-        "Secondary VC 3",
-        "Secondary Desc 3",
-        "Secondary Plan 3",
-        "Secondary Price 3",
-        "Secondary VC 4",
-        "Secondary Desc 4",
-        "Secondary Plan 4",
-        "Secondary Price 4",
       ];
 
-      // Convert customers to CSV rows
-      const csvRows = [
-        headers.join(","), // Header row
-        ...customers.map((customer) => {
-          const basicFields = [
+      const csvContent = [
+        headers.join(","),
+        ...customers.map((customer) =>
+          [
             `"${customer.name}"`,
             `"${customer.phoneNumber}"`,
             `"${customer.email || ""}"`,
             `"${customer.address}"`,
             `"${customer.vcNumber}"`,
             `"${customer.currentPackage}"`,
-            customer.packageAmount.toString(),
-            customer.previousOutstanding.toString(),
-            customer.currentOutstanding.toString(),
-            customer.billDueDate.toString(),
+            customer.packageAmount || 0,
             `"${customer.collectorName}"`,
-            customer.isActive.toString(),
-            `"${customer.lastPaymentDate}"`,
-            `"${customer.joinDate}"`,
-            customer.numberOfConnections.toString(),
-            (customer.portalBill || 0).toString(),
-          ];
+            customer.joinDate || "",
+            customer.billDueDate || 1,
+            customer.status || "active",
+            customer.previousOutstanding || 0,
+            customer.currentOutstanding || 0,
+            customer.numberOfConnections || 1,
+          ].join(","),
+        ),
+      ].join("\n");
 
-          // Add secondary connection fields (up to 4 secondary connections)
-          const secondaryFields = [];
-          const secondaryConnections = customer.connections?.slice(1) || []; // Skip primary connection
-
-          for (let i = 0; i < 4; i++) {
-            const connection = secondaryConnections[i];
-            if (connection) {
-              secondaryFields.push(
-                `"${connection.vcNumber}"`,
-                `"${connection.description || ""}"`,
-                `"${connection.planName}"`,
-                connection.planPrice.toString(),
-              );
-            } else {
-              secondaryFields.push('""', '""', '""', '""');
-            }
-          }
-
-          return [...basicFields, ...secondaryFields].join(",");
-        }),
-      ];
-
-      // Create and download file
-      const csvContent = csvRows.join("\n");
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
 
-      if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute(
-          "download",
-          `customers_export_${new Date().toISOString().split("T")[0]}.csv`,
-        );
-        link.style.visibility = "hidden";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `customers_export_${new Date().toISOString().split("T")[0]}.csv`,
+      );
+      link.style.visibility = "hidden";
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
       toast({
         title: "Export Successful",
@@ -158,560 +106,420 @@ export function CustomerImportExport({
       console.error("Export failed:", error);
       toast({
         title: "Export Failed",
-        description: "An error occurred while exporting customers.",
+        description: "Failed to export customers data.",
         variant: "destructive",
       });
-    } finally {
-      setExporting(false);
     }
   };
 
-  // Import customers from CSV
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setImporting(true);
-    setImportResult(null);
-
-    try {
-      const text = await file.text();
-      const lines = text.split("\n").filter((line) => line.trim());
-
-      if (lines.length < 2) {
-        throw new Error(
-          "CSV file must contain at least a header row and one data row",
-        );
-      }
-
-      const headers = lines[0]
-        .split(",")
-        .map((h) => h.replace(/"/g, "").trim());
-      const dataLines = lines.slice(1);
-
-      const result: ImportResult = {
-        success: [],
-        errors: [],
-      };
-
-      // Expected headers mapping
-      const headerMap = {
-        Name: "name",
-        "Phone Number": "phoneNumber",
-        Email: "email",
-        Address: "address",
-        "VC Number": "vcNumber",
-        "Current Package": "currentPackage",
-        "Package Amount": "packageAmount",
-        "Previous Outstanding": "previousOutstanding",
-        "Current Outstanding": "currentOutstanding",
-        "Bill Due Date": "billDueDate",
-        "Employee Name": "collectorName",
-        "Is Active": "isActive",
-        "Last Payment Date": "lastPaymentDate",
-        "Join Date": "joinDate",
-        "Number of Connections": "numberOfConnections",
-        "Portal Bill": "portalBill",
-        // Secondary connection mappings
-        "Secondary VC 1": "secondaryVc1",
-        "Secondary Desc 1": "secondaryDesc1",
-        "Secondary Plan 1": "secondaryPlan1",
-        "Secondary Price 1": "secondaryPrice1",
-        "Secondary VC 2": "secondaryVc2",
-        "Secondary Desc 2": "secondaryDesc2",
-        "Secondary Plan 2": "secondaryPlan2",
-        "Secondary Price 2": "secondaryPrice2",
-        "Secondary VC 3": "secondaryVc3",
-        "Secondary Desc 3": "secondaryDesc3",
-        "Secondary Plan 3": "secondaryPlan3",
-        "Secondary Price 3": "secondaryPrice3",
-        "Secondary VC 4": "secondaryVc4",
-        "Secondary Desc 4": "secondaryDesc4",
-        "Secondary Plan 4": "secondaryPlan4",
-        "Secondary Price 4": "secondaryPrice4",
-      };
-
-      dataLines.forEach((line, index) => {
-        try {
-          const values = line
-            .split(",")
-            .map((v) => v.replace(/^"|"$/g, "").trim());
-
-          if (values.length !== headers.length) {
-            throw new Error(
-              `Row has ${values.length} columns, expected ${headers.length}`,
-            );
-          }
-
-          const customerData: any = {
-            id: `import_${Date.now()}_${index}`,
-            connections: [],
-            numberOfConnections: 1,
-            isActive: true,
-            packageAmount: 0,
-            previousOutstanding: 0,
-            currentOutstanding: 0,
-            billDueDate: 1,
-            joinDate: new Date().toISOString().split("T")[0],
-            lastPaymentDate: new Date().toISOString().split("T")[0],
-          };
-
-          // Secondary connection data
-          const secondaryData: any = {};
-
-          headers.forEach((header, i) => {
-            const fieldName = headerMap[header as keyof typeof headerMap];
-            if (fieldName && values[i] !== undefined) {
-              let value = values[i];
-
-              // Handle secondary connection fields separately
-              if (fieldName.startsWith("secondary")) {
-                secondaryData[fieldName] = value;
-                return;
-              }
-
-              // Type conversion based on field
-              switch (fieldName) {
-                case "packageAmount":
-                case "previousOutstanding":
-                case "currentOutstanding":
-                case "portalBill":
-                  customerData[fieldName] = parseFloat(value) || 0;
-                  break;
-                case "billDueDate":
-                case "numberOfConnections":
-                  customerData[fieldName] = parseInt(value) || 1;
-                  break;
-                case "isActive":
-                  customerData[fieldName] = value.toLowerCase() === "true";
-                  break;
-                default:
-                  customerData[fieldName] = value;
-              }
-            }
-          });
-
-          // Process secondary connections
-          const connections = [
-            // Primary connection
-            {
-              id: "conn-1",
-              vcNumber: customerData.vcNumber,
-              planName: customerData.currentPackage,
-              planPrice: customerData.packageAmount,
-              isCustomPlan: false,
-              isPrimary: true,
-              connectionIndex: 1,
-              description: "",
-            },
-          ];
-
-          // Add secondary connections
-          for (let i = 1; i <= 4; i++) {
-            const vcField = `secondaryVc${i}`;
-            const descField = `secondaryDesc${i}`;
-            const planField = `secondaryPlan${i}`;
-            const priceField = `secondaryPrice${i}`;
-
-            if (secondaryData[vcField] && secondaryData[vcField].trim()) {
-              connections.push({
-                id: `conn-${i + 1}`,
-                vcNumber: secondaryData[vcField].trim(),
-                planName: secondaryData[planField] || "",
-                planPrice: parseFloat(secondaryData[priceField]) || 0,
-                isCustomPlan: false,
-                isPrimary: false,
-                connectionIndex: i + 1,
-                description: secondaryData[descField] || "",
-              });
-            }
-          }
-
-          customerData.connections = connections;
-          customerData.numberOfConnections = connections.length;
-
-          // Validation
-          if (
-            !customerData.name ||
-            !customerData.phoneNumber ||
-            !customerData.address
-          ) {
-            throw new Error(
-              "Name, Phone Number, and Address are required fields",
-            );
-          }
-
-          if (!customerData.vcNumber) {
-            throw new Error("VC Number is required");
-          }
-
-          if (customerData.billDueDate < 1 || customerData.billDueDate > 31) {
-            throw new Error("Bill Due Date must be between 1 and 31");
-          }
-
-          result.success.push(customerData as Customer);
-        } catch (error) {
-          result.errors.push({
-            row: index + 2, // +2 because we start from line 2 (after header)
-            error: error instanceof Error ? error.message : "Unknown error",
-            data: line,
-          });
-        }
-      });
-
-      setImportResult(result);
-
-      if (result.success.length > 0) {
-        toast({
-          title: "Import Completed",
-          description: `Successfully imported ${result.success.length} customers. ${result.errors.length} errors.`,
-        });
-      } else {
-        toast({
-          title: "Import Failed",
-          description: "No customers were successfully imported.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Import Failed",
-        description:
-          error instanceof Error ? error.message : "Failed to parse CSV file",
-        variant: "destructive",
-      });
-    } finally {
-      setImporting(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
-
-  const handleConfirmImport = () => {
-    if (importResult && importResult.success.length > 0) {
-      onImport(importResult.success);
-      setImportResult(null);
-      onOpenChange(false);
-      toast({
-        title: "Import Successful",
-        description: `${importResult.success.length} customers have been imported.`,
-      });
-    }
-  };
-
-  const downloadTemplate = () => {
+  const generateTemplate = () => {
     const headers = [
-      "Name",
+      "Customer Name",
       "Phone Number",
       "Email",
       "Address",
       "VC Number",
-      "Current Package",
+      "Package",
       "Package Amount",
+      "Area Name",
+      "Join Date",
+      "Bill Due Date",
+      "Status",
       "Previous Outstanding",
       "Current Outstanding",
-      "Bill Due Date",
-      "Employee Name",
-      "Is Active",
-      "Last Payment Date",
-      "Join Date",
       "Number of Connections",
-      "Portal Bill",
-      // Secondary connection fields
-      "Secondary VC 1",
-      "Secondary Desc 1",
-      "Secondary Plan 1",
-      "Secondary Price 1",
-      "Secondary VC 2",
-      "Secondary Desc 2",
-      "Secondary Plan 2",
-      "Secondary Price 2",
-      "Secondary VC 3",
-      "Secondary Desc 3",
-      "Secondary Plan 3",
-      "Secondary Price 3",
-      "Secondary VC 4",
-      "Secondary Desc 4",
-      "Secondary Plan 4",
-      "Secondary Price 4",
     ];
 
-    const sampleRow = [
-      "John Smith",
-      "+1 555-123-4567",
+    const sampleData = [
+      "John Doe",
+      "9876543210",
       "john@example.com",
-      "123 Main St, City, State 12345",
-      "VC001234",
-      "Premium HD",
-      "599",
-      "0",
-      "599",
-      "5",
-      "System Administrator",
-      "true",
-      "2024-01-15",
-      "2024-01-01",
-      "2",
-      "599",
-      // Secondary connection sample data
-      "VC001234-SEC",
-      "Living Room",
-      "Basic Cable",
+      "123 Main Street, City",
+      "VC001",
+      "Basic Package",
       "299",
-      "", // Empty secondary connection 2
-      "",
-      "",
-      "",
-      "", // Empty secondary connection 3
-      "",
-      "",
-      "",
-      "", // Empty secondary connection 4
-      "",
-      "",
-      "",
+      "Area 1",
+      "2024-01-01",
+      "1",
+      "active",
+      "0",
+      "0",
+      "1",
     ];
 
-    const csvContent = [headers.join(","), sampleRow.join(",")].join("\n");
+    const csvContent = [headers.join(","), sampleData.join(",")].join("\n");
+
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
 
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", "customer_import_template.csv");
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "customer_import_template.csv");
+    link.style.visibility = "hidden";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Template Downloaded",
+      description: "Customer import template downloaded successfully.",
+    });
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
+        toast({
+          title: "Invalid File Type",
+          description: "Please select a CSV file.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setImportFile(file);
+      setImportResult(null);
+    }
+  };
+
+  const parseCSV = (csvText: string): any[] => {
+    const lines = csvText.split("\n").filter((line) => line.trim() !== "");
+    if (lines.length < 2) return [];
+
+    const headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim());
+    const rows = lines.slice(1);
+
+    return rows.map((row) => {
+      const values = row.split(",").map((v) => v.replace(/"/g, "").trim());
+      const rowData: any = {};
+
+      headers.forEach((header, index) => {
+        rowData[header] = values[index] || "";
+      });
+
+      return rowData;
+    });
+  };
+
+  const mapImportData = (data: any[]): Customer[] => {
+    const fieldMapping: Record<string, string> = {
+      "Customer Name": "name",
+      "Phone Number": "phoneNumber",
+      Email: "email",
+      Address: "address",
+      "VC Number": "vcNumber",
+      Package: "currentPackage",
+      "Package Amount": "packageAmount",
+      "Area Name": "collectorName",
+      "Join Date": "joinDate",
+      "Bill Due Date": "billDueDate",
+      Status: "status",
+      "Previous Outstanding": "previousOutstanding",
+      "Current Outstanding": "currentOutstanding",
+      "Number of Connections": "numberOfConnections",
+    };
+
+    return data.map((row, index) => {
+      const customer: Partial<Customer> = {
+        id: `import-${Date.now()}-${index}`,
+      };
+
+      Object.entries(fieldMapping).forEach(([csvField, customerField]) => {
+        const value = row[csvField];
+
+        if (value !== undefined && value !== "") {
+          switch (customerField) {
+            case "packageAmount":
+            case "previousOutstanding":
+            case "currentOutstanding":
+              customer[customerField as keyof Customer] =
+                parseFloat(value) || 0;
+              break;
+            case "billDueDate":
+            case "numberOfConnections":
+              customer[customerField as keyof Customer] = parseInt(value) || 1;
+              break;
+            case "status":
+              customer[customerField as keyof Customer] = [
+                "active",
+                "inactive",
+                "demo",
+              ].includes(value)
+                ? value
+                : "active";
+              break;
+            default:
+              customer[customerField as keyof Customer] = value;
+          }
+        }
+      });
+
+      // Set defaults for required fields
+      customer.isActive = customer.status === "active";
+      customer.billingStatus = "Pending";
+      customer.lastPaymentDate = new Date().toISOString().split("T")[0];
+      customer.portalBill = customer.packageAmount || 0;
+
+      return customer as Customer;
+    });
+  };
+
+  const validateImportData = (customers: Customer[]): ImportResult => {
+    let success = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    customers.forEach((customer, index) => {
+      const rowNumber = index + 2; // +2 because CSV has header row and arrays are 0-indexed
+      let hasErrors = false;
+
+      // Validate required fields
+      if (!customer.name?.trim()) {
+        errors.push(`Row ${rowNumber}: Customer name is required`);
+        hasErrors = true;
+      }
+
+      if (!customer.phoneNumber?.trim()) {
+        errors.push(`Row ${rowNumber}: Phone number is required`);
+        hasErrors = true;
+      }
+
+      if (!customer.address?.trim()) {
+        errors.push(`Row ${rowNumber}: Address is required`);
+        hasErrors = true;
+      }
+
+      if (!customer.vcNumber?.trim()) {
+        errors.push(`Row ${rowNumber}: VC Number is required`);
+        hasErrors = true;
+      }
+
+      if (!customer.collectorName?.trim()) {
+        errors.push(`Row ${rowNumber}: Area name is required`);
+        hasErrors = true;
+      }
+
+      // Validate email format if provided
+      if (customer.email && customer.email.trim() !== "") {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(customer.email)) {
+          errors.push(`Row ${rowNumber}: Invalid email format`);
+          hasErrors = true;
+        }
+      }
+
+      // Validate phone number format
+      if (
+        customer.phoneNumber &&
+        !/^\d{10}$/.test(customer.phoneNumber.replace(/\D/g, ""))
+      ) {
+        errors.push(`Row ${rowNumber}: Phone number should be 10 digits`);
+        hasErrors = true;
+      }
+
+      if (hasErrors) {
+        failed++;
+      } else {
+        success++;
+      }
+    });
+
+    return { success, failed, errors };
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+
+    setIsImporting(true);
+
+    try {
+      const fileText = await importFile.text();
+      const parsedData = parseCSV(fileText);
+
+      if (parsedData.length === 0) {
+        toast({
+          title: "Import Failed",
+          description: "No valid data found in the CSV file.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const mappedCustomers = mapImportData(parsedData);
+      const validationResult = validateImportData(mappedCustomers);
+
+      setImportResult(validationResult);
+
+      if (validationResult.success > 0) {
+        // Filter out customers with errors for import
+        const validCustomers = mappedCustomers.filter((_, index) => {
+          const rowNumber = index + 2;
+          return !validationResult.errors.some((error) =>
+            error.startsWith(`Row ${rowNumber}:`),
+          );
+        });
+
+        await onImport(validCustomers);
+
+        toast({
+          title: "Import Completed",
+          description: `Successfully imported ${validationResult.success} customers.`,
+        });
+
+        if (validationResult.failed > 0) {
+          toast({
+            title: "Partial Import",
+            description: `${validationResult.failed} customers failed validation. Check the results below.`,
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Import Failed",
+          description:
+            "All customers failed validation. Please check the data and try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Import failed:", error);
+      toast({
+        title: "Import Failed",
+        description:
+          "Failed to process the CSV file. Please check the file format.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const resetImport = () => {
+    setImportFile(null);
+    setImportResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Customer Data Import/Export</DialogTitle>
+          <DialogTitle>Import/Export Customers</DialogTitle>
           <DialogDescription>
-            Import customers from CSV file or export existing customers to CSV
+            Import customers from CSV file or export current customers data.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Tab Selection */}
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-            <button
-              onClick={() => setActiveTab("export")}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "export"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <Download className="w-4 h-4 inline mr-2" />
-              Export Data
-            </button>
-            <button
-              onClick={() => setActiveTab("import")}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "import"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <Upload className="w-4 h-4 inline mr-2" />
-              Import Data
-            </button>
+          {/* Export Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Export Customers</h3>
+            <p className="text-sm text-muted-foreground">
+              Export all current customers to a CSV file.
+            </p>
+            <div className="flex gap-2">
+              <Button onClick={handleExport} variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV ({customers.length} customers)
+              </Button>
+              <Button onClick={generateTemplate} variant="outline">
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Download Template
+              </Button>
+            </div>
           </div>
 
-          {/* Export Tab */}
-          {activeTab === "export" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Download className="w-5 h-5 mr-2" />
-                  Export Customer Data
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">
-                    Export Information
-                  </h4>
-                  <ul className="text-sm text-blue-800 space-y-1">
-                    <li>
-                      • Export all {customers.length} customers to CSV format
-                    </li>
-                    <li>
-                      • Includes all customer details, billing information, and
-                      settings
-                    </li>
-                    <li>
-                      • Compatible with Excel and other spreadsheet applications
-                    </li>
-                    <li>• File will be downloaded automatically</li>
-                  </ul>
-                </div>
+          {/* Import Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Import Customers</h3>
+            <p className="text-sm text-muted-foreground">
+              Import customers from a CSV file. Download the template above for
+              the correct format.
+            </p>
 
-                <Button
-                  onClick={handleExport}
-                  disabled={exporting || customers.length === 0}
-                  className="w-full"
-                >
-                  {exporting ? (
-                    <>Processing...</>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4 mr-2" />
-                      Export {customers.length} Customers to CSV
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Import Tab */}
-          {activeTab === "import" && (
             <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Upload className="w-5 h-5 mr-2" />
-                    Import Customer Data
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-yellow-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-yellow-900 mb-2">
-                      Import Requirements
-                    </h4>
-                    <ul className="text-sm text-yellow-800 space-y-1">
-                      <li>
-                        • CSV file with proper headers (download template below)
-                      </li>
-                      <li>
-                        • Required fields: Name, Phone Number, Address, VC
-                        Number
-                      </li>
-                      <li>• Bill Due Date must be between 1-31</li>
-                      <li>• Billing Status: Paid, Pending, or Overdue</li>
-                      <li>• Duplicate VC Numbers will be flagged as errors</li>
-                    </ul>
-                  </div>
+              <div>
+                <Label htmlFor="csv-file">Select CSV File</Label>
+                <Input
+                  id="csv-file"
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileSelect}
+                  ref={fileInputRef}
+                  className="mt-1"
+                />
+              </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <Button variant="outline" onClick={downloadTemplate}>
-                      <FileText className="w-4 h-4 mr-2" />
-                      Download Template
-                    </Button>
+              {importFile && (
+                <Alert>
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <AlertDescription>
+                    Selected file: {importFile.name} (
+                    {(importFile.size / 1024).toFixed(1)} KB)
+                  </AlertDescription>
+                </Alert>
+              )}
 
-                    <div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".csv"
-                        onChange={handleImport}
-                        disabled={importing}
-                        className="hidden"
-                      />
-                      <Button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={importing}
-                        className="w-full"
-                      >
-                        {importing ? (
-                          <>Processing...</>
-                        ) : (
-                          <>
-                            <Upload className="w-4 h-4 mr-2" />
-                            Select CSV File
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Import Results */}
               {importResult && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      {importResult.success.length > 0 ? (
-                        <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
-                      ) : (
-                        <AlertCircle className="w-5 h-5 mr-2 text-red-600" />
+                <Alert
+                  variant={importResult.failed > 0 ? "destructive" : "default"}
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      <div>
+                        Import Result: {importResult.success} successful,{" "}
+                        {importResult.failed} failed
+                      </div>
+                      {importResult.errors.length > 0 && (
+                        <div className="mt-2">
+                          <details>
+                            <summary className="cursor-pointer font-medium">
+                              View Errors ({importResult.errors.length})
+                            </summary>
+                            <ul className="mt-2 space-y-1 text-sm">
+                              {importResult.errors
+                                .slice(0, 10)
+                                .map((error, index) => (
+                                  <li key={index}>• {error}</li>
+                                ))}
+                              {importResult.errors.length > 10 && (
+                                <li>
+                                  ... and {importResult.errors.length - 10} more
+                                  errors
+                                </li>
+                              )}
+                            </ul>
+                          </details>
+                        </div>
                       )}
-                      Import Results
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <div className="text-2xl font-bold text-green-700">
-                          {importResult.success.length}
-                        </div>
-                        <div className="text-sm text-green-600">Successful</div>
-                      </div>
-                      <div className="text-center p-4 bg-red-50 rounded-lg">
-                        <div className="text-2xl font-bold text-red-700">
-                          {importResult.errors.length}
-                        </div>
-                        <div className="text-sm text-red-600">Errors</div>
-                      </div>
                     </div>
-
-                    {importResult.errors.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-red-900">
-                          Errors Found:
-                        </h4>
-                        <div className="max-h-40 overflow-y-auto space-y-2">
-                          {importResult.errors
-                            .slice(0, 10)
-                            .map((error, index) => (
-                              <Alert key={index} variant="destructive">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>
-                                  Row {error.row}: {error.error}
-                                </AlertDescription>
-                              </Alert>
-                            ))}
-                          {importResult.errors.length > 10 && (
-                            <div className="text-sm text-gray-500 text-center">
-                              ... and {importResult.errors.length - 10} more
-                              errors
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {importResult.success.length > 0 && (
-                      <div className="flex space-x-2">
-                        <Button
-                          onClick={handleConfirmImport}
-                          className="flex-1"
-                        >
-                          Import {importResult.success.length} Customers
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setImportResult(null)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
-          )}
+          </div>
         </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+          {importFile && !importResult && (
+            <Button onClick={handleImport} disabled={isImporting}>
+              {isImporting ? "Importing..." : "Import Customers"}
+            </Button>
+          )}
+          {importResult && (
+            <Button onClick={resetImport} variant="outline">
+              Reset
+            </Button>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

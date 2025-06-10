@@ -36,7 +36,7 @@ export default function Customers() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [employeeFilter, setEmployeeFilter] = useState("all");
+  const [areaFilter, setAreaFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
@@ -76,14 +76,11 @@ export default function Customers() {
               );
             });
 
-            // Show unique employee assignments
-            const uniqueEmployees = [
+            // Show unique area assignments
+            const uniqueAreas = [
               ...new Set(customerData.map((c) => c.collectorName)),
             ].filter(Boolean);
-            console.log(
-              "👥 Employees with customers assigned:",
-              uniqueEmployees,
-            );
+            console.log("📍 Areas with customers assigned:", uniqueAreas);
           }
         } else {
           // For employees, get customers assigned to them
@@ -97,60 +94,48 @@ export default function Customers() {
           const allCustomers = await CustomerService.getAllCustomers();
           console.log("🔍 DEBUG - All customers in system:");
           allCustomers.forEach((c) => {
-            const matches = c.collectorName === collectorName;
             console.log(
-              `  - ${c.name} → "${c.collectorName}" ${matches ? "✅ MATCH" : "❌ no match"}`,
+              `  - ${c.name} (VC: ${c.vcNumber}) → area: "${c.collectorName}"`,
             );
           });
 
-          customerData =
-            await CustomerService.getCustomersByCollector(collectorName);
-          console.log(
-            `📊 Found ${customerData.length} customers assigned to "${collectorName}"`,
+          // Filter customers for this employee
+          customerData = allCustomers.filter(
+            (customer) => customer.collectorName === collectorName,
           );
 
-          // Debug: Show which customers were found
-          if (customerData.length > 0) {
-            console.log("📋 Assigned customers:");
-            customerData.forEach((c) => {
-              console.log(`  - ${c.name} (${c.vcNumber})`);
-            });
-          } else {
-            console.warn("⚠️ No customers found for this employee. Diagnosis:");
-            console.warn(`  1. Employee looking for: "${collectorName}"`);
-            console.warn("  2. Available customers and their assignments:");
-            allCustomers.forEach((c) => {
-              console.warn(
-                `     - ${c.name} → assigned to: "${c.collectorName}"`,
-              );
-            });
-            console.warn("  3. Troubleshooting steps:");
-            console.warn(
-              "     a) Check customer assignment: ensure customers have collectorName exactly matching:",
-              collectorName,
+          console.log(
+            `📊 Filtered customers for "${collectorName}": ${customerData.length}`,
+          );
+
+          if (customerData.length === 0) {
+            console.log("⚠️ No customers found for this employee");
+            console.log("🔧 Possible solutions:");
+            console.log(
+              "     a) Check customer data: ensure collectorName matches employee name",
             );
-            console.warn(
+            console.log(
               "     b) Check employee profile: ensure collector_name is set correctly in Firebase",
             );
-            console.warn(
-              "     c) Create/edit customers and assign them to this employee",
-            );
+            console.log("     c) Add customers and assign them to this area");
+
+            toast({
+              title: "No Customers Assigned",
+              description: `No customers found assigned to your area "${collectorName}". Contact admin to assign customers to your area.`,
+              variant: "destructive",
+            });
           }
         }
 
-        // Only update state if component is still mounted
         if (mounted) {
           setCustomers(customerData);
-          console.log(
-            `✅ Successfully loaded ${customerData.length} customers`,
-          );
         }
       } catch (error) {
-        console.error("❌ Error loading customers:", error);
+        console.error("Failed to load customers:", error);
         if (mounted) {
           toast({
             title: "Error",
-            description: "Failed to load customers. Check console for details.",
+            description: "Failed to load customers",
             variant: "destructive",
           });
         }
@@ -161,152 +146,94 @@ export default function Customers() {
       }
     };
 
-    if (user) {
-      loadCustomers();
-    }
+    loadCustomers();
 
     return () => {
       mounted = false;
     };
-  }, [isAdmin, toast, user]);
+  }, [user, isAdmin, toast]);
 
-  // Filter customers based on search term and filters
+  // Filter customers based on current filters
   const filteredCustomers = customers.filter((customer) => {
-    const searchTerm_lower = searchTerm.toLowerCase();
-    const matchesSearch =
-      !searchTerm ||
-      customer.name.toLowerCase().includes(searchTerm_lower) ||
-      customer.phoneNumber.includes(searchTerm) ||
-      customer.vcNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.collectorName.toLowerCase().includes(searchTerm_lower);
+    const matchesSearch = searchTerm
+      ? customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.phoneNumber.includes(searchTerm) ||
+        customer.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.vcNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.currentPackage.toLowerCase().includes(searchTerm.toLowerCase())
+      : true;
 
     const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && customer.status === "active") ||
-      (statusFilter === "inactive" && customer.status === "inactive") ||
-      (statusFilter === "demo" && customer.status === "demo");
+      statusFilter === "all" || customer.status === statusFilter;
 
-    const matchesEmployee =
-      employeeFilter === "all" || customer.collectorName === employeeFilter;
+    const matchesArea =
+      areaFilter === "all" || customer.collectorName === areaFilter;
 
-    return matchesSearch && matchesStatus && matchesEmployee;
+    return matchesSearch && matchesStatus && matchesArea;
   });
 
-  // Get unique employees for filter dropdown - using same source as billing
-  const [allEmployees, setAllEmployees] = useState<
-    Array<{ id: string; name: string; role: string; is_active: boolean }>
-  >([]);
+  // Get unique areas for filter dropdown
+  const uniqueAreas = [
+    ...new Set(customers.map((customer) => customer.collectorName)),
+  ].filter(Boolean);
 
-  // Load employees from Firebase (same as billing)
-  useEffect(() => {
-    const loadEmployees = async () => {
-      if (isAdmin) {
-        try {
-          const users = await authService.getAllEmployees();
-          // Only include active employees for assignment
-          const activeUsers = users.filter((user) => user.is_active);
-          setAllEmployees(activeUsers);
-        } catch (error) {
-          console.error("Failed to load employees:", error);
-        }
-      }
-    };
-    loadEmployees();
-  }, [isAdmin]);
-
-  // Also get unique employees from existing customer data as fallback
-  const uniqueEmployees = Array.from(
-    new Set(customers.map((customer) => customer.collectorName)),
-  ).filter(Boolean);
-
-  const handleAdd = () => {
+  const handleCreateCustomer = () => {
     setEditingCustomer(null);
     setIsModalOpen(true);
   };
 
-  const handleEdit = (customer: Customer) => {
+  const handleEditCustomer = (customer: Customer) => {
     setEditingCustomer(customer);
     setIsModalOpen(true);
   };
 
-  const handleDelete = (customer: Customer) => {
+  const handleDeleteCustomer = (customer: Customer) => {
     setDeleteCustomer(customer);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!deleteCustomer) return;
-
-    try {
-      setIsSaving(true);
-      await CustomerService.deleteCustomer(deleteCustomer.id);
-      setCustomers((prev) =>
-        prev.filter((customer) => customer.id !== deleteCustomer.id),
-      );
-      toast({
-        title: "Success",
-        description: "Customer deleted successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete customer",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-      setDeleteCustomer(null);
-    }
+  const handleViewCustomer = (customer: Customer) => {
+    // Implement view customer details
+    console.log("View customer:", customer);
   };
 
-  const handleSave = async (customerData: Customer) => {
+  const handleViewHistory = (customer: Customer) => {
+    // Implement view customer history
+    console.log("View history for:", customer);
+  };
+
+  const handleSaveCustomer = async (customerData: Customer) => {
     try {
       setIsSaving(true);
-
-      console.log(
-        "💾 Saving customer with collectorName:",
-        customerData.collectorName,
-      );
 
       if (editingCustomer) {
         // Update existing customer
         await CustomerService.updateCustomer(editingCustomer.id, customerData);
         setCustomers((prev) =>
-          prev.map((customer) =>
-            customer.id === editingCustomer.id
-              ? { ...customerData, id: editingCustomer.id }
-              : customer,
+          prev.map((c) =>
+            c.id === editingCustomer.id ? { ...customerData } : c,
           ),
         );
         toast({
           title: "Success",
           description: "Customer updated successfully",
         });
-        console.log(
-          "✅ Customer updated with new assignment:",
-          customerData.collectorName,
-        );
       } else {
-        // Add new customer
-        const newCustomerId = await CustomerService.addCustomer(customerData);
-        const newCustomer = { ...customerData, id: newCustomerId };
-        setCustomers((prev) => [newCustomer, ...prev]);
+        // Create new customer
+        const newCustomer = await CustomerService.createCustomer(customerData);
+        setCustomers((prev) => [...prev, newCustomer]);
         toast({
           title: "Success",
-          description: "Customer added successfully",
+          description: "Customer created successfully",
         });
-        console.log(
-          "✅ New customer created and assigned to:",
-          customerData.collectorName,
-        );
       }
+
+      setIsModalOpen(false);
+      setEditingCustomer(null);
     } catch (error) {
-      console.error("❌ Failed to save customer:", error);
+      console.error("Failed to save customer:", error);
       toast({
         title: "Error",
-        description: editingCustomer
-          ? "Failed to update customer"
-          : "Failed to add customer",
+        description: "Failed to save customer",
         variant: "destructive",
       });
     } finally {
@@ -314,118 +241,162 @@ export default function Customers() {
     }
   };
 
-  const handleStatusChange = async (
-    customerId: string,
-    newStatus: "active" | "inactive" | "demo",
-  ) => {
+  const confirmDeleteCustomer = async () => {
+    if (!deleteCustomer) return;
+
     try {
-      const customer = customers.find((c) => c.id === customerId);
-      if (!customer) return;
-
-      await CustomerService.updateCustomer(customerId, { status: newStatus });
-
-      setCustomers((prev) =>
-        prev.map((c) =>
-          c.id === customerId ? { ...c, status: newStatus } : c,
-        ),
-      );
-
+      await CustomerService.deleteCustomer(deleteCustomer.id);
+      setCustomers((prev) => prev.filter((c) => c.id !== deleteCustomer.id));
       toast({
-        title: "Status Updated",
-        description: `Customer status changed to ${newStatus}`,
+        title: "Success",
+        description: "Customer deleted successfully",
       });
+      setDeleteCustomer(null);
     } catch (error) {
+      console.error("Failed to delete customer:", error);
       toast({
         title: "Error",
-        description: "Failed to update customer status",
+        description: "Failed to delete customer",
         variant: "destructive",
       });
     }
   };
 
-  const handleImportSuccess = (importedCustomers: Customer[]) => {
-    setCustomers((prev) => [...importedCustomers, ...prev]);
-    setShowImportExport(false);
-    toast({
-      title: "Import Successful",
-      description: `${importedCustomers.length} customers imported successfully`,
-    });
+  const handleCustomerUpdate = async (
+    customerId: string,
+    updates: Partial<Customer>,
+  ) => {
+    try {
+      await CustomerService.updateCustomer(customerId, updates);
+      setCustomers((prev) =>
+        prev.map((c) => (c.id === customerId ? { ...c, ...updates } : c)),
+      );
+    } catch (error) {
+      console.error("Failed to update customer:", error);
+      throw error;
+    }
   };
 
-  // For employees, don't allow accessing all customers functionality
-  const showOnlyMyCustomers = !isAdmin;
+  const handleImportCustomers = async (importedCustomers: Customer[]) => {
+    try {
+      const newCustomers = [];
+      for (const customer of importedCustomers) {
+        const newCustomer = await CustomerService.createCustomer(customer);
+        newCustomers.push(newCustomer);
+      }
+
+      setCustomers((prev) => [...prev, ...newCustomers]);
+      toast({
+        title: "Import Successful",
+        description: `${newCustomers.length} customers imported successfully`,
+      });
+    } catch (error) {
+      console.error("Import failed:", error);
+      toast({
+        title: "Import Failed",
+        description: "Failed to import customers",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <DashboardLayout title="Customer Management">
-      <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h2 className="text-xl lg:text-2xl font-bold text-foreground">
+            <h2 className="text-2xl font-bold text-foreground">
               Customer Management
             </h2>
-            <p className="text-sm lg:text-base text-muted-foreground">
-              {showOnlyMyCustomers
-                ? `Managing customers assigned to you (${filteredCustomers.length} customers)`
-                : `Manage all customers and their connections (${filteredCustomers.length} customers)`}
+            <p className="text-muted-foreground">
+              {isAdmin
+                ? "Manage all customers in the system"
+                : `Manage customers in your area: ${user?.collector_name || user?.name}`}
             </p>
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex space-x-2">
             {isAdmin && (
               <Button
                 variant="outline"
                 onClick={() => setShowImportExport(true)}
-                className="text-sm"
               >
                 <Upload className="mr-2 h-4 w-4" />
                 Import/Export
               </Button>
             )}
-            <Button onClick={handleAdd} className="text-sm">
+            <Button onClick={handleCreateCustomer}>
               <Plus className="mr-2 h-4 w-4" />
               Add Customer
             </Button>
           </div>
         </div>
 
-        {/* Customer Assignment Debug Info (only for employees with no customers) */}
-        {!isAdmin && customers.length === 0 && !isLoading && (
-          <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
-            <CardContent className="pt-6">
-              <div className="text-sm text-yellow-800 dark:text-yellow-200">
-                <div className="font-medium mb-2">
-                  🔍 No customers assigned to you
-                </div>
-                <div className="space-y-1 text-xs">
-                  <div>
-                    Your employee name:{" "}
-                    <code className="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">
-                      {user?.collector_name || user?.name}
-                    </code>
-                  </div>
-                  <div>To see customers here:</div>
-                  <div>1. Admin must create/edit customers</div>
-                  <div>
-                    2. In the "Employee" field, select your name exactly
-                  </div>
-                  <div>3. Save the customer - it will then appear here</div>
-                </div>
-              </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Customers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{customers.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {filteredCustomers.length} matching filters
+              </p>
             </CardContent>
           </Card>
-        )}
 
-        {/* Search and Filters */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Active Customers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {customers.filter((c) => c.status === "active").length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {(
+                  (customers.filter((c) => c.status === "active").length /
+                    customers.length) *
+                  100
+                ).toFixed(1)}
+                % of total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {isAdmin ? "Total Areas" : "Your Area"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {isAdmin ? uniqueAreas.length : 1}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {isAdmin
+                  ? `${uniqueAreas.length} areas covered`
+                  : user?.collector_name || user?.name}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search */}
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder="Search customers by name, phone, address, VC number, or employee..."
+                    placeholder="Search customers..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -433,72 +404,62 @@ export default function Customers() {
                 </div>
               </div>
 
-              {/* Status Filter */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-48">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                   <SelectItem value="demo">Demo</SelectItem>
                 </SelectContent>
               </Select>
 
-              {/* Employee Filter */}
-              <Select
-                value={employeeFilter}
-                onValueChange={setEmployeeFilter}
-                disabled={!isAdmin}
-              >
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Filter by employee" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Employees</SelectItem>
-                  {/* Use Firebase employee data first, fallback to customer data */}
-                  {allEmployees.length > 0
-                    ? allEmployees.map((employee) => (
-                        <SelectItem key={employee.id} value={employee.name}>
-                          {employee.name} ({employee.role})
-                        </SelectItem>
-                      ))
-                    : uniqueEmployees.map((employee) => (
-                        <SelectItem key={employee} value={employee}>
-                          {employee}
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
+              {isAdmin && uniqueAreas.length > 0 && (
+                <Select value={areaFilter} onValueChange={setAreaFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Filter by area" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Areas</SelectItem>
+                    {uniqueAreas.map((area) => (
+                      <SelectItem key={area} value={area}>
+                        {area}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {(searchTerm ||
+                statusFilter !== "all" ||
+                areaFilter !== "all") && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setStatusFilter("all");
+                    setAreaFilter("all");
+                  }}
+                  className="px-3"
+                >
+                  Clear
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Results Summary */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-          <div className="text-sm text-blue-800 dark:text-blue-200">
-            <span className="font-medium">
-              Showing {filteredCustomers.length} of {customers.length} customers
-            </span>
-            {searchTerm && (
-              <span className="ml-2">• Search: "{searchTerm}"</span>
-            )}
-            {statusFilter !== "all" && (
-              <span className="ml-2">• Status: {statusFilter}</span>
-            )}
-            {employeeFilter !== "all" && (
-              <span className="ml-2">• Employee: {employeeFilter}</span>
-            )}
-          </div>
-        </div>
-
         {/* Customer Table */}
         <CustomerTable
           customers={filteredCustomers}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onStatusChange={handleStatusChange}
+          searchTerm={searchTerm}
+          onEdit={handleEditCustomer}
+          onDelete={handleDeleteCustomer}
+          onView={handleViewCustomer}
+          onViewHistory={handleViewHistory}
+          onCustomerUpdate={handleCustomerUpdate}
           isLoading={isLoading}
         />
 
@@ -507,7 +468,7 @@ export default function Customers() {
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
           customer={editingCustomer}
-          onSave={handleSave}
+          onSave={handleSaveCustomer}
           isLoading={isSaving}
         />
 
@@ -517,11 +478,11 @@ export default function Customers() {
             open={showImportExport}
             onOpenChange={setShowImportExport}
             customers={customers}
-            onImportSuccess={handleImportSuccess}
+            onImport={handleImportCustomers}
           />
         )}
 
-        {/* Delete Confirmation */}
+        {/* Delete Confirmation Dialog */}
         <AlertDialog
           open={!!deleteCustomer}
           onOpenChange={() => setDeleteCustomer(null)}
@@ -530,19 +491,20 @@ export default function Customers() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Customer</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete "{deleteCustomer?.name}"? This
-                action cannot be undone and will remove all customer data
-                including billing history.
+                Are you sure you want to delete {deleteCustomer?.name}? This
+                action cannot be undone and will remove all associated billing
+                history.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel onClick={() => setDeleteCustomer(null)}>
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleDeleteConfirm}
-                disabled={isSaving}
+                onClick={confirmDeleteCustomer}
                 className="bg-red-600 hover:bg-red-700"
               >
-                {isSaving ? "Deleting..." : "Delete Customer"}
+                Delete Customer
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

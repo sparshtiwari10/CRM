@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 type FirebaseConnectionStatus = "connected" | "disconnected" | "error";
 
@@ -16,22 +15,19 @@ export function FirebaseStatus() {
 
     const checkFirebaseConnection = () => {
       try {
-        if (!db) {
-          setStatus("error");
-          return;
-        }
+        const auth = getAuth();
 
-        // Listen to a test collection to verify connection
-        const testRef = collection(db, "connection_test");
-        unsubscribe = onSnapshot(
-          testRef,
-          (snapshot) => {
-            // Connection is working if we can listen to changes
+        // Listen to auth state changes to verify Firebase is working
+        unsubscribe = onAuthStateChanged(
+          auth,
+          (user) => {
+            // Firebase is working if we can listen to auth changes
             setStatus("connected");
             setLastCheck(new Date());
+            console.log("🔥 Firebase connected, user:", user?.email || "none");
           },
           (error) => {
-            console.error("Firebase connection error:", error);
+            console.error("Firebase auth error:", error);
             setStatus("error");
             setLastCheck(new Date());
           },
@@ -78,11 +74,11 @@ export function FirebaseStatus() {
   const getStatusText = () => {
     switch (status) {
       case "connected":
-        return "Online";
+        return "Firebase Online";
       case "disconnected":
         return "Connecting...";
       case "error":
-        return "Offline";
+        return "Firebase Error";
     }
   };
 
@@ -97,7 +93,7 @@ export function FirebaseStatus() {
       </Badge>
       {status === "connected" && (
         <span className="text-xs text-muted-foreground hidden sm:inline">
-          Last sync: {lastCheck.toLocaleTimeString()}
+          {lastCheck.toLocaleTimeString()}
         </span>
       )}
     </div>
