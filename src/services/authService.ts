@@ -30,6 +30,7 @@ export interface User {
   name: string;
   role: "admin" | "employee";
   collector_name?: string;
+  assigned_areas?: string[]; // Multiple areas for employees
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
