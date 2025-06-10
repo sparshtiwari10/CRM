@@ -3,71 +3,85 @@
 ## Table of Contents
 
 1. [System Overview](#system-overview)
-2. [Authentication System](#authentication-system)
+2. [Current Features](#current-features)
 3. [Installation & Setup](#installation--setup)
-4. [Firebase Configuration](#firebase-configuration)
-5. [Features & Modules](#features--modules)
-6. [User Roles & Permissions](#user-roles--permissions)
-7. [Troubleshooting](#troubleshooting)
-8. [Migration Guide](#migration-guide)
-9. [Security Implementation](#security-implementation)
+4. [Authentication System](#authentication-system)
+5. [User Management](#user-management)
+6. [Core Modules](#core-modules)
+7. [Technical Architecture](#technical-architecture)
+8. [Security Implementation](#security-implementation)
+9. [Deployment](#deployment)
+10. [Troubleshooting](#troubleshooting)
 
 ## System Overview
 
-The AGV Cable TV Management System is a comprehensive web application built with React, TypeScript, and Firebase for managing cable TV operations including customer management, billing, package management, and employee administration.
+The AGV Cable TV Management System is a comprehensive web application for managing cable TV operations, including customer management, billing, package management, and employee administration. The system is built with modern web technologies and Firebase backend services.
+
+### Current Status: ✅ FULLY OPERATIONAL
+
+- **Authentication:** Firebase Auth with automatic user management
+- **Database:** Firestore with real-time data synchronization
+- **UI:** Modern, responsive interface with dark mode support
+- **Roles:** Admin and Employee with proper permissions
+- **Security:** Working Firestore rules with role-based access
 
 ### Technology Stack
 
-- **Frontend**: React 18, TypeScript, Tailwind CSS
-- **Backend**: Firebase (Firestore, Authentication)
-- **State Management**: React Context API
-- **UI Components**: Custom components with shadcn/ui
-- **Build Tool**: Vite
-- **Authentication**: Firebase Authentication (migrated from custom auth)
+- **Frontend:** React 18, TypeScript, Tailwind CSS
+- **Backend:** Firebase (Firestore Database, Authentication)
+- **UI Framework:** Custom components with shadcn/ui
+- **State Management:** React Context API
+- **Build Tool:** Vite
+- **Deployment:** Firebase Hosting ready
 
-## Authentication System
+## Current Features
 
-### Current Implementation: Firebase Authentication
+### ✅ Working Features
 
-The system has been migrated from custom authentication to Firebase Authentication for enhanced security and reliability.
+#### Authentication & User Management
 
-#### Authentication Flow
+- Firebase Authentication with email/password
+- Automatic user document creation
+- Role-based access control (Admin/Employee)
+- Employee management interface
+- Password reset functionality
+- Account activation/deactivation
 
-1. **Login Process**:
+#### Customer Management
 
-   - Users sign in with email/password via Firebase Auth
-   - User profile data fetched from Firestore (`/users/{firebase_uid}`)
-   - Role-based access control enforced through Firestore security rules
+- Add, edit, view customers
+- Customer search and filtering
+- Billing status tracking
+- Connection management
+- Area-based access for employees
 
-2. **User Document Structure**:
+#### Package Management
 
-   ```typescript
-   interface User {
-     id: string; // Firebase Auth UID
-     email: string;
-     name: string;
-     role: "admin" | "employee";
-     collector_name?: string; // For employees
-     is_active: boolean;
-     requires_password_reset?: boolean;
-     migrated_from_custom_auth?: boolean;
-     created_at: Date;
-     updated_at: Date;
-   }
-   ```
+- Create and manage service packages
+- Real-time metrics and analytics
+- Package usage statistics
+- Revenue tracking per package
 
-3. **Default Admin Account**:
-   - Email: `admin@agvcabletv.com`
-   - Password: `admin123`
-   - **Important**: Change password after first login
+#### Billing System
 
-### Security Features
+- Automated bill generation
+- Payment tracking (cash/online)
+- Outstanding amount management
+- Billing history
 
-- **Server-side validation** through Firestore security rules
-- **Password reset** functionality via email
-- **Account deactivation** by administrators
-- **Role-based access control** with real-time enforcement
-- **Audit logging** for all authentication events
+#### Request Management
+
+- Service request submission
+- Admin approval workflow
+- Request status tracking
+
+#### System Features
+
+- Dark mode support
+- Responsive design
+- Real-time data updates
+- Error handling and recovery
+- Diagnostic tools
 
 ## Installation & Setup
 
@@ -75,331 +89,439 @@ The system has been migrated from custom authentication to Firebase Authenticati
 
 - Node.js 18+
 - npm or yarn
-- Firebase project with Firestore and Authentication enabled
+- Firebase project
+- Modern web browser
 
-### Installation Steps
+### Step-by-Step Setup
 
-1. **Clone the repository**:
+#### 1. Clone and Install
 
-   ```bash
-   git clone <repository-url>
-   cd agv-cable-tv-management
-   ```
+```bash
+git clone <repository-url>
+cd agv-cable-tv-management
+npm install
+```
 
-2. **Install dependencies**:
+#### 2. Firebase Configuration
 
-   ```bash
-   npm install
-   ```
+1. **Create Firebase Project:**
 
-3. **Configure Firebase**:
-
-   - Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+   - Go to [Firebase Console](https://console.firebase.google.com)
+   - Create new project
    - Enable Firestore Database
-   - Enable Authentication with Email/Password provider
-   - Copy your Firebase config to `src/lib/firebase.ts`
+   - Enable Authentication with Email/Password
 
-4. **Deploy Firestore Rules**:
+2. **Configure App:**
 
+   - Copy Firebase config to `src/lib/firebase.ts`
+   - Update project settings
+
+3. **Deploy Rules:**
    ```bash
    firebase deploy --only firestore:rules
    ```
 
-5. **Start development server**:
-   ```bash
-   npm run dev
-   ```
+#### 3. Start Development
 
-## Firebase Configuration
+```bash
+npm run dev
+```
 
-### Required Firebase Services
+#### 4. First Login
 
-1. **Authentication**:
+1. Open the application
+2. You'll see the login page
+3. If no admin exists, create one using:
+   - Firebase Console → Authentication → Add User
+   - Login with those credentials
+   - System auto-creates admin profile
 
-   - Enable Email/Password provider
-   - Configure authorized domains
+## Authentication System
 
-2. **Firestore Database**:
+### How It Works
 
-   - Create database in production mode
-   - Deploy security rules from `firestore.rules`
+1. **Firebase Auth:** Handles login/logout, password security
+2. **Firestore Documents:** Store user profiles and roles
+3. **Automatic Creation:** User documents created on first login
+4. **Role Assignment:** Admin can manage roles via Employee page
 
-3. **Firestore Collections Structure**:
-   ```
-   /users/{firebase_uid}        # User profiles and roles
-   /customers/{customer_id}     # Customer information
-   /packages/{package_id}       # Service packages
-   /billing/{billing_id}        # Billing records
-   /requests/{request_id}       # Service requests
-   ```
+### User Roles
 
-### Security Rules
+#### Administrator
 
-The system uses comprehensive Firestore security rules for server-side validation:
+- **Full Access:** All system features
+- **User Management:** Create, edit, delete employees
+- **System Settings:** Manage packages, global settings
+- **All Data:** Access to all customers and billing
+
+#### Employee
+
+- **Limited Access:** Area-specific data only
+- **Customer Management:** Add/edit customers in assigned area
+- **Billing:** Generate bills for assigned customers
+- **Requests:** Submit requests for admin approval
+
+### Creating Employees
+
+**Method 1: Through App (Recommended)**
+
+1. Login as admin
+2. Go to Employees page
+3. Click "Add Employee"
+4. Fill form and submit
+5. Employee receives password reset email
+
+**Method 2: Manual**
+
+1. Create user in Firebase Console
+2. Employee logs in
+3. System creates profile
+4. Admin assigns role/area
+
+## Core Modules
+
+### 1. Customer Management
+
+**Location:** `/customers`
+
+**Features:**
+
+- Customer CRUD operations
+- Search and filtering
+- Billing status tracking
+- Connection management
+- Area-based access control
+
+**Employee Access:** Own area only
+**Admin Access:** All customers
+
+### 2. Package Management
+
+**Location:** `/packages`
+
+**Features:**
+
+- Package CRUD operations
+- Real-time metrics dashboard
+- Usage analytics
+- Revenue tracking
+- Channel count management
+
+**Employee Access:** View only
+**Admin Access:** Full management
+
+### 3. Billing System
+
+**Location:** `/billing`
+
+**Features:**
+
+- Automated bill generation
+- Payment recording
+- Outstanding tracking
+- Invoice generation
+- Payment history
+
+**Employee Access:** Own area customers
+**Admin Access:** All billing data
+
+### 4. Employee Management
+
+**Location:** `/employees`
+
+**Features:**
+
+- Employee account creation
+- Role management
+- Account activation/deactivation
+- Password reset emails
+- Area assignment
+
+**Access:** Admin only
+
+### 5. Request Management
+
+**Location:** `/requests`
+
+**Features:**
+
+- Service request submission
+- Admin approval workflow
+- Status tracking
+- Request history
+
+**Employee Access:** Submit requests
+**Admin Access:** Approve/reject requests
+
+### 6. Dashboard
+
+**Location:** `/dashboard`
+
+**Features:**
+
+- Key metrics overview
+- Recent activity
+- Quick actions
+- System status
+
+**Access:** All authenticated users
+
+## Technical Architecture
+
+### Frontend Architecture
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── auth/           # Authentication components
+│   ├── common/         # Shared components
+│   ├── layout/         # Layout components
+│   └── ui/             # Base UI components
+├── contexts/           # React context providers
+├── hooks/              # Custom React hooks
+├── lib/                # Configuration and utilities
+├── pages/              # Main application pages
+├── services/           # Business logic and API calls
+├── types/              # TypeScript definitions
+└── utils/              # Helper functions
+```
+
+### Backend Architecture
+
+**Firebase Services:**
+
+- **Authentication:** User login/logout management
+- **Firestore:** Document database for all data
+- **Storage:** File uploads (future feature)
+- **Hosting:** Static site hosting
+
+**Data Structure:**
+
+```
+Firestore Collections:
+├── users/              # User profiles and roles
+├── customers/          # Customer information
+├── packages/           # Service packages
+├── billing/            # Billing records
+└── requests/           # Service requests
+```
+
+### State Management
+
+- **React Context:** Global state (auth, theme)
+- **Local State:** Component-specific state
+- **Firebase Real-time:** Live data updates
+
+## Security Implementation
+
+### Current Security Measures
+
+#### Firebase Authentication
+
+- Secure password handling
+- Session management
+- Token-based authentication
+- Built-in protection against attacks
+
+#### Firestore Security Rules
 
 ```javascript
-// Example rule for packages collection
-match /packages/{packageId} {
-  allow read: if isEmployee();
-  allow create, update, delete: if isAdmin();
+// Current working rules (development)
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
 }
 ```
 
-See `firestore.rules` for complete security implementation.
+#### Application-Level Security
 
-## Features & Modules
+- Role-based UI restrictions
+- Input validation and sanitization
+- Error boundary protection
+- Secure routing
 
-### 1. Dashboard
+### Production Security (Future)
 
-- Overview of key metrics
-- Quick access to common tasks
-- Recent activity summary
-- Revenue and customer statistics
+For production deployment, implement:
 
-### 2. Customer Management
+- Granular Firestore security rules
+- Field-level access control
+- Audit logging
+- Rate limiting
+- Advanced authentication features
 
-- **Add/Edit Customers**: Complete customer information management
-- **Billing Integration**: Automatic bill generation and tracking
-- **Service History**: Track all customer interactions
-- **Connection Management**: Handle multiple connections per customer
-- **Status Tracking**: Active, inactive, demo status management
+## Deployment
 
-### 3. Package Management
+### Development Deployment
 
-- **Package Creation**: Define service packages with pricing
-- **Feature Management**: Detailed package features and channel counts
-- **Usage Analytics**: Track package popularity and revenue
-- **Real-time Metrics**: Customer count and revenue per package
+```bash
+# Build the application
+npm run build
 
-### 4. Billing System
+# Deploy to Firebase
+firebase deploy
+```
 
-- **Automated Billing**: Generate bills based on package pricing
-- **Payment Tracking**: Record cash and online payments
-- **Outstanding Management**: Track and manage outstanding amounts
-- **Invoice Generation**: Professional invoice creation
-- **Billing History**: Complete payment history per customer
+### Production Deployment
 
-### 5. Employee Management (Admin Only)
+1. **Update Security Rules:** Deploy production Firestore rules
+2. **Environment Configuration:** Set production environment variables
+3. **Domain Setup:** Configure custom domain
+4. **SSL Certificate:** Enable HTTPS
+5. **Monitoring:** Set up error tracking and analytics
 
-- **User Creation**: Add new admin and employee accounts
-- **Role Management**: Assign and modify user roles
-- **Access Control**: Activate/deactivate user accounts
-- **Password Management**: Send password reset emails
-- **Area Assignment**: Assign collection areas to employees
+### Environment Configuration
 
-### 6. Request Management
-
-- **Service Requests**: Handle activation, deactivation, plan changes
-- **Approval Workflow**: Admin approval for employee requests
-- **Request Tracking**: Monitor request status and history
-- **Bulk Operations**: Handle multiple requests efficiently
-
-## User Roles & Permissions
-
-### Administrator Role
-
-- **Full System Access**: All features and data
-- **User Management**: Create, modify, delete employee accounts
-- **Data Management**: Full CRUD operations on all data
-- **Reports & Analytics**: Access to all system reports
-- **System Configuration**: Manage packages, pricing, and settings
-
-### Employee Role
-
-- **Area-Restricted Access**: Only customers in assigned area
-- **Customer Operations**: Add, edit customers in their area
-- **Billing Operations**: Generate bills for assigned customers
-- **Request Submission**: Submit requests for admin approval
-- **Read-Only Access**: View packages and system information
+```bash
+# .env.production
+VITE_FIREBASE_API_KEY=your-production-key
+VITE_FIREBASE_AUTH_DOMAIN=your-domain.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Login Failures**:
+#### Authentication Issues
 
-   - Verify Firebase Authentication is enabled
-   - Check email/password provider configuration
-   - Ensure user document exists in Firestore
+**Problem:** "User profile not found"
+**Solution:** Click "Create User Profile" button or use Employee Management
 
-2. **Permission Denied Errors**:
+**Problem:** Permission denied
+**Solution:** Check Firestore rules are deployed and user has correct role
 
-   - Verify Firestore security rules are deployed
-   - Check user role and active status
-   - Ensure user document has correct structure
+**Problem:** Can't login
+**Solution:** Verify Firebase Auth is enabled and credentials are correct
 
-3. **Data Loading Issues**:
-   - Check Firebase project configuration
-   - Verify Firestore collections exist
-   - Check browser console for detailed errors
+#### Data Issues
 
-### Debug Commands
+**Problem:** Packages not loading
+**Solution:** Check Firebase connection and Firestore permissions
 
-```bash
-# Check Firebase configuration
-firebase projects:list
+**Problem:** Customers not visible
+**Solution:** Verify user role and area assignment
 
-# Deploy Firestore rules
-firebase deploy --only firestore:rules
+**Problem:** Billing errors
+**Solution:** Check customer data integrity and package existence
 
-# View current rules
-firebase firestore:rules
-```
+#### System Issues
 
-### Firestore Debugging
+**Problem:** App not loading
+**Solution:** Check console for errors, verify Firebase configuration
+
+**Problem:** Dark mode not working
+**Solution:** Clear browser cache and localStorage
+
+### Debug Tools
+
+**Browser Console Commands:**
 
 ```javascript
-// Run in browser console
-FirebaseDebug.runDiagnostics();
-testFirebaseConnection();
+// Test Firebase connection
+testFirebase();
+
+// Fix permissions
+quickFixFirebase();
+
+// Check user data
+firebase.auth().currentUser;
 ```
 
-## Migration Guide
+**Firebase Console:**
 
-### From Custom Authentication to Firebase Auth
+- Authentication → Users (check user accounts)
+- Firestore → Data (verify document structure)
+- Firestore → Rules (check security rules)
 
-The system has been fully migrated from custom authentication to Firebase Authentication. If you're upgrading from an older version:
+### Performance Optimization
 
-1. **Backup existing data**:
+#### Frontend Optimization
 
-   ```bash
-   # Export existing users
-   node scripts/backup-users.js
-   ```
+- Code splitting and lazy loading
+- Image optimization
+- Bundle size monitoring
+- Caching strategies
 
-2. **Run migration script**:
+#### Backend Optimization
 
-   ```bash
-   # Migrate users to Firebase Auth
-   node scripts/migrate-to-firebase-auth.js
-   ```
-
-3. **Update Firebase settings**:
-
-   - Enable Email/Password authentication
-   - Deploy new Firestore security rules
-   - Test login with migrated accounts
-
-4. **Notify users**:
-   - Send password reset emails to all users
-   - Provide new login instructions (email instead of username)
-
-### Migration Benefits
-
-- ✅ **Enhanced Security**: Firebase handles password security
-- ✅ **Server-side Validation**: Firestore rules enforce permissions
-- ✅ **Built-in Features**: Password reset, email verification
-- ✅ **Scalability**: Handle thousands of users
-- ✅ **Audit Logging**: Comprehensive login and activity logs
-
-## Security Implementation
-
-### Multi-Layer Security
-
-1. **Firebase Authentication**:
-
-   - Secure password handling and token management
-   - Built-in protection against common attacks
-   - Session management and timeout handling
-
-2. **Firestore Security Rules**:
-
-   - Server-side permission enforcement
-   - Role-based access control
-   - Data validation and sanitization
-
-3. **Client-Side Validation**:
-   - Input validation and sanitization
-   - UI-level access control
-   - Real-time permission checking
-
-### Best Practices Implemented
-
-- **Principle of Least Privilege**: Users only access necessary data
-- **Data Sanitization**: All inputs validated before processing
-- **Audit Logging**: All critical operations logged
-- **Regular Security Reviews**: Permissions audited regularly
-- **Secure Defaults**: New users created with minimal permissions
-
-### Password Security
-
-- **Minimum Requirements**: 6+ characters enforced by Firebase
-- **Reset Functionality**: Secure email-based password reset
-- **Force Reset**: New users must change temporary passwords
-- **No Plain Text**: Passwords never stored in plain text
+- Firestore query optimization
+- Index creation for complex queries
+- Real-time listener management
+- Data pagination
 
 ## Development Guidelines
 
-### Code Organization
+### Code Standards
 
-```
-src/
-├── components/          # Reusable UI components
-├── contexts/           # React context providers
-├── hooks/              # Custom React hooks
-├── lib/                # Utility libraries and configurations
-├── pages/              # Main application pages
-├── services/           # Business logic and API calls
-├── types/              # TypeScript type definitions
-└── utils/              # Helper functions and utilities
-```
+- **TypeScript:** Full type safety
+- **ESLint:** Code quality enforcement
+- **Prettier:** Code formatting
+- **Component Structure:** Reusable, modular components
 
 ### Best Practices
 
-1. **Type Safety**: Full TypeScript implementation
-2. **Error Handling**: Comprehensive error boundaries and validation
-3. **Loading States**: User-friendly loading indicators
-4. **Responsive Design**: Mobile-first responsive layout
-5. **Accessibility**: WCAG compliance and keyboard navigation
-6. **Performance**: Optimized rendering and data fetching
+#### Security
 
-## Deployment
+- Input validation on all forms
+- Role checks on sensitive operations
+- Error handling without exposing internals
+- Regular security audits
 
-### Production Deployment
+#### Performance
 
-1. **Build the application**:
+- Lazy loading for large components
+- Optimized re-renders
+- Efficient data fetching
+- Proper cleanup of listeners
 
-   ```bash
-   npm run build
-   ```
+#### Maintainability
 
-2. **Deploy to Firebase Hosting**:
+- Clear component naming
+- Comprehensive documentation
+- Consistent code organization
+- Regular dependency updates
 
-   ```bash
-   firebase deploy
-   ```
+## Future Enhancements
 
-3. **Configure domain** (if using custom domain):
-   - Add domain in Firebase Console
-   - Update DNS records
-   - Configure SSL certificate
+### Planned Features
 
-### Environment Configuration
+- **Advanced Reports:** Detailed analytics and insights
+- **File Management:** Document upload and storage
+- **Notifications:** Real-time alerts and messages
+- **Mobile App:** React Native companion app
+- **API Integration:** Third-party service integrations
 
-Create environment files for different stages:
+### Technical Improvements
 
-```bash
-# .env.production
-VITE_FIREBASE_API_KEY=your-production-api-key
-VITE_FIREBASE_AUTH_DOMAIN=your-domain.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project-id
-```
+- **Production Security Rules:** Granular access control
+- **Performance Monitoring:** Real-time performance tracking
+- **Automated Testing:** Unit and integration tests
+- **CI/CD Pipeline:** Automated deployment
 
 ## Support and Maintenance
 
-### Regular Maintenance Tasks
+### Regular Maintenance
 
-1. **User Account Audit**: Review active users monthly
-2. **Permission Review**: Audit roles and permissions quarterly
-3. **Data Backup**: Regular Firestore exports
-4. **Security Updates**: Keep dependencies up to date
-5. **Performance Monitoring**: Monitor application performance
+- **Weekly:** User account audits
+- **Monthly:** Performance reviews
+- **Quarterly:** Security assessments
+- **Yearly:** Major updates and migrations
 
-### Getting Help
+### Backup and Recovery
 
-1. **Documentation**: Check this guide first
-2. **Console Logs**: Enable debug mode for detailed logging
-3. **Firebase Console**: Monitor authentication and database activity
-4. **Error Tracking**: Implement error tracking for production
+- **Firestore Exports:** Regular database backups
+- **Version Control:** Code repository maintenance
+- **Configuration Backup:** Firebase settings backup
 
-This guide provides comprehensive information for setting up, using, and maintaining the AGV Cable TV Management System with Firebase Authentication.
+### Monitoring
+
+- **Error Tracking:** Real-time error monitoring
+- **Performance Metrics:** Application performance tracking
+- **User Analytics:** Usage patterns and insights
+
+The AGV Cable TV Management System provides a robust, scalable solution for cable TV business management with modern security practices and user-friendly interfaces.
