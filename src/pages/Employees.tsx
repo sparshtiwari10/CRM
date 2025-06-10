@@ -677,15 +677,37 @@ export default function Employees() {
                             </SelectContent>
                           </Select>
 
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteEmployee(employee)}
-                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                            title="Delete user"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>
+                                Manage Employee
+                              </DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuItem
+                                onClick={() => handleDisableEmployee(employee)}
+                                className="text-orange-600 dark:text-orange-400"
+                              >
+                                <ShieldOff className="mr-2 h-4 w-4" />
+                                Disable Account
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteEmployee(employee)}
+                                className="text-red-600 dark:text-red-400"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Account
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </>
                       )}
                     </div>
