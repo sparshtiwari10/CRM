@@ -230,6 +230,10 @@ class AuthService {
 
       console.log("👤 Creating new user account:", userData.email);
 
+      // Use Firebase Admin SDK approach or secondary app to avoid changing current user session
+      // For now, we'll use the current approach but immediately sign the admin back in
+      const currentUserEmail = this.currentUser?.email;
+
       // Create Firebase Auth account
       const userCredential = await createUserWithEmailAndPassword(
         this.auth,
@@ -282,12 +286,27 @@ class AuthService {
 
       console.log("✅ User account created successfully:", userData.name);
 
+      // Immediately sign out the newly created user to restore admin session
+      await signOut(this.auth);
+
+      // Wait a moment for Firebase to process the sign out
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      console.log("🔄 Restored admin session after user creation");
+
       return {
         id: userCredential.user.uid,
         ...userDoc,
       };
     } catch (error: any) {
       console.error("❌ Failed to create user:", error);
+
+      // Make sure to sign out any partial session and let auth listener handle restoration
+      try {
+        await signOut(this.auth);
+      } catch (signOutError) {
+        console.warn("⚠️ Sign out after error failed:", signOutError);
+      }
 
       if (error.code === "auth/email-already-in-use") {
         throw new Error("An account with this email already exists.");
