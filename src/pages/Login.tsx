@@ -14,11 +14,12 @@ import {
   AlertCircle,
   Settings,
   RefreshCw,
+  UserPlus,
 } from "lucide-react";
 
 export default function Login() {
-  const [email, setEmail] = useState("admin@agvcabletv.com"); // Pre-fill with default admin
-  const [password, setPassword] = useState("admin123"); // Pre-fill with default password
+  const [email, setEmail] = useState(""); // Start empty, let user enter their Firebase Auth email
+  const [password, setPassword] = useState(""); // Start empty
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -109,8 +110,8 @@ export default function Login() {
     // Check if diagnostic tools are available
     if ((window as any).quickFixFirebase) {
       (window as any).quickFixFirebase();
-    } else if ((window as any).FirebasePermissionsFix) {
-      (window as any).FirebasePermissionsFix.quickFix();
+    } else if ((window as any).testFirebase) {
+      (window as any).testFirebase();
     } else {
       console.log(
         "⚠️ Diagnostic tools not loaded. Checking basic Firebase status...",
@@ -134,6 +135,60 @@ export default function Login() {
           console.log("  - Current user: None");
         }
       });
+    }
+  };
+
+  const createUserDocument = async () => {
+    setError("");
+    setIsLoading(true);
+
+    try {
+      console.log("🔧 Attempting to create user document...");
+
+      // Import Firebase directly to create user document
+      const { getAuth } = await import("firebase/auth");
+      const { doc, setDoc, Timestamp } = await import("firebase/firestore");
+      const { db } = await import("@/lib/firebase");
+
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error(
+          "No authenticated user found. Please sign in with Firebase Auth first.",
+        );
+      }
+
+      console.log("Creating user document for:", currentUser.email);
+
+      const userData = {
+        email: currentUser.email || "",
+        name: currentUser.email?.split("@")[0] || "User",
+        role: "admin", // Make them admin
+        is_active: true,
+        requires_password_reset: false,
+        created_at: Timestamp.now(),
+        updated_at: Timestamp.now(),
+        manually_created: true,
+      };
+
+      await setDoc(doc(db, "users", currentUser.uid), userData);
+
+      setResetMessage(
+        "User document created successfully! You can now use the application.",
+      );
+
+      // Refresh the page to reload with new user data
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error: any) {
+      console.error("❌ Failed to create user document:", error);
+      setError(
+        error.message || "Failed to create user document. Check console.",
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -161,7 +216,7 @@ export default function Login() {
                   <Input
                     id="reset-email"
                     type="email"
-                    placeholder="admin@agvcabletv.com"
+                    placeholder="your-email@example.com"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     className="pl-10"
@@ -248,7 +303,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@agvcabletv.com"
+                  placeholder="Enter your Firebase Auth email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
@@ -292,11 +347,23 @@ export default function Login() {
                 <AlertDescription>
                   <div className="space-y-2">
                     <p>{error}</p>
+                    {error.includes("User profile not found") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={createUserDocument}
+                        disabled={isLoading}
+                        className="mt-2"
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Create User Profile
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={runDiagnostics}
-                      className="mt-2"
+                      className="mt-2 ml-2"
                     >
                       <Settings className="mr-2 h-4 w-4" />
                       Run Diagnostics
@@ -342,11 +409,12 @@ export default function Login() {
 
           <div className="mt-6 p-4 bg-muted rounded-lg">
             <p className="text-xs text-muted-foreground text-center">
-              <strong>Using the account you created in Firebase Auth</strong>
+              <strong>Step 1:</strong> Enter your Firebase Auth email/password
               <br />
-              Enter the email and password from your Firebase Auth user
+              <strong>Step 2:</strong> If "User profile not found" error
+              appears, click "Create User Profile"
               <br />
-              <em>If you need to reset password, use the link above</em>
+              <em>The system will automatically create your admin profile</em>
             </p>
           </div>
 
@@ -361,7 +429,7 @@ export default function Login() {
             </button>
 
             <div className="text-xs text-muted-foreground">
-              Console Commands: <code>quickFixFirebase()</code>
+              Console Commands: <code>testFirebase()</code>
             </div>
           </div>
         </CardContent>
