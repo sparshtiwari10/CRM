@@ -579,6 +579,7 @@ class AuthService {
         name: userData.name,
         role: userData.role,
         collector_name: userData.collector_name,
+        assigned_areas: userData.assigned_areas,
         is_active: userData.is_active,
         created_at: userData.created_at.toDate(),
         updated_at: userData.updated_at.toDate(),
