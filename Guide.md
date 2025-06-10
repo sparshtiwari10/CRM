@@ -1,1212 +1,405 @@
-# AGV Cable TV Management System - Developer Guide
+# AGV Cable TV Management System - Complete Guide
 
-## 🏗️ **Architecture Overview**
+## Table of Contents
 
-This is a comprehensive **Customer Management System** for cable TV providers built with **React + TypeScript + Vite**. The system supports **Administrator** and **Employee** roles with Firebase-based authentication and real-time data management.
+1. [System Overview](#system-overview)
+2. [Authentication System](#authentication-system)
+3. [Installation & Setup](#installation--setup)
+4. [Firebase Configuration](#firebase-configuration)
+5. [Features & Modules](#features--modules)
+6. [User Roles & Permissions](#user-roles--permissions)
+7. [Troubleshooting](#troubleshooting)
+8. [Migration Guide](#migration-guide)
+9. [Security Implementation](#security-implementation)
 
-## 🚨 **CRITICAL UPDATES (Latest)**
+## System Overview
 
-### **🔐 COMPREHENSIVE SECURITY OVERHAUL**
+The AGV Cable TV Management System is a comprehensive web application built with React, TypeScript, and Firebase for managing cable TV operations including customer management, billing, package management, and employee administration.
 
-- **SERVER-SIDE PROTECTION**: Implemented comprehensive Firestore Security Rules
-- **ROLE VALIDATION**: Enhanced client-side role validation with audit logging
-- **PERMISSION MATRIX**: Granular access control for all operations
-- **AUDIT LOGGING**: Security event tracking for compliance and monitoring
-- **DARK MODE FIX**: Package edit form now properly adapts to theme changes
+### Technology Stack
 
-### **🛡️ Security Architecture**
+- **Frontend**: React 18, TypeScript, Tailwind CSS
+- **Backend**: Firebase (Firestore, Authentication)
+- **State Management**: React Context API
+- **UI Components**: Custom components with shadcn/ui
+- **Build Tool**: Vite
+- **Authentication**: Firebase Authentication (migrated from custom auth)
 
-#### **Multi-Layer Security Implementation**
+## Authentication System
 
-1. **Firestore Security Rules** (`firestore.rules`)
+### Current Implementation: Firebase Authentication
 
-   - Server-side role validation for all database operations
-   - User authentication and active status verification
-   - Collection-level permissions with field validation
-   - Automatic timestamp enforcement and data integrity checks
+The system has been migrated from custom authentication to Firebase Authentication for enhanced security and reliability.
 
-2. **Client-Side Role Validation** (`src/middleware/roleValidation.ts`)
+#### Authentication Flow
 
-   - Enhanced permission checking before API calls
-   - Detailed error handling with operation context
-   - Audit logging for all security-related events
-   - Permission decorators for method-level protection
+1. **Login Process**:
 
-3. **Service-Level Protection** (`src/services/firestoreService.ts`)
-   - All CRUD operations wrapped with permission validation
-   - Customer access control based on collector assignments
-   - Employee-scoped data filtering with role verification
-   - Enhanced error messages for permission violations
+   - Users sign in with email/password via Firebase Auth
+   - User profile data fetched from Firestore (`/users/{firebase_uid}`)
+   - Role-based access control enforced through Firestore security rules
 
-### **🔒 Security Features**
+2. **User Document Structure**:
 
-#### **Role-Based Access Control**
+   ```typescript
+   interface User {
+     id: string; // Firebase Auth UID
+     email: string;
+     name: string;
+     role: "admin" | "employee";
+     collector_name?: string; // For employees
+     is_active: boolean;
+     requires_password_reset?: boolean;
+     migrated_from_custom_auth?: boolean;
+     created_at: Date;
+     updated_at: Date;
+   }
+   ```
 
-- **Admin Users**: Full system access with user management capabilities
-- **Employee Users**: Scoped access to assigned customers and personal data
-- **Guest/Inactive**: No system access, immediate authentication challenges
+3. **Default Admin Account**:
+   - Email: `admin@agvcabletv.com`
+   - Password: `admin123`
+   - **Important**: Change password after first login
 
-#### **Data Access Permissions**
+### Security Features
 
-- **Customer Management**: Admin-only create/update/delete, employee read assigned customers
-- **Billing Operations**: Employee-scoped creation, admin oversight and modification
-- **Request Management**: Employee creation, admin approval workflow with validation
-- **Package Management**: Admin-only operations with comprehensive validation
-- **User Management**: Admin-only with self-action prevention safeguards
+- **Server-side validation** through Firestore security rules
+- **Password reset** functionality via email
+- **Account deactivation** by administrators
+- **Role-based access control** with real-time enforcement
+- **Audit logging** for all authentication events
 
-#### **Security Validations**
+## Installation & Setup
 
-- **Authentication**: Multi-layer user authentication with active status verification
-- **Authorization**: Role-based operation permissions with context validation
-- **Data Integrity**: Server-side field validation and type checking
-- **Audit Trail**: Comprehensive logging of all security-related operations
-- **Error Handling**: Detailed permission errors with operation context
+### Prerequisites
 
-### **🛠️ Role-Based Access Control Fixed**
+- Node.js 18+
+- npm or yarn
+- Firebase project with Firestore and Authentication enabled
 
-- **CRITICAL FIX**: Employee customer access issue resolved
-- **ISSUE**: Employees couldn't see assigned customers after login
-- **SOLUTION**: Fixed customer filtering to use `collector_name` field properly
-- **DEBUGGING**: Added comprehensive logging for customer assignment
+### Installation Steps
 
-### **👥 User Management Features**
+1. **Clone the repository**:
 
-- **Password Changes**: Admins can change any user's password anytime
-- **Status Control**: Real-time active/inactive toggle
-- **Firebase Deletion**: Users are permanently deleted from database
-- **Safety Features**: Cannot delete own account, admin-only operations
+   ```bash
+   git clone <repository-url>
+   cd agv-cable-tv-management
+   ```
 
----
+2. **Install dependencies**:
 
-## 📁 **Project Structure**
+   ```bash
+   npm install
+   ```
+
+3. **Configure Firebase**:
+
+   - Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+   - Enable Firestore Database
+   - Enable Authentication with Email/Password provider
+   - Copy your Firebase config to `src/lib/firebase.ts`
+
+4. **Deploy Firestore Rules**:
+
+   ```bash
+   firebase deploy --only firestore:rules
+   ```
+
+5. **Start development server**:
+   ```bash
+   npm run dev
+   ```
+
+## Firebase Configuration
+
+### Required Firebase Services
+
+1. **Authentication**:
+
+   - Enable Email/Password provider
+   - Configure authorized domains
+
+2. **Firestore Database**:
+
+   - Create database in production mode
+   - Deploy security rules from `firestore.rules`
+
+3. **Firestore Collections Structure**:
+   ```
+   /users/{firebase_uid}        # User profiles and roles
+   /customers/{customer_id}     # Customer information
+   /packages/{package_id}       # Service packages
+   /billing/{billing_id}        # Billing records
+   /requests/{request_id}       # Service requests
+   ```
+
+### Security Rules
+
+The system uses comprehensive Firestore security rules for server-side validation:
+
+```javascript
+// Example rule for packages collection
+match /packages/{packageId} {
+  allow read: if isEmployee();
+  allow create, update, delete: if isAdmin();
+}
+```
+
+See `firestore.rules` for complete security implementation.
+
+## Features & Modules
+
+### 1. Dashboard
+
+- Overview of key metrics
+- Quick access to common tasks
+- Recent activity summary
+- Revenue and customer statistics
+
+### 2. Customer Management
+
+- **Add/Edit Customers**: Complete customer information management
+- **Billing Integration**: Automatic bill generation and tracking
+- **Service History**: Track all customer interactions
+- **Connection Management**: Handle multiple connections per customer
+- **Status Tracking**: Active, inactive, demo status management
+
+### 3. Package Management
+
+- **Package Creation**: Define service packages with pricing
+- **Feature Management**: Detailed package features and channel counts
+- **Usage Analytics**: Track package popularity and revenue
+- **Real-time Metrics**: Customer count and revenue per package
+
+### 4. Billing System
+
+- **Automated Billing**: Generate bills based on package pricing
+- **Payment Tracking**: Record cash and online payments
+- **Outstanding Management**: Track and manage outstanding amounts
+- **Invoice Generation**: Professional invoice creation
+- **Billing History**: Complete payment history per customer
+
+### 5. Employee Management (Admin Only)
+
+- **User Creation**: Add new admin and employee accounts
+- **Role Management**: Assign and modify user roles
+- **Access Control**: Activate/deactivate user accounts
+- **Password Management**: Send password reset emails
+- **Area Assignment**: Assign collection areas to employees
+
+### 6. Request Management
+
+- **Service Requests**: Handle activation, deactivation, plan changes
+- **Approval Workflow**: Admin approval for employee requests
+- **Request Tracking**: Monitor request status and history
+- **Bulk Operations**: Handle multiple requests efficiently
+
+## User Roles & Permissions
+
+### Administrator Role
+
+- **Full System Access**: All features and data
+- **User Management**: Create, modify, delete employee accounts
+- **Data Management**: Full CRUD operations on all data
+- **Reports & Analytics**: Access to all system reports
+- **System Configuration**: Manage packages, pricing, and settings
+
+### Employee Role
+
+- **Area-Restricted Access**: Only customers in assigned area
+- **Customer Operations**: Add, edit customers in their area
+- **Billing Operations**: Generate bills for assigned customers
+- **Request Submission**: Submit requests for admin approval
+- **Read-Only Access**: View packages and system information
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Login Failures**:
+
+   - Verify Firebase Authentication is enabled
+   - Check email/password provider configuration
+   - Ensure user document exists in Firestore
+
+2. **Permission Denied Errors**:
+
+   - Verify Firestore security rules are deployed
+   - Check user role and active status
+   - Ensure user document has correct structure
+
+3. **Data Loading Issues**:
+   - Check Firebase project configuration
+   - Verify Firestore collections exist
+   - Check browser console for detailed errors
+
+### Debug Commands
+
+```bash
+# Check Firebase configuration
+firebase projects:list
+
+# Deploy Firestore rules
+firebase deploy --only firestore:rules
+
+# View current rules
+firebase firestore:rules
+```
+
+### Firestore Debugging
+
+```javascript
+// Run in browser console
+FirebaseDebug.runDiagnostics();
+testFirebaseConnection();
+```
+
+## Migration Guide
+
+### From Custom Authentication to Firebase Auth
+
+The system has been fully migrated from custom authentication to Firebase Authentication. If you're upgrading from an older version:
+
+1. **Backup existing data**:
+
+   ```bash
+   # Export existing users
+   node scripts/backup-users.js
+   ```
+
+2. **Run migration script**:
+
+   ```bash
+   # Migrate users to Firebase Auth
+   node scripts/migrate-to-firebase-auth.js
+   ```
+
+3. **Update Firebase settings**:
+
+   - Enable Email/Password authentication
+   - Deploy new Firestore security rules
+   - Test login with migrated accounts
+
+4. **Notify users**:
+   - Send password reset emails to all users
+   - Provide new login instructions (email instead of username)
+
+### Migration Benefits
+
+- ✅ **Enhanced Security**: Firebase handles password security
+- ✅ **Server-side Validation**: Firestore rules enforce permissions
+- ✅ **Built-in Features**: Password reset, email verification
+- ✅ **Scalability**: Handle thousands of users
+- ✅ **Audit Logging**: Comprehensive login and activity logs
+
+## Security Implementation
+
+### Multi-Layer Security
+
+1. **Firebase Authentication**:
+
+   - Secure password handling and token management
+   - Built-in protection against common attacks
+   - Session management and timeout handling
+
+2. **Firestore Security Rules**:
+
+   - Server-side permission enforcement
+   - Role-based access control
+   - Data validation and sanitization
+
+3. **Client-Side Validation**:
+   - Input validation and sanitization
+   - UI-level access control
+   - Real-time permission checking
+
+### Best Practices Implemented
+
+- **Principle of Least Privilege**: Users only access necessary data
+- **Data Sanitization**: All inputs validated before processing
+- **Audit Logging**: All critical operations logged
+- **Regular Security Reviews**: Permissions audited regularly
+- **Secure Defaults**: New users created with minimal permissions
+
+### Password Security
+
+- **Minimum Requirements**: 6+ characters enforced by Firebase
+- **Reset Functionality**: Secure email-based password reset
+- **Force Reset**: New users must change temporary passwords
+- **No Plain Text**: Passwords never stored in plain text
+
+## Development Guidelines
+
+### Code Organization
 
 ```
 src/
 ├── components/          # Reusable UI components
-│   ├── common/         # Shared components (FirebaseStatus, ErrorBoundary)
-│   ├── customers/      # Customer-specific components
-│   ├── layout/         # Layout components (Sidebar, TopBar, DashboardLayout)
-│   ├── ui/            # shadcn/ui base components
-│   ├── invoice/       # Invoice generation components
-│   ├── auth/          # Authentication components
-│   └── packages/      # Package management components
+├── contexts/           # React context providers
+├── hooks/              # Custom React hooks
+├── lib/                # Utility libraries and configurations
 ├── pages/              # Main application pages
 ├── services/           # Business logic and API calls
 ├── types/              # TypeScript type definitions
-├── contexts/           # React context providers (Auth, Theme)
-├── hooks/              # Custom React hooks
-├── lib/                # Utility libraries (firebase, utils)
-├── utils/              # Utility functions
-└── data/               # Mock data and constants
+└── utils/              # Helper functions and utilities
 ```
 
----
+### Best Practices
 
-## 🎨 **Layout Components**
+1. **Type Safety**: Full TypeScript implementation
+2. **Error Handling**: Comprehensive error boundaries and validation
+3. **Loading States**: User-friendly loading indicators
+4. **Responsive Design**: Mobile-first responsive layout
+5. **Accessibility**: WCAG compliance and keyboard navigation
+6. **Performance**: Optimized rendering and data fetching
 
-### **`src/components/layout/`**
+## Deployment
 
-#### **`DashboardLayout.tsx`** 🏠 **[CRITICAL - LAYOUT]**
+### Production Deployment
 
-- **Purpose**: Main application layout wrapper
-- **Features**:
-  - Handles sidebar positioning and main content offset
-  - Responsive design with proper spacing
-  - Contains Sidebar + TopBar + main content area
-- **Critical CSS Class**: `lg:ml-64` - **DO NOT REMOVE** (fixes sidebar overlap)
-- **Structure**:
-  ```typescript
-  <div className="flex h-screen bg-background">
-    <Sidebar />
-    <div className="flex flex-1 flex-col overflow-hidden lg:ml-64"> // CRITICAL LINE
-      <TopBar title={title} />
-      <main className="flex-1 overflow-auto">{children}</main>
-    </div>
-  </div>
-  ```
-
-#### **`Sidebar.tsx`** 🧭
-
-- **Purpose**: Navigation sidebar with role-based menu items
-- **Features**:
-  - Different navigation for Admin vs Employee
-  - Active page highlighting with blue background
-  - Mobile responsive with Sheet component
-  - Dark mode support with semantic colors
-- **Role Logic**:
-  - `adminNavigation`: Dashboard, Customers, Billing, Packages, Requests, User Management, Settings
-  - `employeeNavigation`: Dashboard, Customers, Billing, Requests
-- **Important**: Fixed positioned (`lg:w-64 lg:fixed`) with proper z-index
-
-#### **`TopBar.tsx`** 🔝
-
-- **Purpose**: Application header with user controls
-- **Features**:
-  - Search functionality
-  - Dark mode toggle (Sun/Moon icons)
-  - Notifications dropdown with badge
-  - User profile menu with role badges
-  - Firebase connection status indicator
-
----
-
-## 📄 **Page Components**
-
-### **`src/pages/`**
-
-#### **`Login.tsx`** 🔐 **[ENHANCED - PRODUCTION READY]**
-
-- **Purpose**: Firebase-only authentication with debugging tools
-- **Features**:
-  - **No Demo Credentials**: Production-secure authentication
-  - **Firebase Testing**: Auto-detects connection issues
-  - **Debug Panel**: Shows connection status and creates test admin
-  - **Error Handling**: Specific error messages for common issues
-- **Setup Tool**: "Create Test Admin User" for initial system setup
-
-#### **`EmployeeManagement.tsx`** 👥 **[NEW - COMPLETE USER CONTROL]**
-
-- **Purpose**: Comprehensive user management with security features
-- **Features**:
-  - **Password Changes**: Admins can change any user's password
-  - **Status Control**: Real-time active/inactive toggle
-  - **Firebase Deletion**: Permanent user removal from database
-  - **Safety Features**: Self-deletion prevention, admin-only operations
-  - **Visual Feedback**: Loading states, confirmation dialogs, status badges
-- **Key Security**:
-  ```typescript
-  // Safety checks in deleteUser()
-  if (userId === this.currentUser?.id) {
-    throw new Error("You cannot delete your own account");
-  }
-  ```
-
-#### **`Customers.tsx`** 🏢 **[FIXED - ROLE-BASED ACCESS]**
-
-- **Purpose**: Customer management with proper employee filtering
-- **Features**:
-  - **Fixed Employee Access**: Now correctly filters customers by assigned employee
-  - **Debugging Logs**: Comprehensive console output for troubleshooting
-  - **Employee Data Source**: Real Firebase employees (no hardcoded values)
-  - **Role-Based UI**: Different interface for admin vs employee
-- **Key Fix**:
-  ```typescript
-  // Before: user?.name (incorrect)
-  // After: user?.collector_name || user?.name (correct)
-  const collectorName = user?.collector_name || user?.name || "";
-  ```
-
-#### **`Dashboard.tsx`** 📊 **[ENHANCED - VC STATISTICS & ROLE-BASED]**
-
-- **Purpose**: Main dashboard with role-specific content, VC statistics for admins, and employee-specific collections
-- **Admin Dashboard Features**:
-  - **VC Number Statistics**: Count of Total, Active, and Inactive VC numbers across all customers
-  - **VC-Based Revenue**: Monthly revenue calculated from active VC connections
-  - **System-Wide Data**: Admin sees all customers and VC connections
-  - **Clean Interface**: Removed system overview and quick actions for focused admin view
-- **Employee Dashboard Features**:
-  - **Employee-Specific Data**: Only assigned customers and their collections
-  - **Personal Collection Summary**: Today's and yesterday's collection amounts
-  - **Customer Statistics**: Count by status for assigned customers only
-  - **Collection Cards**: Green card for today, blue card for yesterday
-  - **Quick Actions**: Customer/billing management, invoice generation
-  - **Recent Activity Feed**: Shows recent customers assigned to the logged-in employee
-- **VC Statistics Calculation**:
-
-  ```typescript
-  // Admin VC count calculation
-  const calculateVCStats = () => {
-    let activeVCs = 0,
-      inactiveVCs = 0;
-
-    customers.forEach((customer) => {
-      // Count primary VC
-      if (customer.status === "active") activeVCs++;
-      else inactiveVCs++;
-
-      // Count secondary VCs
-      customer.connections?.forEach((conn) => {
-        if (!conn.isPrimary) {
-          if (conn.status === "active") activeVCs++;
-          else inactiveVCs++;
-        }
-      });
-    });
-
-    return { activeVCs, inactiveVCs, totalVCs: activeVCs + inactiveVCs };
-  };
-  ```
-
-- **Role-Based UI**: Completely different dashboard layouts for admin vs employee users
-
-#### **`Billing.tsx`** 💰
-
-- **Purpose**: Invoice generation and payment tracking
-- **Features**:
-  - **Employee Dropdown**: Uses real Firebase employees (not hardcoded)
-  - Invoice generation with automatic numbering
-  - Payment tracking by collection method
-  - Monthly/yearly collection summaries
-  - Employee-specific collection reports
-
-#### **`Packages.tsx`** 📦 **[FIRESTORE INTEGRATED]**
-
-- **Purpose**: Package management with real-time data and dynamic metrics
-- **Key Features**:
-  - **Real-Time Data**: Fetches packages and customers from Firestore
-  - **Dynamic Metrics**: Live calculation of package usage statistics
-  - **Role-Based Access**: Admin-only create/edit/delete, employee read-only
-  - **Smart Validation**: Prevents deletion of packages currently in use
-  - **Comprehensive Analytics**: Revenue tracking, market share, usage patterns
-- **Metrics Displayed**:
-  - **Package Statistics**: Total, active, inactive package counts
-  - **Revenue Analytics**: Monthly revenue, average per customer/package
-  - **Usage Metrics**: Customer count per package, market share percentage
-  - **Performance Indicators**: Yearly revenue projections, utilization reports
-- **Admin Operations**:
-  - **Create Package**: Full package creation with feature lists and pricing
-  - **Edit Package**: Update pricing, features, description, channel count
-  - **Delete Package**: Smart deletion with customer usage validation
-  - **Package Validation**: Server-side field validation and data integrity
-- **Package Service Integration**:
-
-  ```typescript
-  // Real-time metrics calculation
-  const metrics = packageService.calculatePackageMetrics(packages, customers);
-
-  // Customer usage tracking
-  const customerCount = packageService.getCustomerCount(packageName, customers);
-
-  // Revenue calculation
-  const revenue = packageService.getTotalRevenue(
-    packageName,
-    packages,
-    customers,
-  );
-  ```
-
----
-
-## 🔧 **Service Layer**
-
-### **`src/services/`**
-
-#### **`authService.ts`** 🔐 **[MAJOR OVERHAUL]**
-
-- **Purpose**: Complete authentication and user management system
-- **Key Changes**:
-  - **REMOVED**: All demo credentials and mock fallbacks
-  - **ADDED**: Real user management with CRUD operations
-  - **SECURITY**: Password changes, user deletion, status control
-- **Critical Methods**:
-
-  ```typescript
-  // Core authentication
-  async login(credentials) // Firebase-only login with status check
-
-  // User management (admin-only)
-  async getAllEmployees() // Returns users with is_active status
-  async createUser(userData) // Creates new Firebase user
-  async updateUser(userId, updates) // Updates user info/status
-  async changeUserPassword(userId, newPassword) // Admin password changes
-  async deleteUser(userId) // Permanent user deletion
-
-  // Access control
-  canAccessCustomer(customerId, customerCollectorName) // Role-based access
-  ```
-
-#### **`customerService.ts`** 🏢 **[ENHANCED FILTERING]**
-
-- **Purpose**: Customer data management with proper role-based access
-- **Features**:
-  - **Fixed Employee Filtering**: `getCustomersByCollector()` works correctly
-  - Full CRUD operations for customers
-  - Multi-VC customer support
-  - Integration with Firebase through firestoreService
-  - Billing record management
-- **Key Method**:
-  ```typescript
-  static async getCustomersByCollector(collectorName: string) {
-    // Now properly filters by collector_name field
-    return await firestoreService.getCustomersByCollector(collectorName);
-  }
-  ```
-
-#### **`firestoreService.ts`** 🔥
-
-- **Purpose**: Direct Firebase Firestore operations
-- **Features**:
-  - Customer, billing, and user data operations
-  - Query optimization to avoid composite indexes
-  - Error handling and offline support
-  - Batch operations for data import
-  - **Field Mapping**: Handles `collector_name` ↔ `collectorName` conversion
-
----
-
-## 🧩 **Customer Components**
-
-### **`src/components/customers/`**
-
-#### **`ActionRequestModal.tsx`** 🎯 **[ENHANCED - VC STATUS MANAGEMENT]**
-
-- **Purpose**: Employee VC status change request submission with search and VC selection
-- **Features**:
-  - **Customer Search Functionality**: Real-time search by name, VC number, phone, or address
-  - **VC Number Selection**: Choose specific VC (primary or secondary) for status changes
-  - **VC Status Clarification**: Clear distinction between VC activation/deactivation vs plan changes
-  - **Current Status Display**: Shows current VC status and package information
-  - **Action Type Descriptions**: Clear explanations of what each request type does
-  - **Form Validation**: Requires customer selection, VC selection, action type, and detailed reason
-  - **Firebase Integration**: Submits VC-specific requests directly to Firebase for admin review
-- **Request Types**:
-
-  ```typescript
-  // VC Status Change Requests
-  "activation"   → Request to change VC status to "Active"
-  "deactivation" → Request to change VC status to "Inactive"
-  "plan_change"  → Request to change package plan for specific VC
-
-  // Request Structure
-  const request = {
-    customerId: selectedCustomer.id,
-    customerName: selectedCustomer.name,
-    vcNumber: selectedVCNumber,           // Specific VC for request
-    currentStatus: currentVCStatus,       // Current VC status
-    employeeId: user.id,
-    employeeName: user.name,
-    actionType: "activation" | "deactivation" | "plan_change",
-    reason: "Detailed reason for VC status change"
-  };
-  ```
-
-- **Search Interface**: Similar to invoice generator with filtered results and selection cards
-
-#### **`CustomerModal.tsx`** 🎛️ **[FIXED - CONTROLLED INPUTS]**
-
-- **Purpose**: Customer creation/editing with real employee data
-- **Features**:
-  - **Employee Selection**: Uses `authService.getAllUsers()` for real data
-  - **Fixed Input Warnings**: All controlled input issues resolved
-  - Multi-connection customer support
-  - Form validation with proper undefined handling
-  - Custom plan support
-- **Data Integration**:
-  ```typescript
-  // Loads only active employees
-  const activeEmployees = allUsers.filter((user) => user.is_active);
-  ```
-
-#### **`CustomerTable.tsx`** 📋 **[ENHANCED - VC STATUS MANAGEMENT]**
-
-- **Purpose**: Enhanced customer display with individual VC status control
-- **Features**:
-  - **Primary VC Status Control**: Admin dropdown in main table to change primary VC status
-  - **Secondary VC Status Control**: Individual status dropdowns for each secondary VC in expanded view
-  - **Expandable Customer History**: Complete customer timeline with invoice and request history
-  - **Invoice History**: Shows last 10 invoices with amounts, due dates, payment status, and generation details
-  - **Request History**: Displays VC activation/deactivation requests with approval status and timestamps
-  - **Role-Based Status Management**: Admins can change VC status, employees see read-only status badges
-  - **Current Outstanding Calculation**: Only active VCs contribute to outstanding amounts
-  - **Status Change Audit**: All VC status changes logged with admin details and timestamps
-  - **VC-Specific Actions**: Employee request buttons for VC activation/deactivation per VC
-  - **Lazy History Loading**: Invoice and request histories loaded only when customer row is expanded
-- **VC Status Implementation**:
-
-  ```typescript
-  // Primary VC status change
-  const handlePrimaryVCStatusChange = async (customer, newStatus) => {
-    const updatedCustomer = {
-      status: newStatus,
-      isActive: newStatus === "active" || newStatus === "demo",
-      statusLogs: [...customer.statusLogs, statusLog],
-    };
-    await onCustomerUpdate(customer.id, updatedCustomer);
-  };
-
-  // Secondary VC status change
-  const handleSecondaryVCStatusChange = async (
-    customer,
-    connectionIndex,
-    newStatus,
-  ) => {
-    const updatedConnections = [...customer.connections];
-    updatedConnections[connectionIndex] = { ...connection, status: newStatus };
-    await onCustomerUpdate(customer.id, { connections: updatedConnections });
-  };
-  ```
-
-#### **`CustomerImportExport.tsx`** 📤 **[UPDATED - HEADERS]**
-
-- **Purpose**: Data import/export with updated terminology
-- **Features**:
-  - **CSV Headers**: "Employee Name" (was "Collector Name")
-  - Template generation with correct field names
-  - Bulk customer data operations
-  - Error handling and validation
-
----
-
-## 🛡️ **Authentication & Security**
-
-### **Authentication Flow** 🔐
-
-1. **Login**: `Login.tsx` → Firebase-only authentication with connection testing
-2. **Validation**: `authService.login()` checks Firebase user + active status
-3. **Context**: `AuthContext` provides role-based access control
-4. **Protection**: `ProtectedRoute` guards all authenticated pages
-
-### **User Management Security** 👥
-
-1. **Admin-Only Operations**: User creation, deletion, password changes
-2. **Self-Protection**: Users cannot delete their own accounts
-3. **Real-time Status**: Active/inactive changes affect login immediately
-4. **Audit Trail**: All user operations logged with timestamps
-
-### **Role-Based Access Control** 🎯
-
-1. **Admin Access**: Can see all customers, manage all users
-2. **Employee Access**: Only sees assigned customers (`collector_name` match)
-3. **Data Filtering**: Automatic customer filtering by assigned employee
-4. **UI Adaptation**: Different interfaces based on user role
-
-### **Data Security** 🔒
-
-- **Firebase Rules**: Proper Firestore security rules implemented
-- **Role Validation**: Server-side role checking
-- **No Demo Data**: Production-ready with real user management
-- **Password Security**: bcrypt hashing with 12 rounds
-
----
-
-## 🔄 **Critical Areas - DO NOT MODIFY**
-
-### **1. Employee Customer Access Logic**
-
-```typescript
-// Customers.tsx - Line ~70
-const collectorName = user?.collector_name || user?.name || "";
-customerData = await CustomerService.getCustomersByCollector(collectorName);
-```
-
-**Purpose**: Ensures employees only see their assigned customers
-**Risk**: Changing this breaks role-based access control
-
-### **2. User Deletion Safety Checks**
-
-```typescript
-// authService.ts - deleteUser method
-if (userId === this.currentUser?.id) {
-  throw new Error("You cannot delete your own account");
-}
-```
-
-**Purpose**: Prevents users from deleting themselves
-**Risk**: Removing this allows self-deletion and system lockout
-
-### **3. Layout Margin Fix**
-
-```typescript
-// DashboardLayout.tsx - Line ~15
-<div className="flex flex-1 flex-col overflow-hidden lg:ml-64">
-```
-
-**Purpose**: Prevents sidebar overlap with main content
-**Risk**: Removing `lg:ml-64` breaks the entire layout
-
-### **4. Firebase User Status Check**
-
-```typescript
-// authService.ts - login method
-if (userData.is_active === false) {
-  throw new Error("Account is deactivated. Please contact administrator.");
-}
-```
-
-**Purpose**: Prevents inactive users from logging in
-**Risk**: Removing this allows deactivated users to access system
-
----
-
-## 🔐 **Security Implementation**
-
-### **Server-Side Security Rules**
-
-The system uses comprehensive Firestore Security Rules for server-side validation:
-
-```javascript
-// Admin-only operations
-function isAdmin() {
-  return (
-    isAuthenticated() &&
-    getUserData().role == "admin" &&
-    getUserData().is_active == true
-  );
-}
-
-// Employee operations with customer access validation
-function canAccessCustomer(customerData) {
-  return (
-    isAdmin() ||
-    (isEmployee() &&
-      getUserData().collector_name == customerData.collector_name)
-  );
-}
-```
-
-**Key Security Rules**:
-
-- **User Management**: Admin-only user creation, modification, and deletion
-- **Customer Operations**: Role-based access with collector validation
-- **Billing Records**: Employee-scoped access with admin oversight
-- **Request Management**: Employee creation, admin approval workflow
-- **Package Management**: Admin-only CRUD operations
-- **Data Validation**: Server-side field validation and type checking
-
-### **Client-Side Role Validation**
-
-Enhanced permission checking through `RoleValidator` middleware:
-
-```typescript
-// Validate admin access
-RoleValidator.validateAdminAccess("operation_name");
-
-// Validate customer access with collector validation
-RoleValidator.validateCustomerAccess(customerId, collectorName);
-
-// Wrapped operations with audit logging
-await RoleValidator.validateAndLog(
-  "operation_name",
-  () => RoleValidator.validateAdminAccess("operation"),
-  async () => {
-    /* protected operation */
-  },
-);
-```
-
-**Permission Matrix**:
-
-- **Admin**: Full access to all operations and data
-- **Employee**: Read assigned customers, create requests, manage personal billing
-- **Inactive Users**: No system access, authentication required
-
-### **Security Best Practices**
-
-1. **Multi-Layer Validation**: Both client and server-side permission checks
-2. **Principle of Least Privilege**: Users only access necessary data
-3. **Audit Logging**: All security events tracked and logged
-4. **Error Context**: Detailed error messages for troubleshooting
-5. **Data Integrity**: Server-side validation of all data modifications
-6. **Session Management**: Active user status verification for all operations
-
-### **Firestore Rules Architecture**
-
-#### **Production-Ready Security Rules**
-
-The system uses enhanced Firestore Security Rules that balance security with usability:
-
-```javascript
-// Enhanced admin check with fallback for initial setup
-function isAdmin() {
-  return isAuthenticated() && (
-    // Normal case: user document exists and has admin role
-    (userDocExists() &&
-     getUserData().role == 'admin' &&
-     getUserData().is_active == true) ||
-    // Fallback: allow admin operations if no users collection exists yet
-    !exists(/databases/$(database)/documents/users)
-  );
-}
-```
-
-**Key Features**:
-
-- **Initial Setup Support**: Rules handle empty databases gracefully
-- **Collection Auto-Creation**: Allows creation of essential collections
-- **Error Tolerance**: Reduces false permission denials
-- **Maintained Security**: Preserves all security controls while improving accessibility
-
-#### **Rule Evolution**
-
-**Version 1.0 (Initial)**: Strict validation with complex field checking
-
-- ❌ Blocked legitimate operations due to overly strict validation
-- ❌ Failed when collections didn't exist yet
-- ❌ Required perfect data structure setup
-
-**Version 2.0 (Emergency)**: Temporary bypass for debugging
-
-- ✅ Allowed immediate functionality
-- ❌ No security restrictions (any authenticated user)
-- ❌ Not suitable for production use
-
-**Version 3.0 (Current - Secure Production)**: Balanced security with proper setup support
-
-- ✅ Maintains role-based security (admin/employee restrictions)
-- ✅ Handles missing collections and initial setup scenarios
-- ✅ Better fallback logic for empty databases
-- ✅ Enhanced bootstrapping while preserving security
-- ✅ Production-ready with full security compliance
-
-#### **Initial Setup Process**
-
-**For New Installations:**
-
-1. **Deploy Secure Rules**:
+1. **Build the application**:
 
    ```bash
-   firebase deploy --only firestore:rules
+   npm run build
    ```
 
-2. **Create Admin User Document**:
+2. **Deploy to Firebase Hosting**:
 
-   - Get your Firebase Auth UID from browser console
-   - Create document in `users` collection with your UID
-   - Set fields: `role: "admin"`, `is_active: true`, `name: "Your Name"`
-
-3. **Verify Access**:
-
-   ```javascript
-   // In browser console
-   FirebaseDebug.checkAuthStatus();
+   ```bash
+   firebase deploy
    ```
 
-4. **Initialize Collections**:
-   - Create sample package in `packages` collection
-   - System will handle other collections automatically
+3. **Configure domain** (if using custom domain):
+   - Add domain in Firebase Console
+   - Update DNS records
+   - Configure SSL certificate
 
-**Secure Bootstrapping Logic**:
+### Environment Configuration
 
-- Rules allow admin operations when no users exist (first-time setup)
-- Once admin user exists, full security enforcement begins
-- Collection creation supported for essential collections
-- No emergency bypass - maintains security at all times
-
-#### **Deployment Strategy**
+Create environment files for different stages:
 
 ```bash
-# Deploy rules safely
-firebase deploy --only firestore:rules
-
-# Verify deployment
-firebase firestore:rules get
-
-# Test with browser diagnostics
-FirebaseDebug.runDiagnostics()
+# .env.production
+VITE_FIREBASE_API_KEY=your-production-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-domain.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
 ```
 
-**Troubleshooting**:
+## Support and Maintenance
 
-- If permission errors persist, check user authentication status
-- Ensure Firebase project is properly configured
-- Use built-in debugger: `FirebaseDebug.testPermissions()`
-- Check browser console for detailed error messages
+### Regular Maintenance Tasks
 
----
+1. **User Account Audit**: Review active users monthly
+2. **Permission Review**: Audit roles and permissions quarterly
+3. **Data Backup**: Regular Firestore exports
+4. **Security Updates**: Keep dependencies up to date
+5. **Performance Monitoring**: Monitor application performance
 
-## 🚨 **Troubleshooting Guide**
+### Getting Help
 
-### **Website Not Loading - Comprehensive Debug Process**
+1. **Documentation**: Check this guide first
+2. **Console Logs**: Enable debug mode for detailed logging
+3. **Firebase Console**: Monitor authentication and database activity
+4. **Error Tracking**: Implement error tracking for production
 
-#### **Phase 1: Immediate Checks**
-
-1. **Verify Dev Server**:
-
-   - Check server is running on correct port
-   - Clear browser cache and reload
-
-2. **Check Browser Console**:
-
-   ```javascript
-   // Run in browser console
-   FirebaseDebug.runDiagnostics();
-   ```
-
-3. **Verify Firebase Rules Deployment**:
-
-   ```bash
-   # Deploy rules even if they seem unchanged
-   firebase deploy --only firestore:rules
-
-   # Verify deployment
-   firebase firestore:rules get
-   ```
-
-#### **Phase 2: Firebase Console Verification**
-
-**Go to [Firebase Console](https://console.firebase.google.com):**
-
-1. **Check Collections**:
-
-   - Ensure `users`, `packages`, `customers` collections exist
-   - If missing, create them manually
-
-2. **Verify User Document**:
-
-   ```json
-   Collection: users
-   Document ID: <your-firebase-auth-uid>
-   {
-     "name": "Your Name",
-     "role": "admin",
-     "is_active": true,
-     "email": "your-email@example.com"
-   }
-   ```
-
-3. **Test Rules in Rules Playground**:
-   - Simulate read/write operations
-   - Verify rules logic works as expected
-
-#### **Phase 3: Emergency Debugging**
-
-If website still doesn't work, use emergency bypass rules:
-
-```bash
-# Backup current rules
-cp firestore.rules firestore.rules.backup
-
-# Use emergency rules (temporary)
-cp firestore-emergency.rules firestore.rules
-firebase deploy --only firestore:rules
-
-# Test website - if it works, issue was with rules
-# If still broken, issue is with auth/collections/config
-
-# IMMEDIATELY restore proper rules
-cp firestore.rules.backup firestore.rules
-firebase deploy --only firestore:rules
-```
-
-#### **Phase 4: Common Solutions**
-
-**Issue**: Permission errors persist
-**Solution**:
-
-- Check user is actually logged in: `FirebaseDebug.checkAuthStatus()`
-- Verify user document exists and has correct role
-- Ensure Firebase project is selected: `firebase use <project-id>`
-
-**Issue**: Collections don't exist
-**Solution**:
-
-- Create collections manually in Firebase Console
-- Add sample documents to initialize collections
-- Verify collection names match exactly (case-sensitive)
-
-**Issue**: Rules not deploying
-**Solution**:
-
-- Re-authenticate: `firebase login --reauth`
-- Check project permissions
-- Use debug deployment: `firebase deploy --only firestore:rules --debug`
-
-#### **Phase 5: Emergency Deployment**
-
-**If all else fails, deploy emergency working rules:**
-
-```bash
-# These rules allow any authenticated user full access
-# Use only when website is completely non-functional
-firebase deploy --only firestore:rules
-```
-
-**Emergency Rules Characteristics**:
-
-- ✅ Simple authentication check only
-- ✅ No complex user document lookups
-- ✅ No field validation requirements
-- ✅ Universal read/write access for authenticated users
-- ⚠️ Reduced security (development/testing only)
-
-**When to Use Emergency Rules**:
-
-- Website completely inaccessible due to permission errors
-- Complex rules preventing any legitimate access
-- Need immediate functionality for development/testing
-- All other debugging steps have failed
-
-**After Emergency Deployment**:
-
-1. **Verify website functionality** - should work immediately
-2. **Test all major features** - packages, customers, billing
-3. **Plan security restoration** - implement proper rules gradually
-4. **Monitor for issues** - ensure no remaining errors
-
-#### **Phase 6: Advanced Diagnostics**
-
-**Browser Network Tab**:
-
-- Look for 403/401 errors on Firestore requests
-- Check if requests are being made at all
-- Verify request headers include authentication
-
-**Firebase Console Monitoring**:
-
-- Check Usage tab for denied requests
-- Monitor Rules evaluation metrics
-- Review Authentication logs
-
-### **Success Indicators**
-
-✅ **Browser Console**: No permission errors
-✅ **Network Tab**: Successful Firestore requests (200 status)
-✅ **Diagnostics**: `FirebaseDebug.runDiagnostics()` shows all green
-✅ **Website**: Pages load with data or proper empty states
-
-### **Emergency Contact**
-
-If all debugging steps fail:
-
-1. **Share Diagnostic Output**: Results from `FirebaseDebug.runDiagnostics()`
-2. **Include Screenshots**: Firebase Console collections and user document
-3. **Provide Console Errors**: Complete browser console error log
-4. **Terminal Output**: Results from `firebase deploy --only firestore:rules --debug`
-
----
-
-## 🔧 **Development Guidelines**
-
-### **User Management Development**
-
-1. **Always Check Admin Role**: All user management operations require admin privileges
-2. **Status Validation**: Check `is_active` status before allowing login
-3. **Safety First**: Implement self-protection in all deletion operations
-4. **Real-time Updates**: Update UI immediately after user status changes
-5. **Error Handling**: Provide clear feedback for failed operations
-
-### **Customer Assignment Development**
-
-1. **Use collector_name**: Always use `user.collector_name` for employee filtering
-2. **Debug Logging**: Add console logs for customer assignment troubleshooting
-3. **Employee Data**: Use `authService.getAllEmployees()` for employee dropdowns
-4. **Active Only**: Only show active employees in assignment dropdowns
-5. **Role Testing**: Test both admin and employee views thoroughly
-
-### **Security Development**
-
-1. **Firebase First**: No demo fallbacks in production code
-2. **Role Validation**: Validate permissions on both client and server
-3. **Status Checking**: Always verify user is active before operations
-4. **Admin Controls**: Restrict sensitive operations to admin role only
-5. **Audit Logging**: Log all user management operations
-
----
-
-## 🧪 **Critical Testing Scenarios**
-
-### **Role-Based Access Testing**
-
-1. **Employee Login Flow**:
-
-   ```bash
-   1. Create employee with collector_name
-   2. Assign customers to employee by name
-   3. Login as employee
-   4. Verify only assigned customers visible
-   5. Test customer operations (view, edit)
-   ```
-
-2. **Admin User Management**:
-   ```bash
-   1. Create multiple users (admin + employee)
-   2. Test password changes for each user
-   3. Test user activation/deactivation
-   4. Verify status changes affect login
-   5. Test user deletion (ensure cannot delete self)
-   ```
-
-### **Customer Assignment Testing**
-
-1. **Employee Assignment**:
-
-   ```bash
-   1. Create customer and assign to Employee A
-   2. Login as Employee A → verify customer visible
-   3. Login as Employee B → verify customer not visible
-   4. Login as Admin → verify all customers visible
-   ```
-
-2. **Dynamic Assignment**:
-   ```bash
-   1. Create customer assigned to Employee A
-   2. Change assignment to Employee B
-   3. Test both employees see correct customers
-   4. Verify immediate UI updates
-   ```
-
-### **Security Testing**
-
-1. **Authentication Security**:
-
-   ```bash
-   1. Deactivate user → verify cannot login
-   2. Change password → verify old password fails
-   3. Delete user → verify account no longer exists
-   4. Test admin-only operations as employee
-   ```
-
-2. **Data Access Security**:
-   ```bash
-   1. Employee tries to access other employee's customers
-   2. Employee tries to perform admin operations
-   3. Inactive user attempts login
-   4. User tries to delete own account
-   ```
-
----
-
-## 📈 **Performance Considerations**
-
-### **Firebase Optimization**
-
-- **User Queries**: Cache active employee list to reduce Firebase calls
-- **Customer Filtering**: Use indexed queries for collector_name
-- **Status Updates**: Batch user updates when possible
-- **Connection Monitoring**: Handle offline states gracefully
-
-### **UI Performance**
-
-- **Large User Lists**: Pagination implemented for 100+ users
-- **Customer Tables**: Lazy loading for large customer datasets
-- **Real-time Updates**: Debounced operations prevent excessive calls
-- **Role-Based Rendering**: Conditional UI loading based on permissions
-
----
-
-## 🔧 **Troubleshooting Guide**
-
-### **Employee Cannot See Customers**
-
-**Symptoms**: Employee logs in but sees no customers or gets "failed to load customers" error
-**Debug Steps**:
-
-1. Check browser console for detailed customer assignment debugging (automatically provided)
-2. Verify employee has `collector_name` set in Firebase (should equal employee name)
-3. Ensure customers have `collectorName` matching employee name exactly
-4. Check if employee status is active
-5. Look for yellow diagnostic card on empty customer page
-6. Verify Firestore query is not failing due to composite index requirements
-
-**Enhanced Debugging & Troubleshooting**:
-
-- **Console Logs**: Detailed customer assignment debugging automatically shown
-- **Diagnostic UI**: Yellow info card appears for employees with no customers
-- **Field Comparison**: Console shows exact field matching for troubleshooting
-- **Firestore Query Optimization**: Queries now avoid composite index requirements
-
-**Common Causes & Solutions**:
-
-1. **Firestore Query Issues**:
-   - **Cause**: Using `where()` + `orderBy()` requires composite index for customers, billing, and requests
-   - **Solution**: Removed orderBy from all employee queries, sort in memory instead
-   - **Affected Queries**: Customer lists, billing records, request management
-   - **Performance**: In-memory sorting maintains performance while avoiding index requirements
-2. **Missing collector_name Field**:
-
-   - **Cause**: Employee created without proper `collector_name` field
-   - **Solution**: Employee creation now automatically sets `collector_name = employee.name`
-
-3. **Customer Assignment Mismatch**:
-
-   - **Cause**: Customer `collectorName` doesn't match employee `collector_name`
-   - **Solution**: When assigning customers, select exact employee name from dropdown
-
-4. **Data Conversion Issues**:
-   - **Cause**: Null/undefined values in customer data conversion
-   - **Solution**: Added comprehensive null safety in data conversion methods
-
-**Debug Console Output**:
-
-```typescript
-// Example debugging output you'll see:
-console.log(
-  "🔍 Employee user - looking for customers assigned to: 'John Employee'",
-);
-console.log("📊 Found 3 customers assigned to 'John Employee'");
-console.log("✅ Successfully loaded 3 customers for employee: John Employee");
-```
-
-**Step-by-Step Fix Process**:
-
-1. **Create Employee Properly**: Use Employee Management to create employee
-2. **Verify collector_name**: Check that `collector_name` equals employee name in Firebase
-3. **Assign Customers**: In customer modal, select exact employee name in "Employee" field
-4. **Test Login**: Employee should now see assigned customers
-5. **Check Console**: Look for debugging messages if issues persist
-
-### **User Management Issues**
-
-**Symptoms**: Cannot change passwords, delete users, or update status
-**Debug Steps**:
-
-1. Verify current user is admin
-2. Check Firebase permissions
-3. Ensure target user exists and is not current user (for deletion)
-4. Verify Firebase connection
-
-**Solution**:
-
-```typescript
-// Check admin status:
-console.log("Is admin:", authService.isAdmin());
-console.log("Current user:", authService.getCurrentUser());
-```
-
-### **Website Freezing After Employee Deletion**
-
-**Symptoms**: Browser freezes and requires reload after deleting employee
-**Root Cause**: State update conflicts and race conditions in deletion process
-**Solution Applied**:
-
-- Enhanced state management with functional updates
-- Improved error handling in async operations
-- Added proper loading states and UI feedback
-- Fixed modal close timing to prevent conflicts
-
-**Prevention**:
-
-- Always wait for deletion completion before UI updates
-- Use loading indicators during operations
-- Proper cleanup in component unmount
-
-### **Login Problems**
-
-**Symptoms**: Cannot login, authentication fails
-**Debug Steps**:
-
-1. Use login page debug panel
-2. Check Firebase connection status
-3. Verify user exists and is active
-4. Test username/password accuracy
-
-**Solution**:
-
-1. Click "Show Debug Info" on login page
-2. Check Firebase connection status
-3. Create test admin if no users exist
-4. Verify user `is_active` status in Firebase
-
----
-
-## 📝 **API Reference**
-
-### **AuthService Methods**
-
-```typescript
-// Authentication
-login(credentials: LoginCredentials): Promise<User>
-logout(): void
-getCurrentUser(): User | null
-
-// User Management (Admin Only)
-createUser(userData: UserData): Promise<string>
-updateUser(userId: string, updates: UserUpdates): Promise<void>
-deleteUser(userId: string): Promise<void>
-changeUserPassword(userId: string, newPassword: string): Promise<void>
-getAllEmployees(): Promise<Employee[]>
-
-// Access Control
-isAdmin(): boolean
-canAccessCustomer(customerId: string, customerCollectorName: string): boolean
-```
-
-### **CustomerService Methods**
-
-```typescript
-// Customer Operations
-getAllCustomers(): Promise<Customer[]>
-getCustomersByCollector(collectorName: string): Promise<Customer[]>
-getCustomer(customerId: string): Promise<Customer>
-addCustomer(customer: Customer): Promise<string>
-updateCustomer(customerId: string, customer: Partial<Customer>): Promise<void>
-deleteCustomer(customerId: string): Promise<void>
-```
-
----
-
-## 🚀 **Deployment Checklist**
-
-### **Pre-Deployment**
-
-- [ ] Create initial admin user using login page
-- [ ] Test employee creation and assignment
-- [ ] Verify customer-employee assignment works
-- [ ] Test password change functionality
-- [ ] Confirm user deletion works correctly
-- [ ] Test both admin and employee login flows
-- [ ] Verify role-based access control
-- [ ] Test dark mode compatibility
-- [ ] Check mobile responsiveness
-
-### **Post-Deployment**
-
-- [ ] Create additional admin/employee accounts
-- [ ] Assign customers to employees properly
-- [ ] Train users on new password change features
-- [ ] Monitor Firebase authentication logs
-- [ ] Verify customer assignment workflow
-- [ ] Check system performance with real user load
-- [ ] Document emergency admin access procedures
-
----
-
-## 📞 **Support & Documentation**
-
-### **Quick Reference**
-
-**Employee Not Seeing Customers?**
-
-- Check: `customer.collectorName` matches `user.collector_name`
-- Fix: Update customer assignment or employee profile
-
-**Cannot Delete User?**
-
-- Check: Current user is admin and not deleting self
-- Fix: Login as different admin or update target user
-
-**Login Issues?**
-
-- Check: User exists, is active, and Firebase is connected
-- Fix: Use debug panel, activate user, or create new admin
-
-### **Debug Commands**
-
-```javascript
-// In browser console:
-// Check current user
-console.log("Current user:", authService.getCurrentUser());
-
-// Check customer assignment
-console.log("User collector name:", user?.collector_name);
-
-// Test Firebase connection
-authService.getAllEmployees().then(console.log);
-```
-
----
-
-## 📋 **Change Summary**
-
-### **Latest Updates**
-
-1. **Fixed Employee Customer Access** - Role-based filtering now works correctly
-2. **Added Password Change Feature** - Admins can change any user's password
-3. **Implemented Real User Deletion** - Users permanently deleted from Firebase
-4. **Enhanced Security** - No demo credentials, production-ready authentication
-5. **Improved Debugging** - Comprehensive logs for troubleshooting
-
-### **Breaking Changes**
-
-- **Authentication**: Demo login removed - use User Management to create accounts
-- **Employee Access**: Fixed customer filtering - may affect existing employee logins
-- **User Management**: Real deletion - deleted users cannot be recovered
-
-### **New Features**
-
-- **Password Management**: Admin-controlled password changes
-- **User Status Control**: Real-time active/inactive toggles
-- **Enhanced Security**: Self-deletion prevention and admin-only controls
-- **Debug Tools**: Comprehensive troubleshooting assistance
-
-This guide represents the current production-ready state of the AGV Cable TV Management System with enhanced security, real user management, role-based access control, and comprehensive debugging capabilities.
+This guide provides comprehensive information for setting up, using, and maintaining the AGV Cable TV Management System with Firebase Authentication.

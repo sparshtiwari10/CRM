@@ -1,184 +1,268 @@
-import { db, isFirebaseAvailable } from "@/lib/firebase";
 import {
-  collection,
-  query,
-  where,
-  getDocs,
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  updatePassword,
+  User as FirebaseUser,
+  Auth,
+} from "firebase/auth";
+import {
   doc,
   getDoc,
-  addDoc,
+  setDoc,
   updateDoc,
-  deleteDoc,
+  collection,
+  getDocs,
+  query,
+  where,
   Timestamp,
+  addDoc,
+  deleteDoc,
 } from "firebase/firestore";
-import bcrypt from "bcryptjs";
-
-// No demo users - all authentication must use real Firebase accounts
+import { db } from "@/lib/firebase";
 
 export interface User {
-  id: string;
+  id: string; // Firebase Auth UID
+  email: string;
   name: string;
   role: "admin" | "employee";
-  collector_name?: string | null;
-  access_scope?: string[];
-  email?: string;
-  avatar?: string;
-  is_active?: boolean;
+  collector_name?: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+  requires_password_reset?: boolean;
+  migrated_from_custom_auth?: boolean;
 }
 
 export interface LoginCredentials {
-  username: string;
+  email: string; // Changed from username to email
   password: string;
 }
 
+export interface CreateUserData {
+  email: string;
+  password: string;
+  name: string;
+  role: "admin" | "employee";
+  collector_name?: string;
+}
+
 class AuthService {
+  private auth: Auth;
   private currentUser: User | null = null;
+  private authStateListeners: ((user: User | null) => void)[] = [];
+  private isInitialized = false;
 
   constructor() {
-    // Check for existing session on initialization
-    this.loadUserFromStorage();
+    this.auth = getAuth();
+    this.initializeAuthStateListener();
   }
 
   /**
-   * Authenticate user with custom credentials
+   * Initialize auth state listener
    */
-  async login(credentials: LoginCredentials): Promise<User> {
-    try {
-      if (!isFirebaseAvailable || !db) {
-        throw new Error(
-          "Authentication service is not available. Please check your connection and try again.",
-        );
+  private initializeAuthStateListener(): void {
+    onAuthStateChanged(this.auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          // User signed in, fetch user data from Firestore
+          const user = await this.loadUserData(firebaseUser);
+          this.setCurrentUser(user);
+        } catch (error) {
+          console.error("Failed to load user data:", error);
+          // Sign out the user if we can't load their data
+          await this.signOut();
+        }
+      } else {
+        // User signed out
+        this.setCurrentUser(null);
       }
 
-      // Only use Firebase authentication - no demo fallback
-      return await this.loginWithFirebaseTimeout(credentials);
-    } catch (error) {
-      console.error("❌ Login failed:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Test Firebase connectivity quickly
-   */
-  private async testFirebaseConnectivity(): Promise<boolean> {
-    try {
-      // Try a simple query to test if Firebase is accessible
-      const usersRef = collection(db, "users");
-      const testQuery = query(usersRef);
-      await getDocs(testQuery);
-      return true;
-    } catch (error: any) {
-      console.warn("Firebase connectivity test failed:", error.message);
-      return false;
-    }
-  }
-
-  /**
-   * Login with Firebase with timeout
-   */
-  private async loginWithFirebaseTimeout(
-    credentials: LoginCredentials,
-  ): Promise<User> {
-    // First do a quick connectivity test
-    const isConnected = await Promise.race([
-      this.testFirebaseConnectivity(),
-      new Promise<boolean>((resolve) => {
-        setTimeout(() => resolve(false), 1000); // 1 second timeout for connectivity test
-      }),
-    ]);
-
-    if (!isConnected) {
-      throw new Error("Firebase connection test failed - using demo mode");
-    }
-
-    return new Promise((resolve, reject) => {
-      // Set a 5-second timeout for actual login
-      const timeoutId = setTimeout(() => {
-        reject(new Error("Firebase authentication timeout - using demo mode"));
-      }, 5000);
-
-      this.loginWithFirebase(credentials)
-        .then((user) => {
-          clearTimeout(timeoutId);
-          resolve(user);
-        })
-        .catch((error) => {
-          clearTimeout(timeoutId);
-          reject(error);
-        });
+      if (!this.isInitialized) {
+        this.isInitialized = true;
+      }
     });
   }
 
   /**
-   * Login with Firebase
+   * Login with email and password (Firebase Auth)
    */
-  private async loginWithFirebase(
-    credentials: LoginCredentials,
-  ): Promise<User> {
+  async login(credentials: LoginCredentials): Promise<User> {
     try {
-      // Query users collection for matching username
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("username", "==", credentials.username));
-      const querySnapshot = await getDocs(q);
+      console.log("🔐 Attempting Firebase Auth login...");
 
-      if (querySnapshot.empty) {
-        throw new Error("Invalid username or password");
-      }
-
-      const userDoc = querySnapshot.docs[0];
-      const userData = userDoc.data();
-
-      // Verify password
-      const isValidPassword = await bcrypt.compare(
+      // Sign in with Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(
+        this.auth,
+        credentials.email,
         credentials.password,
-        userData.password_hash,
       );
 
-      if (!isValidPassword) {
-        throw new Error("Invalid username or password");
-      }
+      // Load user data from Firestore
+      const user = await this.loadUserData(userCredential.user);
 
       // Check if user is active
-      if (userData.is_active === false) {
+      if (!user.is_active) {
+        await this.signOut();
         throw new Error(
           "Account is deactivated. Please contact administrator.",
         );
       }
 
-      // Update last login
-      await updateDoc(doc(db, "users", userDoc.id), {
-        last_login: Timestamp.now(),
-      });
+      console.log("✅ Firebase Auth login successful:", user.name);
+      return user;
+    } catch (error: any) {
+      console.error("❌ Firebase Auth login failed:", error);
 
-      const user: User = {
-        id: userDoc.id,
+      // Provide helpful error messages
+      if (error.code === "auth/user-not-found") {
+        throw new Error("No account found with this email address.");
+      } else if (error.code === "auth/wrong-password") {
+        throw new Error("Incorrect password.");
+      } else if (error.code === "auth/invalid-email") {
+        throw new Error("Invalid email address.");
+      } else if (error.code === "auth/too-many-requests") {
+        throw new Error(
+          "Too many failed login attempts. Please try again later.",
+        );
+      } else if (error.message.includes("Account is deactivated")) {
+        throw error; // Re-throw our custom deactivated message
+      } else {
+        throw new Error(error.message || "Login failed. Please try again.");
+      }
+    }
+  }
+
+  /**
+   * Create new user account (admin only)
+   */
+  async createUser(userData: CreateUserData): Promise<User> {
+    try {
+      // Check if current user is admin
+      if (!this.isAdmin()) {
+        throw new Error("Only administrators can create user accounts");
+      }
+
+      console.log("👤 Creating new user account:", userData.email);
+
+      // Create Firebase Auth account
+      const userCredential = await createUserWithEmailAndPassword(
+        this.auth,
+        userData.email,
+        userData.password,
+      );
+
+      // Create user document in Firestore
+      const userDoc: Omit<User, "id"> = {
+        email: userData.email,
         name: userData.name,
         role: userData.role,
         collector_name: userData.collector_name,
-        access_scope: userData.access_scope || [],
-        email: userData.email,
-        avatar: userData.avatar,
+        is_active: true,
+        requires_password_reset: true,
+        created_at: new Date(),
+        updated_at: new Date(),
       };
 
-      this.currentUser = user;
-      this.saveUserToStorage(user);
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        ...userDoc,
+        created_at: Timestamp.fromDate(userDoc.created_at),
+        updated_at: Timestamp.fromDate(userDoc.updated_at),
+      });
 
-      console.log("✅ Firebase authentication successful:", user.name);
-      return user;
+      console.log("✅ User account created successfully:", userData.name);
+
+      return {
+        id: userCredential.user.uid,
+        ...userDoc,
+      };
     } catch (error: any) {
-      console.error("❌ Firebase authentication failed:", error.message);
+      console.error("❌ Failed to create user:", error);
+
+      if (error.code === "auth/email-already-in-use") {
+        throw new Error("An account with this email already exists.");
+      } else if (error.code === "auth/weak-password") {
+        throw new Error("Password is too weak. Use at least 6 characters.");
+      } else if (error.code === "auth/invalid-email") {
+        throw new Error("Invalid email address.");
+      } else {
+        throw new Error(error.message || "Failed to create user account.");
+      }
+    }
+  }
+
+  /**
+   * Send password reset email
+   */
+  async sendPasswordReset(email: string): Promise<void> {
+    try {
+      await sendPasswordResetEmail(this.auth, email);
+      console.log("✅ Password reset email sent to:", email);
+    } catch (error: any) {
+      console.error("❌ Failed to send password reset:", error);
+
+      if (error.code === "auth/user-not-found") {
+        throw new Error("No account found with this email address.");
+      } else {
+        throw new Error("Failed to send password reset email.");
+      }
+    }
+  }
+
+  /**
+   * Update user password (current user only)
+   */
+  async updatePassword(newPassword: string): Promise<void> {
+    try {
+      if (!this.auth.currentUser) {
+        throw new Error("No user signed in");
+      }
+
+      await updatePassword(this.auth.currentUser, newPassword);
+
+      // Update requires_password_reset flag
+      if (this.currentUser) {
+        await updateDoc(doc(db, "users", this.currentUser.id), {
+          requires_password_reset: false,
+          updated_at: Timestamp.now(),
+        });
+      }
+
+      console.log("✅ Password updated successfully");
+    } catch (error: any) {
+      console.error("❌ Failed to update password:", error);
+
+      if (error.code === "auth/weak-password") {
+        throw new Error("Password is too weak. Use at least 6 characters.");
+      } else {
+        throw new Error("Failed to update password.");
+      }
+    }
+  }
+
+  /**
+   * Sign out current user
+   */
+  async signOut(): Promise<void> {
+    try {
+      await signOut(this.auth);
+      console.log("✅ User signed out successfully");
+    } catch (error) {
+      console.error("❌ Sign out failed:", error);
       throw error;
     }
   }
 
   /**
-   * Logout current user
+   * For backward compatibility - alias for signOut
    */
   logout(): void {
-    this.currentUser = null;
-    localStorage.removeItem("agv_user");
-    console.log("✅ User logged out successfully");
+    this.signOut().catch((error) => {
+      console.error("Logout failed:", error);
+    });
   }
 
   /**
@@ -192,7 +276,7 @@ class AuthService {
    * Check if current user is admin
    */
   isAdmin(): boolean {
-    return this.currentUser?.role === "admin";
+    return this.currentUser?.role === "admin" && this.currentUser?.is_active;
   }
 
   /**
@@ -213,99 +297,54 @@ class AuthService {
   }
 
   /**
-   * Get all employees for admin purposes - PRIORITIZES FIREBASE DATA
-   * Only falls back to mock data in demo mode or complete Firebase failure
+   * Get all users/employees (admin only)
    */
   async getAllEmployees(): Promise<
-    Array<{ id: string; name: string; role: string; is_active: boolean }>
+    Array<{
+      id: string;
+      name: string;
+      email: string;
+      role: string;
+      is_active: boolean;
+      collector_name?: string;
+    }>
   > {
-    console.log(
-      "🔍 Fetching employees from Firebase (prioritizing real data)...",
-    );
-
     try {
-      // Always try Firebase first, regardless of isFirebaseAvailable flag
-      if (db) {
-        console.log("📡 Connecting to Firebase users collection...");
+      if (!this.isAdmin()) {
+        throw new Error("Only administrators can view all employees");
+      }
 
-        // Set a reasonable timeout for the query
-        const usersRef = collection(db, "users");
-        const queryPromise = getDocs(usersRef);
+      console.log("🔍 Fetching all users from Firestore...");
 
-        // Race against timeout
-        const result = await Promise.race([
-          queryPromise,
-          new Promise((_, reject) =>
-            setTimeout(
-              () => reject(new Error("Firebase query timeout")),
-              10000,
-            ),
-          ),
-        ]);
+      const usersRef = collection(db, "users");
+      const querySnapshot = await getDocs(usersRef);
 
-        const querySnapshot = result as any;
-        const employees: Array<{ id: string; name: string; role: string }> = [];
+      const employees: Array<{
+        id: string;
+        name: string;
+        email: string;
+        role: string;
+        is_active: boolean;
+        collector_name?: string;
+      }> = [];
 
-        console.log(`📊 Found ${querySnapshot.size} total users in Firebase`);
-
-        querySnapshot.forEach((doc: any) => {
-          const userData = doc.data();
-          const userName = userData.name || userData.username || "Unknown User";
-          const userRole = userData.role || "employee";
-
-          console.log(
-            `👤 Processing user: ${userName} (${userRole}) - Active: ${userData.is_active !== false}`,
-          );
-
-          // Include all users (both admin and employee) with their active status
-          employees.push({
-            id: doc.id,
-            name: userName,
-            role: userRole,
-            is_active: userData.is_active !== false, // Default to true if not set
-          });
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data();
+        employees.push({
+          id: doc.id,
+          name: userData.name || "Unknown User",
+          email: userData.email || "",
+          role: userData.role || "employee",
+          is_active: userData.is_active !== false,
+          collector_name: userData.collector_name,
         });
+      });
 
-        console.log(
-          `✅ Successfully fetched ${employees.length} REAL employees from Firebase:`,
-        );
-        employees.forEach((emp) =>
-          console.log(`   - ${emp.name} (${emp.role})`),
-        );
-
-        if (employees.length === 0) {
-          console.warn(
-            "⚠️ No active employees found in Firebase. You may need to create employee accounts.",
-          );
-          console.log(
-            "💡 Tip: Use the Employee Management page to create new employee accounts",
-          );
-        }
-
-        return employees;
-      } else {
-        throw new Error("Firebase database not initialized");
-      }
-    } catch (error: any) {
-      console.error(
-        "❌ Failed to fetch employees from Firebase:",
-        error.message,
-      );
-
-      // Check if this is truly a connection issue or if Firebase is working but empty
-      if (
-        error.message.includes("timeout") ||
-        error.message.includes("unavailable")
-      ) {
-        console.log("🌐 Network/connection issue detected");
-      }
-
-      // No demo fallback - encourage creating real accounts
-      console.warn(
-        "🚫 Returning empty employee list - please create employee accounts in Firebase",
-      );
-      console.log("💡 Go to Employee Management to create new employees");
-      return [];
+      console.log(`✅ Found ${employees.length} users in system`);
+      return employees;
+    } catch (error) {
+      console.error("❌ Failed to fetch employees:", error);
+      throw error;
     }
   }
 
@@ -313,81 +352,16 @@ class AuthService {
    * Alias for getAllEmployees for backward compatibility
    */
   async getAllUsers(): Promise<
-    Array<{ id: string; name: string; role: string; is_active: boolean }>
+    Array<{
+      id: string;
+      name: string;
+      email: string;
+      role: string;
+      is_active: boolean;
+      collector_name?: string;
+    }>
   > {
     return this.getAllEmployees();
-  }
-
-  /**
-   * Save user to localStorage
-   */
-  private saveUserToStorage(user: User): void {
-    try {
-      localStorage.setItem("agv_user", JSON.stringify(user));
-    } catch (error) {
-      console.warn("Failed to save user to localStorage:", error);
-    }
-  }
-
-  /**
-   * Load user from localStorage
-   */
-  private loadUserFromStorage(): void {
-    try {
-      const storedUser = localStorage.getItem("agv_user");
-      if (storedUser) {
-        this.currentUser = JSON.parse(storedUser);
-        console.log("✅ Restored user session:", this.currentUser?.name);
-      }
-    } catch (error) {
-      console.warn("Failed to load user from localStorage:", error);
-      localStorage.removeItem("agv_user");
-    }
-  }
-
-  /**
-   * Create a new user (admin only)
-   */
-  async createUser(userData: {
-    username: string;
-    password: string;
-    name: string;
-    role: "admin" | "employee";
-    collector_name?: string;
-    email?: string;
-  }): Promise<string> {
-    try {
-      if (!this.isAdmin()) {
-        throw new Error("Only administrators can create users");
-      }
-
-      if (!isFirebaseAvailable || !db) {
-        throw new Error("Firebase not available for user creation");
-      }
-
-      // Hash password
-      const password_hash = await bcrypt.hash(userData.password, 12);
-
-      // Create user document
-      const usersRef = collection(db, "users");
-      const docRef = await addDoc(usersRef, {
-        username: userData.username,
-        password_hash,
-        name: userData.name,
-        role: userData.role,
-        collector_name: userData.collector_name || null,
-        email: userData.email || null,
-        access_scope: [],
-        created_at: Timestamp.now(),
-        is_active: true,
-      });
-
-      console.log("✅ User created successfully:", userData.name);
-      return docRef.id;
-    } catch (error) {
-      console.error("❌ Failed to create user:", error);
-      throw error;
-    }
   }
 
   /**
@@ -399,17 +373,12 @@ class AuthService {
       name?: string;
       role?: "admin" | "employee";
       collector_name?: string;
-      email?: string;
       is_active?: boolean;
     },
   ): Promise<void> {
     try {
       if (!this.isAdmin()) {
         throw new Error("Only administrators can update users");
-      }
-
-      if (!isFirebaseAvailable || !db) {
-        throw new Error("Firebase not available for user updates");
       }
 
       await updateDoc(doc(db, "users", userId), {
@@ -425,71 +394,7 @@ class AuthService {
   }
 
   /**
-   * Change user password (admin only)
-   */
-  async changeUserPassword(userId: string, newPassword: string): Promise<void> {
-    try {
-      if (!this.isAdmin()) {
-        throw new Error("Only administrators can change user passwords");
-      }
-
-      if (!isFirebaseAvailable || !db) {
-        throw new Error("Firebase not available for password changes");
-      }
-
-      if (newPassword.length < 6) {
-        throw new Error("Password must be at least 6 characters long");
-      }
-
-      // Hash the new password
-      const password_hash = await bcrypt.hash(newPassword, 12);
-
-      // Update the user's password in Firebase
-      await updateDoc(doc(db, "users", userId), {
-        password_hash,
-        updated_at: Timestamp.now(),
-        password_changed_at: Timestamp.now(),
-        password_changed_by: this.currentUser?.id,
-      });
-
-      console.log("✅ Password changed successfully for user:", userId);
-    } catch (error) {
-      console.error("❌ Failed to change password:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get user by ID (admin only)
-   */
-  async getUserById(userId: string): Promise<any> {
-    try {
-      if (!this.isAdmin()) {
-        throw new Error("Only administrators can view user details");
-      }
-
-      if (!isFirebaseAvailable || !db) {
-        throw new Error("Firebase not available");
-      }
-
-      const userDoc = await getDoc(doc(db, "users", userId));
-
-      if (!userDoc.exists()) {
-        throw new Error("User not found");
-      }
-
-      return {
-        id: userDoc.id,
-        ...userDoc.data(),
-      };
-    } catch (error) {
-      console.error("❌ Failed to get user:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Delete user permanently (admin only)
+   * Delete user account (admin only)
    */
   async deleteUser(userId: string): Promise<void> {
     try {
@@ -497,31 +402,175 @@ class AuthService {
         throw new Error("Only administrators can delete users");
       }
 
-      if (!isFirebaseAvailable || !db) {
-        throw new Error("Firebase not available for user deletion");
-      }
-
-      // Check if user exists first
-      const userDoc = await getDoc(doc(db, "users", userId));
-      if (!userDoc.exists()) {
-        throw new Error("User not found");
-      }
-
-      const userData = userDoc.data();
-
       // Prevent deletion of current user
       if (userId === this.currentUser?.id) {
         throw new Error("You cannot delete your own account");
       }
 
-      // Delete the user document from Firebase
+      // Delete user document from Firestore
       await deleteDoc(doc(db, "users", userId));
 
-      console.log("✅ User deleted successfully:", userData.name);
+      // Note: Firebase Auth user will remain but won't be able to access the app
+      // without a Firestore user document
+
+      console.log("✅ User deleted successfully:", userId);
     } catch (error) {
       console.error("❌ Failed to delete user:", error);
       throw error;
     }
+  }
+
+  /**
+   * Listen to auth state changes
+   */
+  onAuthStateChange(callback: (user: User | null) => void): () => void {
+    this.authStateListeners.push(callback);
+
+    // Call immediately with current state
+    callback(this.currentUser);
+
+    // Return unsubscribe function
+    return () => {
+      const index = this.authStateListeners.indexOf(callback);
+      if (index > -1) {
+        this.authStateListeners.splice(index, 1);
+      }
+    };
+  }
+
+  /**
+   * Check if auth is initialized
+   */
+  isAuthInitialized(): boolean {
+    return this.isInitialized;
+  }
+
+  /**
+   * Get Firebase Auth instance
+   */
+  getAuth(): Auth {
+    return this.auth;
+  }
+
+  /**
+   * Load user data from Firestore
+   */
+  private async loadUserData(firebaseUser: FirebaseUser): Promise<User> {
+    try {
+      const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+
+      if (!userDoc.exists()) {
+        throw new Error(
+          "User profile not found. Please contact administrator to set up your account.",
+        );
+      }
+
+      const userData = userDoc.data();
+      return {
+        id: firebaseUser.uid,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        collector_name: userData.collector_name,
+        is_active: userData.is_active,
+        created_at: userData.created_at.toDate(),
+        updated_at: userData.updated_at.toDate(),
+        requires_password_reset: userData.requires_password_reset,
+        migrated_from_custom_auth: userData.migrated_from_custom_auth,
+      };
+    } catch (error) {
+      console.error("Failed to load user data:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set current user and notify listeners
+   */
+  private setCurrentUser(user: User | null): void {
+    this.currentUser = user;
+    this.notifyAuthStateChange(user);
+  }
+
+  /**
+   * Notify auth state change listeners
+   */
+  private notifyAuthStateChange(user: User | null): void {
+    this.authStateListeners.forEach((callback) => callback(user));
+  }
+
+  /**
+   * Seed default admin user (migration helper)
+   */
+  async seedDefaultAdmin(): Promise<void> {
+    try {
+      console.log("🌱 Checking for default admin user...");
+
+      // Check if any admin users exist
+      const usersRef = collection(db, "users");
+      const adminQuery = query(usersRef, where("role", "==", "admin"));
+      const adminSnapshot = await getDocs(adminQuery);
+
+      if (!adminSnapshot.empty) {
+        console.log("✅ Admin users already exist, skipping seed");
+        return;
+      }
+
+      console.log("🌱 No admin users found, creating default admin...");
+
+      // Create default admin user
+      const defaultAdminEmail = "admin@agvcabletv.com";
+      const defaultAdminPassword = "admin123";
+
+      await this.createUserWithoutAdminCheck({
+        email: defaultAdminEmail,
+        password: defaultAdminPassword,
+        name: "System Administrator",
+        role: "admin",
+      });
+
+      console.log("✅ Default admin user created:", defaultAdminEmail);
+      console.log("🔑 Default password:", defaultAdminPassword);
+      console.log("⚠️ Please change the default password after first login");
+    } catch (error) {
+      console.error("❌ Failed to seed default admin:", error);
+      // Don't throw error as this is optional
+    }
+  }
+
+  /**
+   * Create user without admin check (for seeding)
+   */
+  private async createUserWithoutAdminCheck(
+    userData: CreateUserData,
+  ): Promise<User> {
+    const userCredential = await createUserWithEmailAndPassword(
+      this.auth,
+      userData.email,
+      userData.password,
+    );
+
+    const userDoc: Omit<User, "id"> = {
+      email: userData.email,
+      name: userData.name,
+      role: userData.role,
+      collector_name: userData.collector_name,
+      is_active: true,
+      requires_password_reset: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+
+    await setDoc(doc(db, "users", userCredential.user.uid), {
+      ...userDoc,
+      created_at: Timestamp.fromDate(userDoc.created_at),
+      updated_at: Timestamp.fromDate(userDoc.updated_at),
+    });
+
+    return {
+      id: userCredential.user.uid,
+      ...userDoc,
+    };
   }
 }
 
