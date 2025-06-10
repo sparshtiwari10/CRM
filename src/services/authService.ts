@@ -48,6 +48,7 @@ export interface CreateUserData {
   name: string;
   role: "admin" | "employee";
   collector_name?: string;
+  assigned_areas?: string[];
 }
 
 class AuthService {
@@ -235,23 +236,48 @@ class AuthService {
         userData.password,
       );
 
-      // Create user document in Firestore
-      const userDoc: Omit<User, "id"> = {
+      // Prepare user document data, filtering out undefined values
+      const baseUserDoc = {
         email: userData.email,
         name: userData.name,
         role: userData.role,
-        collector_name: userData.collector_name,
         is_active: true,
         requires_password_reset: true,
         created_at: new Date(),
         updated_at: new Date(),
       };
 
-      await setDoc(doc(db, "users", userCredential.user.uid), {
+      // Add optional fields only if they have values
+      const userDoc: any = { ...baseUserDoc };
+
+      // Handle collector_name for employees
+      if (userData.role === "employee" && userData.collector_name) {
+        userDoc.collector_name = userData.collector_name;
+      }
+
+      // Handle assigned_areas for employees (multi-area support)
+      if (
+        userData.role === "employee" &&
+        userData.assigned_areas &&
+        userData.assigned_areas.length > 0
+      ) {
+        userDoc.assigned_areas = userData.assigned_areas;
+        // Set primary area as collector_name if not already set
+        if (!userDoc.collector_name) {
+          userDoc.collector_name = userData.assigned_areas[0];
+        }
+      }
+
+      // Convert dates to Firestore timestamps
+      const firestoreDoc = {
         ...userDoc,
         created_at: Timestamp.fromDate(userDoc.created_at),
         updated_at: Timestamp.fromDate(userDoc.updated_at),
-      });
+      };
+
+      console.log("📝 Saving user document:", firestoreDoc);
+
+      await setDoc(doc(db, "users", userCredential.user.uid), firestoreDoc);
 
       console.log("✅ User account created successfully:", userData.name);
 
