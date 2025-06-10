@@ -480,6 +480,7 @@ class AuthService {
       name?: string;
       role?: "admin" | "employee";
       collector_name?: string;
+      assigned_areas?: string[];
       is_active?: boolean;
     },
   ): Promise<void> {
@@ -488,10 +489,19 @@ class AuthService {
         throw new Error("Only administrators can update users");
       }
 
-      await updateDoc(doc(db, "users", userId), {
-        ...updates,
+      // Filter out undefined values to prevent Firestore errors
+      const cleanUpdates: any = {
         updated_at: Timestamp.now(),
+      };
+
+      // Only add fields that have defined values
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value !== undefined) {
+          cleanUpdates[key] = value;
+        }
       });
+
+      await updateDoc(doc(db, "users", userId), cleanUpdates);
 
       console.log("✅ User updated successfully:", userId);
     } catch (error) {
