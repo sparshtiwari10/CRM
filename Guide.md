@@ -24,6 +24,8 @@ The AGV Cable TV Management System is a comprehensive web application for managi
 - **UI:** Modern, responsive interface with dark mode support
 - **Roles:** Admin and Employee with proper permissions
 - **Security:** Working Firestore rules with role-based access
+- **Employee Management:** Integrated area-based assignment system
+- **Customer Management:** Complete CRUD with area-based filtering
 
 ### Technology Stack
 
@@ -36,7 +38,24 @@ The AGV Cable TV Management System is a comprehensive web application for managi
 
 ## Current Features
 
-### ✅ Working Features
+### ✅ Enhanced Features (Latest Update)
+
+#### Employee Management System
+
+- **Integrated Area Management:** Employees can be assigned to specific collection areas
+- **Dynamic Area Selection:** Area dropdown populated from existing customer assignments
+- **Editable Areas:** Admin can change employee areas after creation
+- **Session Stability:** Employee creation no longer logs out admin session
+- **Dark Mode Compatible:** All dropdowns properly styled for dark theme
+
+#### Customer Management Improvements
+
+- **Area-Based Organization:** "Employee" column renamed to "Area" for clarity
+- **Smart Area Filtering:** Filter customers by assigned areas
+- **Enhanced Search:** Search includes area names in customer search
+- **Improved Import/Export:** Updated CSV templates with "Area Name" field
+
+### ✅ Core Working Features
 
 #### Authentication & User Management
 
@@ -50,10 +69,11 @@ The AGV Cable TV Management System is a comprehensive web application for managi
 #### Customer Management
 
 - Add, edit, view customers
-- Customer search and filtering
+- Customer search and filtering by area
 - Billing status tracking
 - Connection management
 - Area-based access for employees
+- CSV import/export functionality
 
 #### Package Management
 
@@ -151,12 +171,13 @@ npm run dev
 
 - **Full Access:** All system features
 - **User Management:** Create, edit, delete employees
+- **Area Management:** Assign and modify employee areas
 - **System Settings:** Manage packages, global settings
 - **All Data:** Access to all customers and billing
 
 #### Employee
 
-- **Limited Access:** Area-specific data only
+- **Area-Specific Access:** Only data from assigned area
 - **Customer Management:** Add/edit customers in assigned area
 - **Billing:** Generate bills for assigned customers
 - **Requests:** Submit requests for admin approval
@@ -168,7 +189,7 @@ npm run dev
 1. Login as admin
 2. Go to Employees page
 3. Click "Add Employee"
-4. Fill form and submit
+4. Fill form with area selection from dropdown
 5. Employee receives password reset email
 
 **Method 2: Manual**
@@ -184,18 +205,32 @@ npm run dev
 
 **Location:** `/customers`
 
-**Features:**
+**Enhanced Features:**
 
-- Customer CRUD operations
-- Search and filtering
-- Billing status tracking
-- Connection management
-- Area-based access control
+- **Area-Based Organization:** Customers organized by collection areas
+- **Smart Filtering:** Filter by area, status, search terms
+- **Enhanced Search:** Includes area name in search results
+- **Import/Export:** CSV support with area field
+- **Area-Based Access:** Employees see only their area customers
 
 **Employee Access:** Own area only
-**Admin Access:** All customers
+**Admin Access:** All customers with area filtering
 
-### 2. Package Management
+### 2. Employee Management
+
+**Location:** `/employees`
+
+**Enhanced Features:**
+
+- **Dynamic Area Selection:** Dropdown populated from customer areas
+- **Editable Areas:** Change employee areas post-creation
+- **Session Stability:** No logout on employee creation
+- **Dark Mode Support:** Proper styling for all UI elements
+- **Role Management:** Easy role switching
+
+**Access:** Admin only
+
+### 3. Package Management
 
 **Location:** `/packages`
 
@@ -210,7 +245,7 @@ npm run dev
 **Employee Access:** View only
 **Admin Access:** Full management
 
-### 3. Billing System
+### 4. Billing System
 
 **Location:** `/billing`
 
@@ -224,20 +259,6 @@ npm run dev
 
 **Employee Access:** Own area customers
 **Admin Access:** All billing data
-
-### 4. Employee Management
-
-**Location:** `/employees`
-
-**Features:**
-
-- Employee account creation
-- Role management
-- Account activation/deactivation
-- Password reset emails
-- Area assignment
-
-**Access:** Admin only
 
 ### 5. Request Management
 
@@ -275,6 +296,8 @@ src/
 ├── components/          # Reusable UI components
 │   ├── auth/           # Authentication components
 │   ├── common/         # Shared components
+│   ├── customers/      # Customer management components
+│   ├── employees/      # Employee management components
 │   ├── layout/         # Layout components
 │   └── ui/             # Base UI components
 ├── contexts/           # React context providers
@@ -300,7 +323,7 @@ src/
 ```
 Firestore Collections:
 ├── users/              # User profiles and roles
-├── customers/          # Customer information
+├── customers/          # Customer information with areas
 ├── packages/           # Service packages
 ├── billing/            # Billing records
 └── requests/           # Service requests
@@ -340,6 +363,7 @@ service cloud.firestore {
 #### Application-Level Security
 
 - Role-based UI restrictions
+- Area-based data access
 - Input validation and sanitization
 - Error boundary protection
 - Secure routing
@@ -353,6 +377,37 @@ For production deployment, implement:
 - Audit logging
 - Rate limiting
 - Advanced authentication features
+
+## Area Management System
+
+### How Areas Work
+
+1. **Area Assignment:** Employees assigned to specific collection areas
+2. **Customer Organization:** Customers grouped by areas
+3. **Data Access:** Employees see only their area data
+4. **Admin Oversight:** Admins can view and manage all areas
+
+### Area Management Features
+
+#### For Admins
+
+- **View All Areas:** See all areas and their assignments
+- **Assign Employees:** Assign employees to areas
+- **Change Areas:** Modify employee area assignments
+- **Area Analytics:** View performance by area
+
+#### For Employees
+
+- **Area-Specific Data:** Access only assigned area customers
+- **Area Context:** All operations filtered by area
+- **Request System:** Submit area-specific requests
+
+### Area Setup Process
+
+1. **Create Areas:** Areas automatically created from customer assignments
+2. **Assign Employees:** Use Employee Management to assign areas
+3. **Organize Customers:** Assign customers to appropriate areas
+4. **Monitor Performance:** Track area-specific metrics
 
 ## Deployment
 
@@ -398,24 +453,29 @@ VITE_FIREBASE_PROJECT_ID=your-project-id
 **Problem:** Can't login
 **Solution:** Verify Firebase Auth is enabled and credentials are correct
 
+#### Area Management Issues
+
+**Problem:** Employee can't see customers
+**Solution:** Verify employee is assigned to correct area and customers are assigned to that area
+
+**Problem:** Area dropdown empty
+**Solution:** Ensure customers are assigned to areas and employees have areas set
+
 #### Data Issues
 
 **Problem:** Packages not loading
 **Solution:** Check Firebase connection and Firestore permissions
 
-**Problem:** Customers not visible
-**Solution:** Verify user role and area assignment
-
-**Problem:** Billing errors
-**Solution:** Check customer data integrity and package existence
+**Problem:** Import/Export issues
+**Solution:** Use updated CSV template with "Area Name" field
 
 #### System Issues
 
 **Problem:** App not loading
 **Solution:** Check console for errors, verify Firebase configuration
 
-**Problem:** Dark mode not working
-**Solution:** Clear browser cache and localStorage
+**Problem:** Dark mode styling issues
+**Solution:** Clear browser cache and check component styling
 
 ### Debug Tools
 
@@ -438,90 +498,27 @@ firebase.auth().currentUser;
 - Firestore → Data (verify document structure)
 - Firestore → Rules (check security rules)
 
-### Performance Optimization
+## Recent Updates Summary
 
-#### Frontend Optimization
+### Employee Management Improvements
 
-- Code splitting and lazy loading
-- Image optimization
-- Bundle size monitoring
-- Caching strategies
+1. **Fixed logout issue:** Employee creation no longer logs out admin
+2. **Dark mode dropdowns:** All select elements properly styled
+3. **Dynamic area selection:** Areas populated from customer data
+4. **Editable areas:** Post-creation area modification support
 
-#### Backend Optimization
+### Customer Management Enhancements
 
-- Firestore query optimization
-- Index creation for complex queries
-- Real-time listener management
-- Data pagination
+1. **Area terminology:** "Employee" renamed to "Area" throughout
+2. **Enhanced filtering:** Area-based customer filtering
+3. **Improved search:** Area names included in search functionality
+4. **Updated import/export:** CSV templates updated with area fields
 
-## Development Guidelines
+### UI/UX Improvements
 
-### Code Standards
+1. **Consistent styling:** Dark mode compatibility across all components
+2. **Better organization:** Area-based data organization
+3. **Enhanced navigation:** Clearer area-based navigation
+4. **Responsive design:** Improved mobile and desktop experience
 
-- **TypeScript:** Full type safety
-- **ESLint:** Code quality enforcement
-- **Prettier:** Code formatting
-- **Component Structure:** Reusable, modular components
-
-### Best Practices
-
-#### Security
-
-- Input validation on all forms
-- Role checks on sensitive operations
-- Error handling without exposing internals
-- Regular security audits
-
-#### Performance
-
-- Lazy loading for large components
-- Optimized re-renders
-- Efficient data fetching
-- Proper cleanup of listeners
-
-#### Maintainability
-
-- Clear component naming
-- Comprehensive documentation
-- Consistent code organization
-- Regular dependency updates
-
-## Future Enhancements
-
-### Planned Features
-
-- **Advanced Reports:** Detailed analytics and insights
-- **File Management:** Document upload and storage
-- **Notifications:** Real-time alerts and messages
-- **Mobile App:** React Native companion app
-- **API Integration:** Third-party service integrations
-
-### Technical Improvements
-
-- **Production Security Rules:** Granular access control
-- **Performance Monitoring:** Real-time performance tracking
-- **Automated Testing:** Unit and integration tests
-- **CI/CD Pipeline:** Automated deployment
-
-## Support and Maintenance
-
-### Regular Maintenance
-
-- **Weekly:** User account audits
-- **Monthly:** Performance reviews
-- **Quarterly:** Security assessments
-- **Yearly:** Major updates and migrations
-
-### Backup and Recovery
-
-- **Firestore Exports:** Regular database backups
-- **Version Control:** Code repository maintenance
-- **Configuration Backup:** Firebase settings backup
-
-### Monitoring
-
-- **Error Tracking:** Real-time error monitoring
-- **Performance Metrics:** Application performance tracking
-- **User Analytics:** Usage patterns and insights
-
-The AGV Cable TV Management System provides a robust, scalable solution for cable TV business management with modern security practices and user-friendly interfaces.
+The AGV Cable TV Management System now provides comprehensive area-based management with enhanced user experience and improved administrative controls.
