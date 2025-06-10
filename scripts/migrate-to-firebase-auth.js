@@ -258,7 +258,7 @@ async function migrateUser(legacyUser) {
 async function createDefaultAdmin() {
   console.log("🔧 No existing users found. Creating default admin...");
 
-  const adminEmail = "admin@agvcabletv.com";
+  const adminEmail = "admin@company.com"; // Update with your actual admin email
   const adminPassword = "admin123";
 
   try {

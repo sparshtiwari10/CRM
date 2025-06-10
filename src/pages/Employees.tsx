@@ -17,6 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +35,10 @@ import {
   Users,
   Crown,
   AlertCircle,
+  MapPin,
+  Settings,
+  Check,
+  X,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authService } from "@/services/authService";
@@ -43,6 +50,7 @@ interface Employee {
   name: string;
   role: "admin" | "employee";
   collector_name?: string;
+  assigned_areas?: string[]; // New field for multiple areas
   is_active: boolean;
 }
 
@@ -53,6 +61,7 @@ export default function Employees() {
   const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [availableAreas, setAvailableAreas] = useState<string[]>([]);
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const { toast } = useToast();
   const { user, isAdmin, createUser, sendPasswordReset } = useAuth();
 
@@ -85,14 +94,23 @@ export default function Employees() {
     try {
       // Get all customers to extract unique areas
       const customers = await firestoreService.getAllCustomers();
-      const areas = customers
+      const customerAreas = customers
         .map((c) => c.collectorName)
-        .filter(Boolean)
-        .filter((area, index, arr) => arr.indexOf(area) === index) // Remove duplicates
-        .sort();
+        .filter(Boolean);
 
-      setAvailableAreas(areas);
-      console.log("📍 Available areas:", areas);
+      // Get areas from employees
+      const employees = await authService.getAllEmployees();
+      const employeeAreas = employees
+        .flatMap((e) => e.assigned_areas || [e.collector_name])
+        .filter(Boolean);
+
+      // Combine, deduplicate, and sort
+      const allAreas = [
+        ...new Set([...customerAreas, ...employeeAreas]),
+      ].sort();
+      setAvailableAreas(allAreas);
+
+      console.log("📍 Available areas:", allAreas);
     } catch (error) {
       console.error("Failed to load areas:", error);
       // Set some default areas if loading fails
@@ -105,24 +123,30 @@ export default function Employees() {
       const email = formData.get("email") as string;
       const name = formData.get("name") as string;
       const role = formData.get("role") as "admin" | "employee";
-      const collectorName = formData.get("collector_name") as string;
       const password = formData.get("password") as string;
 
       console.log("🔧 Creating employee with:", {
         email,
         name,
         role,
-        collector_name: collectorName,
+        assigned_areas: selectedAreas,
       });
 
-      // Don't await the user creation to prevent logout
-      createUser({
+      // Create user data with multiple areas
+      const userData = {
         email,
         password,
         name,
         role,
-        collector_name: role === "employee" ? collectorName : undefined,
-      })
+        assigned_areas: role === "employee" ? selectedAreas : [],
+        collector_name:
+          role === "employee" && selectedAreas.length > 0
+            ? selectedAreas[0]
+            : undefined,
+      };
+
+      // Don't await the user creation to prevent logout
+      createUser(userData)
         .then(() => {
           console.log("✅ Employee created successfully");
 
@@ -154,6 +178,7 @@ export default function Employees() {
         });
 
       setShowCreateModal(false);
+      setSelectedAreas([]);
 
       // Reset form
       const form = document.getElementById(
@@ -219,23 +244,27 @@ export default function Employees() {
     }
   };
 
-  const updateEmployeeArea = async (employee: Employee, newArea: string) => {
+  const updateEmployeeAreas = async (
+    employee: Employee,
+    newAreas: string[],
+  ) => {
     try {
       await authService.updateUser(employee.id, {
-        collector_name: newArea,
+        assigned_areas: newAreas,
+        collector_name: newAreas.length > 0 ? newAreas[0] : undefined,
       });
 
       toast({
-        title: "Area Updated",
-        description: `${employee.name}'s area updated to ${newArea}`,
+        title: "Areas Updated",
+        description: `${employee.name}'s areas updated successfully`,
       });
 
       loadEmployees();
     } catch (error) {
-      console.error("Failed to update area:", error);
+      console.error("Failed to update areas:", error);
       toast({
         title: "Error",
-        description: "Failed to update area",
+        description: "Failed to update areas",
         variant: "destructive",
       });
     }
@@ -287,6 +316,99 @@ export default function Employees() {
     }
   };
 
+  const AreaSelector = ({
+    employeeAreas = [],
+    onUpdate,
+  }: {
+    employeeAreas: string[];
+    onUpdate: (areas: string[]) => void;
+  }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [tempAreas, setTempAreas] = useState<string[]>(employeeAreas);
+
+    const handleAreaToggle = (area: string) => {
+      setTempAreas((prev) =>
+        prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area],
+      );
+    };
+
+    const handleSave = () => {
+      onUpdate(tempAreas);
+      setIsEditing(false);
+    };
+
+    const handleCancel = () => {
+      setTempAreas(employeeAreas);
+      setIsEditing(false);
+    };
+
+    if (!isEditing) {
+      return (
+        <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-1">
+            {employeeAreas.length > 0 ? (
+              employeeAreas.map((area) => (
+                <Badge key={area} variant="secondary" className="text-xs">
+                  {area}
+                </Badge>
+              ))
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                No areas assigned
+              </span>
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setIsEditing(true)}
+            className="h-6 w-6 p-0"
+          >
+            <Settings className="h-3 w-3" />
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        <div className="text-xs font-medium">Select Areas:</div>
+        <ScrollArea className="h-24 w-full border rounded-md p-2">
+          <div className="space-y-1">
+            {availableAreas.map((area) => (
+              <div key={area} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`area-${area}`}
+                  checked={tempAreas.includes(area)}
+                  onCheckedChange={() => handleAreaToggle(area)}
+                />
+                <label
+                  htmlFor={`area-${area}`}
+                  className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {area}
+                </label>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+        <div className="flex gap-1">
+          <Button size="sm" onClick={handleSave} className="h-6 px-2">
+            <Check className="h-3 w-3" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCancel}
+            className="h-6 px-2"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   if (!isAdmin) {
     return (
       <DashboardLayout title="Employee Management">
@@ -310,7 +432,7 @@ export default function Employees() {
               Employee Management
             </h2>
             <p className="text-muted-foreground">
-              Manage system users and their permissions
+              Manage system users and their area assignments
             </p>
           </div>
           <Button onClick={() => setShowCreateModal(true)}>
@@ -320,7 +442,7 @@ export default function Employees() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -360,6 +482,18 @@ export default function Employees() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Coverage Areas
+              </CardTitle>
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{availableAreas.length}</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Employee List */}
@@ -385,12 +519,17 @@ export default function Employees() {
             </Card>
           ) : (
             employees.map((employee) => (
-              <Card key={employee.id}>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{employee.name}</h3>
+              <Card
+                key={employee.id}
+                className="hover:shadow-md transition-shadow"
+              >
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start space-y-0">
+                    <div className="space-y-3 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-lg">
+                          {employee.name}
+                        </h3>
                         <Badge
                           variant={
                             employee.role === "admin" ? "default" : "secondary"
@@ -426,36 +565,34 @@ export default function Employees() {
                           <Badge variant="outline">You</Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {employee.email}
-                      </p>
-                      {employee.collector_name && (
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm text-muted-foreground">
-                            Area: {employee.collector_name}
-                          </p>
-                          {employee.role === "employee" &&
-                            availableAreas.length > 0 && (
-                              <Select
-                                value={employee.collector_name}
-                                onValueChange={(value) =>
-                                  updateEmployeeArea(employee, value)
-                                }
-                              >
-                                <SelectTrigger className="w-32 h-6 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {availableAreas.map((area) => (
-                                    <SelectItem key={area} value={area}>
-                                      {area}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                        </div>
-                      )}
+
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">
+                          {employee.email}
+                        </p>
+
+                        {employee.role === "employee" && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs font-medium">
+                                Assigned Areas:
+                              </span>
+                            </div>
+                            <AreaSelector
+                              employeeAreas={
+                                employee.assigned_areas ||
+                                (employee.collector_name
+                                  ? [employee.collector_name]
+                                  : [])
+                              }
+                              onUpdate={(areas) =>
+                                updateEmployeeAreas(employee, areas)
+                              }
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex gap-2">
@@ -493,7 +630,7 @@ export default function Employees() {
                               updateEmployeeRole(employee, value)
                             }
                           >
-                            <SelectTrigger className="w-24 h-8">
+                            <SelectTrigger className="w-28 h-8">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -523,7 +660,7 @@ export default function Employees() {
 
         {/* Create Employee Modal */}
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Add New Employee</DialogTitle>
             </DialogHeader>
@@ -535,15 +672,17 @@ export default function Employees() {
                 handleCreateEmployee(new FormData(e.currentTarget));
               }}
             >
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Full Name</label>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Full Name *</label>
                     <Input name="name" placeholder="John Doe" required />
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium">Email Address</label>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Email Address *
+                    </label>
                     <Input
                       name="email"
                       type="email"
@@ -553,8 +692,8 @@ export default function Employees() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium">Password</label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Password *</label>
                   <div className="relative">
                     <Input
                       name="password"
@@ -576,45 +715,68 @@ export default function Employees() {
                       )}
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground">
                     Employee will receive a password reset email
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Role</label>
-                    <Select name="role" required>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="employee">Employee</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Role *</label>
+                  <Select name="role" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">Employee</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                  <div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
                     <label className="text-sm font-medium">
-                      Collection Area
+                      Collection Areas
                     </label>
-                    <Select name="collector_name">
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select or enter area" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableAreas.map((area) => (
-                          <SelectItem key={area} value={area}>
-                            {area}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      For employees only. Can be edited later.
-                    </p>
+                    <Badge variant="outline" className="text-xs">
+                      For employees only
+                    </Badge>
                   </div>
+                  <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto">
+                    {availableAreas.length > 0 ? (
+                      availableAreas.map((area) => (
+                        <div key={area} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`create-area-${area}`}
+                            checked={selectedAreas.includes(area)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedAreas((prev) => [...prev, area]);
+                              } else {
+                                setSelectedAreas((prev) =>
+                                  prev.filter((a) => a !== area),
+                                );
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`create-area-${area}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {area}
+                          </label>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        No areas available
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Select multiple areas this employee will manage. Areas can
+                    be modified later.
+                  </p>
                 </div>
               </div>
 
@@ -622,7 +784,10 @@ export default function Employees() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setSelectedAreas([]);
+                  }}
                 >
                   Cancel
                 </Button>

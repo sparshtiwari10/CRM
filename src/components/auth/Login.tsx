@@ -112,7 +112,7 @@ export function Login() {
                   <Input
                     id="reset-email"
                     type="email"
-                    placeholder="admin@agvcabletv.com"
+                    placeholder="Enter your email"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     className="pl-10"
@@ -199,7 +199,7 @@ export function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@agvcabletv.com"
+                  placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
@@ -282,7 +282,7 @@ export function Login() {
             <p className="text-xs text-muted-foreground text-center">
               <strong>Default Admin Account:</strong>
               <br />
-              Email: admin@agvcabletv.com
+              Contact your administrator for access
               <br />
               Password: admin123
               <br />
