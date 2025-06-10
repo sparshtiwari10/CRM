@@ -399,8 +399,15 @@ class AuthService {
     // Admins can access all customers
     if (currentUser.role === "admin") return true;
 
-    // Employees can only access customers assigned to them
-    return currentUser.collector_name === customerCollectorName;
+    // Employees can access customers assigned to their areas
+    if (currentUser.collector_name === customerCollectorName) return true;
+
+    // Check assigned_areas for multi-area employees
+    if (currentUser.assigned_areas && customerCollectorName) {
+      return currentUser.assigned_areas.includes(customerCollectorName);
+    }
+
+    return false;
   }
 
   /**
@@ -414,6 +421,7 @@ class AuthService {
       role: string;
       is_active: boolean;
       collector_name?: string;
+      assigned_areas?: string[];
     }>
   > {
     try {
@@ -433,6 +441,7 @@ class AuthService {
         role: string;
         is_active: boolean;
         collector_name?: string;
+        assigned_areas?: string[];
       }> = [];
 
       querySnapshot.forEach((doc) => {
@@ -444,6 +453,7 @@ class AuthService {
           role: userData.role || "employee",
           is_active: userData.is_active !== false,
           collector_name: userData.collector_name,
+          assigned_areas: userData.assigned_areas,
         });
       });
 
