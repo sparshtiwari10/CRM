@@ -13,11 +13,21 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   login: (credentials: LoginCredentials) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  createUser: (userData: {
+    email: string;
+    password: string;
+    name: string;
+    role: "admin" | "employee";
+    collector_name?: string;
+  }) => Promise<User>;
+  sendPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
   canAccessCustomer: (
     customerId: string,
     customerCollectorName?: string,
   ) => boolean;
+  isAuthInitialized: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(
@@ -31,87 +41,117 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthInitialized, setIsAuthInitialized] = useState(false);
 
   useEffect(() => {
-    // Initialize auth service and check for existing session
-    const initializeAuth = async () => {
-      try {
-        // Check if user is already logged in
-        const currentUser = authService.getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-        }
+    console.log("🔄 Initializing Firebase Authentication...");
 
-        // Try to seed default admin user, but don't block the UI if it fails
-        try {
-          await authService.seedDefaultAdmin();
-        } catch (seedError) {
-          console.warn(
-            "Could not seed admin user (Firebase may not be configured yet):",
-            seedError,
-          );
-        }
-      } catch (error) {
-        console.error("Failed to initialize auth:", error);
-      } finally {
-        // Always set loading to false to unblock the UI
+    // Set up auth state listener
+    const unsubscribe = authService.onAuthStateChange((user) => {
+      console.log("🔄 Auth state changed:", user ? user.name : "No user");
+      setUser(user);
+
+      if (!isAuthInitialized) {
+        setIsAuthInitialized(true);
         setIsLoading(false);
+        console.log("✅ Firebase Auth initialized");
+      }
+    });
+
+    // Seed default admin user if needed
+    const seedAdmin = async () => {
+      try {
+        await authService.seedDefaultAdmin();
+      } catch (error) {
+        console.warn("Could not seed admin user:", error);
       }
     };
 
-    // Add a timeout to ensure we don't get stuck loading forever
-    const timeoutId = setTimeout(() => {
-      console.warn("Auth initialization timeout - continuing without seeding");
-      setIsLoading(false);
-    }, 5000); // 5 second timeout
+    seedAdmin();
 
-    initializeAuth().finally(() => {
-      clearTimeout(timeoutId);
-    });
+    // Set a timeout to ensure we don't get stuck loading forever
+    const timeoutId = setTimeout(() => {
+      if (!isAuthInitialized) {
+        console.warn("Auth initialization timeout - continuing without auth");
+        setIsAuthInitialized(true);
+        setIsLoading(false);
+      }
+    }, 10000); // 10 second timeout
 
     return () => {
+      unsubscribe();
       clearTimeout(timeoutId);
     };
-  }, []);
+  }, [isAuthInitialized]);
 
   const login = async (credentials: LoginCredentials): Promise<User> => {
     try {
       setIsLoading(true);
+      console.log("🔐 Logging in with Firebase Auth...");
+
       const user = await authService.login(credentials);
-      setUser(user);
+      console.log("✅ Login successful:", user.name);
+
       return user;
     } catch (error: any) {
-      console.error("Login failed:", error);
-
-      // Provide more helpful error messages
-      if (
-        error.message.includes("timeout") ||
-        error.message.includes("Firebase authentication timeout")
-      ) {
-        throw new Error(
-          "Firebase connection issue - continuing in demo mode. Try refreshing the page.",
-        );
-      } else if (
-        error.message.includes("permission-denied") ||
-        error.message.includes("PERMISSION_DENIED")
-      ) {
-        throw new Error(
-          "Firebase permission denied. Please set up Firestore security rules.",
-        );
-      } else if (error.message.includes("Invalid username or password")) {
-        throw new Error("Invalid username or password.");
-      } else {
-        // For any other error, still try to provide a helpful message
-        throw new Error(error.message || "Login failed. Please try again.");
-      }
+      console.error("❌ Login failed:", error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    authService.logout();
-    setUser(null);
+  const logout = async (): Promise<void> => {
+    try {
+      setIsLoading(true);
+      await authService.signOut();
+      console.log("✅ Logout successful");
+    } catch (error: any) {
+      console.error("❌ Logout failed:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createUser = async (userData: {
+    email: string;
+    password: string;
+    name: string;
+    role: "admin" | "employee";
+    collector_name?: string;
+  }): Promise<User> => {
+    try {
+      setIsLoading(true);
+      const newUser = await authService.createUser(userData);
+      console.log("✅ User created successfully:", newUser.name);
+      return newUser;
+    } catch (error: any) {
+      console.error("❌ Create user failed:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const sendPasswordReset = async (email: string): Promise<void> => {
+    try {
+      await authService.sendPasswordReset(email);
+      console.log("✅ Password reset email sent");
+    } catch (error: any) {
+      console.error("❌ Send password reset failed:", error);
+      throw error;
+    }
+  };
+
+  const updatePassword = async (newPassword: string): Promise<void> => {
+    try {
+      await authService.updatePassword(newPassword);
+      console.log("✅ Password updated successfully");
+    } catch (error: any) {
+      console.error("❌ Update password failed:", error);
+      throw error;
+    }
   };
 
   const canAccessCustomer = (
@@ -125,10 +165,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user,
     isLoading,
     isAuthenticated: !!user,
-    isAdmin: user?.role === "admin",
+    isAdmin: user?.role === "admin" && user?.is_active,
     login,
     logout,
+    createUser,
+    sendPasswordReset,
+    updatePassword,
     canAccessCustomer,
+    isAuthInitialized,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
