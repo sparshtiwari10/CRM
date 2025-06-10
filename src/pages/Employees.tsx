@@ -298,12 +298,22 @@ export default function Employees() {
     }
 
     try {
-      await authService.deleteUser(employee.id);
+      const result = await authService.deleteUser(employee.id);
 
+      // Show success message with additional cleanup instructions
       toast({
-        title: "Employee Deleted",
-        description: `${employee.name} has been deleted`,
+        title: "Employee Account Disabled",
+        description: `${employee.name} has been removed from the system. For complete removal, please delete the user from Firebase Authentication console.`,
+        duration: 8000, // Longer duration for important message
       });
+
+      // Show additional instructions in console for admin
+      console.log("🔧 CLEANUP REQUIRED:");
+      console.log(`📧 Employee email: ${employee.email}`);
+      console.log("📋 Next steps:");
+      console.log("   1. Go to Firebase Console → Authentication → Users");
+      console.log(`   2. Find user: ${employee.email}`);
+      console.log("   3. Delete the user from Firebase Auth");
 
       loadEmployees();
     } catch (error: any) {
@@ -311,6 +321,34 @@ export default function Employees() {
       toast({
         title: "Error",
         description: error.message || "Failed to delete employee",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDisableEmployee = async (employee: Employee) => {
+    if (
+      !confirm(
+        `Are you sure you want to disable ${employee.name}? They will not be able to access the system but their account will remain.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await authService.disableUser(employee.id);
+
+      toast({
+        title: "Employee Disabled",
+        description: `${employee.name} has been disabled and cannot access the system`,
+      });
+
+      loadEmployees();
+    } catch (error: any) {
+      console.error("Failed to disable employee:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to disable employee",
         variant: "destructive",
       });
     }
