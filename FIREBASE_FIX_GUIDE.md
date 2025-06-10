@@ -66,7 +66,7 @@ If you're authenticated but the user document is missing:
 ```json
 Document ID: [your-firebase-uid]
 {
-  "email": "admin@agvcabletv.com",
+  "email": "your-admin@company.com",
   "name": "System Administrator",
   "role": "admin",
   "is_active": true,
@@ -82,7 +82,7 @@ Document ID: [your-firebase-uid]
 **Symptoms**: Not signed in, no Firebase user
 **Solution**:
 
-1. Try signing in with: admin@agvcabletv.com / admin123
+1. Contact your administrator for login credentials
 2. If account doesn't exist, run `quickFixFirebase()` to create it
 
 ### Issue 2: Missing User Document
