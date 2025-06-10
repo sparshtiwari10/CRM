@@ -553,15 +553,67 @@ class AuthService {
         throw new Error("You cannot delete your own account");
       }
 
+      // Get user info before deletion for logging
+      const userDoc = await getDoc(doc(db, "users", userId));
+      const userEmail = userDoc.exists() ? userDoc.data().email : "unknown";
+
       // Delete user document from Firestore
       await deleteDoc(doc(db, "users", userId));
 
-      // Note: Firebase Auth user will remain but won't be able to access the app
-      // without a Firestore user document
+      console.log("✅ User document deleted successfully:", userId);
+      console.log(`📧 User email: ${userEmail}`);
 
-      console.log("✅ User deleted successfully:", userId);
+      // Important note about Firebase Auth user
+      console.warn("⚠️ IMPORTANT: Firebase Auth user still exists!");
+      console.warn("📋 Manual action required:");
+      console.warn(`   1. Go to Firebase Console → Authentication → Users`);
+      console.warn(`   2. Find user with email: ${userEmail}`);
+      console.warn(`   3. Click the user and select "Delete user"`);
+      console.warn("   4. This ensures complete user removal from the system");
+
+      // Return information for UI display
+      return {
+        success: true,
+        userEmail,
+        requiresManualCleanup: true,
+        instructions: [
+          "Go to Firebase Console → Authentication → Users",
+          `Find user with email: ${userEmail}`,
+          "Click the user and select 'Delete user'",
+          "This completes the user deletion process",
+        ],
+      } as any;
     } catch (error) {
       console.error("❌ Failed to delete user:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Disable user account instead of deleting (recommended alternative)
+   */
+  async disableUser(userId: string): Promise<void> {
+    try {
+      if (!this.isAdmin()) {
+        throw new Error("Only administrators can disable users");
+      }
+
+      // Prevent disabling current user
+      if (userId === this.currentUser?.id) {
+        throw new Error("You cannot disable your own account");
+      }
+
+      // Mark user as inactive in Firestore
+      await updateDoc(doc(db, "users", userId), {
+        is_active: false,
+        disabled_at: new Date(),
+        disabled_by: this.currentUser?.id,
+        updated_at: new Date(),
+      });
+
+      console.log("✅ User disabled successfully:", userId);
+    } catch (error) {
+      console.error("❌ Failed to disable user:", error);
       throw error;
     }
   }
