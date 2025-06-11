@@ -599,7 +599,16 @@ export default function Management() {
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    disabled={selectedCustomers.length === 0}
+                    disabled={
+                      selectedCustomers.length === 0 || areaNames.length === 0
+                    }
+                    title={
+                      areaNames.length === 0
+                        ? "No areas available. Create areas first."
+                        : selectedCustomers.length === 0
+                          ? "Select customers first"
+                          : "Update area for selected customers"
+                    }
                   >
                     <MapPin className="mr-2 h-4 w-4" />
                     Bulk Update Area
