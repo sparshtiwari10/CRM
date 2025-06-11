@@ -330,7 +330,7 @@ export default function Management() {
                     <SelectValue placeholder="All areas" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All areas</SelectItem>
+                    <SelectItem value="ALL_AREAS">All areas</SelectItem>
                     {areas.map((area) => (
                       <SelectItem key={area} value={area}>
                         {area}
@@ -347,7 +347,7 @@ export default function Management() {
                     <SelectValue placeholder="All packages" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All packages</SelectItem>
+                    <SelectItem value="ALL_PACKAGES">All packages</SelectItem>
                     {packageNames.map((pkg) => (
                       <SelectItem key={pkg} value={pkg}>
                         {pkg}
@@ -364,7 +364,7 @@ export default function Management() {
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All statuses</SelectItem>
+                    <SelectItem value="ALL_STATUSES">All statuses</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                     <SelectItem value="demo">Demo</SelectItem>
