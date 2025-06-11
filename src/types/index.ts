@@ -93,26 +93,21 @@ export interface BillingRecord {
   customerName?: string;
   packageName?: string;
   amount: number;
-  billingMonth: string; // Format: YYYY-MM
+  billingMonth: string; // Format: YYYY-MM or "January 2024"
+  billingYear?: string;
   paymentDate: Date;
   paymentStatus: "Paid" | "Pending" | "Overdue";
   amountPaid: number;
   paymentMethod?: "Cash" | "Card" | "Bank Transfer" | "Online";
+  vcNumber?: string; // Primary VC Number (handles billing for all connections)
+  allVcNumbers?: string[]; // All VC numbers for this customer (primary + secondary)
+  customAmount?: number; // For custom invoice amounts
   dueDate?: string;
   invoiceNumber?: string;
   generatedDate?: string;
   generatedBy?: string; // Employee who generated the invoice
   employeeId?: string; // Employee ID who generated the invoice
-}
-  billingMonth: string; // e.g., "January 2024"
-  billingYear: string;
-  vcNumber: string; // Primary VC Number (handles billing for all connections)
-  allVcNumbers?: string[]; // All VC numbers for this customer (primary + secondary)
-  customAmount?: number; // For custom invoice amounts
-  paymentDate?: string; // Date when payment was received
-  paymentMethod?: string; // Payment method used
   notes?: string; // Additional notes
-  // Fields to ensure proper saving in both admin and employee views
   savedInBillingRecords?: boolean; // Ensures record is saved in billing section
 }
 
