@@ -72,32 +72,93 @@ export default function Settings() {
     );
   }
 
-  const handleSaveCompanySettings = () => {
-    // Simulate API call
-    setTimeout(() => {
+  const handleSaveCompanySettings = async () => {
+    try {
+      setIsSaving((prev) => ({ ...prev, company: true }));
+
+      await SettingsService.updateCompanyInfo({
+        projectName: settings.projectName,
+        companyName: settings.companyName,
+        address: settings.address,
+        phone: settings.phone,
+        email: settings.email,
+        website: settings.website,
+        description: settings.description,
+      });
+
       toast({
         title: "Settings saved",
         description: "Company settings have been updated successfully.",
       });
-    }, 500);
+    } catch (error) {
+      console.error("Failed to save company settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save company settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving((prev) => ({ ...prev, company: false }));
+    }
   };
 
-  const handleSaveNotificationSettings = () => {
-    setTimeout(() => {
+  const handleSaveNotificationSettings = async () => {
+    try {
+      setIsSaving((prev) => ({ ...prev, notification: true }));
+
+      await SettingsService.updateNotificationSettings({
+        emailNotifications: settings.emailNotifications,
+        smsNotifications: settings.smsNotifications,
+        overdueReminders: settings.overdueReminders,
+        paymentConfirmations: settings.paymentConfirmations,
+        systemAlerts: settings.systemAlerts,
+        marketingEmails: settings.marketingEmails,
+      });
+
       toast({
         title: "Notifications updated",
         description: "Notification preferences have been saved.",
       });
-    }, 500);
+    } catch (error) {
+      console.error("Failed to save notification settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save notification settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving((prev) => ({ ...prev, notification: false }));
+    }
   };
 
-  const handleSaveSystemSettings = () => {
-    setTimeout(() => {
+  const handleSaveSystemSettings = async () => {
+    try {
+      setIsSaving((prev) => ({ ...prev, system: true }));
+
+      await SettingsService.updateSystemSettings({
+        timezone: settings.timezone,
+        dateFormat: settings.dateFormat,
+        currency: settings.currency,
+        language: settings.language,
+        theme: settings.theme,
+        autoBackup: settings.autoBackup,
+        sessionTimeout: settings.sessionTimeout,
+      });
+
       toast({
         title: "System settings updated",
         description: "System configuration has been saved.",
       });
-    }, 500);
+    } catch (error) {
+      console.error("Failed to save system settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save system settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving((prev) => ({ ...prev, system: false }));
+    }
   };
 
   return (
