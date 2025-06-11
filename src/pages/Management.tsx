@@ -137,10 +137,10 @@ export default function Management() {
     return matchesSearch && matchesArea && matchesPackage && matchesStatus;
   });
 
-  // Get unique areas from customers
-  const areas = [...new Set(customers.map((c) => c.collectorName))].filter(
-    Boolean,
-  );
+  // Get area names from managed areas
+  const areaNames = areas
+    .filter((area) => area.isActive)
+    .map((area) => area.name);
 
   // Get unique package names
   const packageNames = [
