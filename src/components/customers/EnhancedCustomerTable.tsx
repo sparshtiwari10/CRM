@@ -258,10 +258,19 @@ export default function EnhancedCustomerTable({
     customer: Customer,
     newStatus: CustomerStatus,
   ) => {
+    console.log(`🔄 Status change request for ${customer.name}:`);
+    console.log(`   User: ${user?.name} (ID: ${user?.id})`);
+    console.log(`   User Role: ${user?.role}`);
+    console.log(`   IsAdmin: ${isAdmin}`);
+    console.log(`   Current Status: ${customer.status}`);
+    console.log(`   Requested Status: ${newStatus}`);
+
     if (isAdmin) {
+      console.log(`✅ Admin user - proceeding with direct status change`);
       // Admins can change status directly
       handleDirectStatusChange(customer, newStatus);
     } else {
+      console.log(`📝 Employee user - creating status change request`);
       // Employees must request status changes
       const request: ActionRequest = {
         id: `req-${Date.now()}`,
