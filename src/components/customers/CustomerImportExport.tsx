@@ -268,10 +268,27 @@ export function CustomerImportExport({
     });
   };
 
-  const validateImportData = (customers: Customer[]): ImportResult => {
+  const validateImportData = async (
+    customers: Customer[],
+  ): Promise<ImportResult> => {
     let success = 0;
     let failed = 0;
     const errors: string[] = [];
+
+    // Load managed areas and packages for validation
+    let validAreas: string[] = [];
+    let validPackages: string[] = [];
+
+    try {
+      validAreas = await AreaService.getAreaNames();
+      const packages = await packageService.getAllPackages();
+      validPackages = packages
+        .filter((pkg) => pkg.isActive)
+        .map((pkg) => pkg.name);
+    } catch (error) {
+      console.error("Failed to load validation data:", error);
+      errors.push("Failed to load areas and packages for validation");
+    }
 
     customers.forEach((customer, index) => {
       const rowNumber = index + 2; // +2 because CSV has header row and arrays are 0-indexed
@@ -295,6 +312,32 @@ export function CustomerImportExport({
 
       if (!customer.vcNumber?.trim()) {
         errors.push(`Row ${rowNumber}: VC Number is required`);
+        hasErrors = true;
+      }
+
+      if (!customer.collectorName?.trim()) {
+        errors.push(`Row ${rowNumber}: Area Name is required`);
+        hasErrors = true;
+      } else if (
+        validAreas.length > 0 &&
+        !validAreas.includes(customer.collectorName)
+      ) {
+        errors.push(
+          `Row ${rowNumber}: Area "${customer.collectorName}" does not exist in managed areas. Available areas: ${validAreas.join(", ")}`,
+        );
+        hasErrors = true;
+      }
+
+      if (!customer.currentPackage?.trim()) {
+        errors.push(`Row ${rowNumber}: Package is required`);
+        hasErrors = true;
+      } else if (
+        validPackages.length > 0 &&
+        !validPackages.includes(customer.currentPackage)
+      ) {
+        errors.push(
+          `Row ${rowNumber}: Package "${customer.currentPackage}" does not exist in active packages. Available packages: ${validPackages.join(", ")}`,
+        );
         hasErrors = true;
       }
 
