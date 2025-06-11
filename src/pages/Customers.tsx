@@ -374,16 +374,21 @@ export default function Customers() {
       // Handle status changes
       if (updates.status && updates.status !== customer.status) {
         const newStatus = updates.status;
+        console.log(`🔄 Processing status change from ${customer.status} to ${newStatus}`);
 
         // Ensure isActive is also updated for consistency
         enhancedUpdates.isActive = newStatus === "active";
+        console.log(`   Setting isActive to: ${enhancedUpdates.isActive}`);
 
         // Update connection statuses if they exist
         if (customer.connections && customer.connections.length > 0) {
-          enhancedUpdates.connections = customer.connections.map((conn) => ({
+          console.log(`   Updating ${customer.connections.length} connections to status: ${newStatus}`);
+          enhancedUpdates.connections = customer.connections.map(conn => ({
             ...conn,
-            status: newStatus as any, // Update all connections to the new status
+            status: newStatus as any // Update all connections to the new status
           }));
+        } else {
+          console.log(`   No connections to update`);
         }
 
         // Add status log entry
@@ -399,11 +404,16 @@ export default function Customers() {
 
         enhancedUpdates.statusLogs = [
           ...(customer.statusLogs || []),
-          statusLog,
+          statusLog
         ];
 
-        console.log(
-          `🔄 Updating customer ${customer.name} status from ${customer.status} to ${newStatus}`,
+        console.log(`📝 Created status log:`, statusLog);
+        console.log(`🔄 Updating customer ${customer.name} status from ${customer.status} to ${newStatus}`);
+      } else if (updates.status) {
+        console.log(`⚠️ Status update skipped - same status (${updates.status})`);
+      } else {
+        console.log(`ℹ️ No status field in updates`);
+      }
         );
       }
 
