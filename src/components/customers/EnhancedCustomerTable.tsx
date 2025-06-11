@@ -123,6 +123,14 @@ export default function EnhancedCustomerTable({
     Map<string, CustomerRowData>
   >(new Map());
 
+  // VC Status Change Modal state
+  const [showVCStatusModal, setShowVCStatusModal] = useState(false);
+  const [vcStatusCustomer, setVCStatusCustomer] = useState<Customer | null>(
+    null,
+  );
+  const [vcRequestedStatus, setVCRequestedStatus] =
+    useState<CustomerStatus>("inactive");
+
   const { user, isAdmin } = useAuth();
   const { toast } = useToast();
 
