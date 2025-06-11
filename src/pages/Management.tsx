@@ -59,9 +59,9 @@ export default function Management() {
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterArea, setFilterArea] = useState("");
-  const [filterPackage, setFilterPackage] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterArea, setFilterArea] = useState("ALL_AREAS");
+  const [filterPackage, setFilterPackage] = useState("ALL_PACKAGES");
+  const [filterStatus, setFilterStatus] = useState("ALL_STATUSES");
 
   // Bulk update states
   const [showBulkAreaDialog, setShowBulkAreaDialog] = useState(false);
