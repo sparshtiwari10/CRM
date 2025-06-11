@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import Billing from "./pages/Billing";
 import Packages from "./pages/Packages";
+import Management from "./pages/Management";
 import Settings from "./pages/Settings";
 import EmployeeManagement from "./pages/EmployeeManagement";
 import Employees from "./pages/Employees";
@@ -101,6 +102,14 @@ function AppContent() {
         />
 
         {/* Admin-only routes */}
+        <Route
+          path="/management"
+          element={
+            <ProtectedRoute adminOnly>
+              <Management />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/employees"
           element={

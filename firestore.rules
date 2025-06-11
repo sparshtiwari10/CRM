@@ -25,7 +25,7 @@ service cloud.firestore {
     // Helper function to check if user can access area
     function canAccessArea(area) {
       let userData = getUserDoc().data;
-      return isAdmin() || 
+      return isAdmin() ||
              userData.collector_name == area ||
              (userData.assigned_areas != null && area in userData.assigned_areas);
     }
@@ -34,17 +34,17 @@ service cloud.firestore {
     match /users/{userId} {
       // Users can read their own profile
       allow read: if isAuthenticated() && request.auth.uid == userId;
-      
+
       // Admins can read/write all user profiles
       allow read, write: if isAdmin();
-      
+
       // Allow creation of user documents during authentication
       allow create: if isAuthenticated() && request.auth.uid == userId;
-      
+
       // Users can update their own basic profile info
-      allow update: if isAuthenticated() && 
+      allow update: if isAuthenticated() &&
                    request.auth.uid == userId &&
-                   !('role' in resource.data) || 
+                   !('role' in resource.data) ||
                    resource.data.role == request.data.role;
     }
 
@@ -52,12 +52,12 @@ service cloud.firestore {
     match /customers/{customerId} {
       // Admins can do everything
       allow read, write: if isAdmin() && isActiveUser();
-      
+
       // Employees can read/write customers in their assigned areas
-      allow read, write: if isAuthenticated() && 
-                        isActiveUser() && 
+      allow read, write: if isAuthenticated() &&
+                        isActiveUser() &&
                         canAccessArea(resource.data.collectorName);
-      
+
       // Allow reading for customer area validation
       allow read: if isAuthenticated() && isActiveUser();
     }
@@ -66,7 +66,7 @@ service cloud.firestore {
     match /packages/{packageId} {
       // All authenticated active users can read packages
       allow read: if isAuthenticated() && isActiveUser();
-      
+
       // Only admins can modify packages
       allow write: if isAdmin() && isActiveUser();
     }
@@ -75,10 +75,10 @@ service cloud.firestore {
     match /billing/{billingId} {
       // Admins can do everything
       allow read, write: if isAdmin() && isActiveUser();
-      
+
       // Employees can access billing for their areas
-      allow read, write: if isAuthenticated() && 
-                        isActiveUser() && 
+      allow read, write: if isAuthenticated() &&
+                        isActiveUser() &&
                         canAccessArea(resource.data.area);
     }
 
@@ -86,15 +86,15 @@ service cloud.firestore {
     match /requests/{requestId} {
       // Admins can do everything
       allow read, write: if isAdmin() && isActiveUser();
-      
+
       // Employees can read/create requests for their areas
-      allow read, create: if isAuthenticated() && 
-                         isActiveUser() && 
+      allow read, create: if isAuthenticated() &&
+                         isActiveUser() &&
                          canAccessArea(resource.data.area);
-      
+
       // Employees can update requests they created
-      allow update: if isAuthenticated() && 
-                   isActiveUser() && 
+      allow update: if isAuthenticated() &&
+                   isActiveUser() &&
                    request.auth.uid == resource.data.createdBy;
     }
 
@@ -102,13 +102,13 @@ service cloud.firestore {
     match /actionRequests/{requestId} {
       // Admins can do everything
       allow read, write: if isAdmin() && isActiveUser();
-      
+
       // Employees can create requests
       allow create: if isAuthenticated() && isActiveUser();
-      
+
       // Employees can read their own requests
-      allow read: if isAuthenticated() && 
-                 isActiveUser() && 
+      allow read: if isAuthenticated() &&
+                 isActiveUser() &&
                  request.auth.uid == resource.data.requestedBy;
     }
 
@@ -125,6 +125,18 @@ service cloud.firestore {
     match /config/{configId} {
       allow read: if isAuthenticated() && isActiveUser();
       allow write: if isAdmin() && isActiveUser();
+    }
+
+    // Application settings collection
+    match /settings/{settingsId} {
+      // All authenticated users can read settings (for project name on login)
+      allow read: if isAuthenticated();
+
+      // Only admins can modify settings
+      allow write: if isAdmin() && isActiveUser();
+
+      // Allow unauthenticated read for project name on login page
+      allow read: if settingsId == 'app_settings';
     }
 
     // Default deny rule for any other collections

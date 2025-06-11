@@ -15,6 +15,7 @@ import {
   ClipboardList,
   Menu,
   X,
+  Wrench,
 } from "lucide-react";
 
 // Navigation for administrators (full access)
@@ -24,6 +25,7 @@ const adminNavigation = [
   { name: "Billing & Payments", href: "/billing", icon: CreditCard },
   { name: "Packages", href: "/packages", icon: Package },
   { name: "Requests", href: "/requests", icon: ClipboardList },
+  { name: "Management", href: "/management", icon: Wrench },
   { name: "Employees", href: "/employees", icon: UserCog },
   { name: "Settings", href: "/settings", icon: Settings },
 ];

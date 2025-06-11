@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Save,
   User,
@@ -7,6 +7,7 @@ import {
   Shield,
   Database,
   Palette,
+  Globe,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,65 +25,140 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { SettingsService, AppSettings } from "@/services/settingsService";
 
 export default function Settings() {
-  const [companySettings, setCompanySettings] = useState({
-    companyName: "CableTV Operator",
-    address: "123 Main Street, Anytown, State 12345",
-    phone: "+1 (555) 123-4567",
-    email: "info@cabletv.com",
-    website: "https://cabletv.com",
-    description:
-      "Premium cable TV services for residential and commercial customers.",
-  });
-
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
-    overdueReminders: true,
-    paymentConfirmations: true,
-    systemAlerts: true,
-    marketingEmails: false,
-  });
-
-  const [systemSettings, setSystemSettings] = useState({
-    timezone: "America/New_York",
-    dateFormat: "MM/DD/YYYY",
-    currency: "USD",
-    language: "en",
-    theme: "light",
-    autoBackup: true,
-    sessionTimeout: "30",
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState({
+    company: false,
+    notification: false,
+    system: false,
   });
 
   const { toast } = useToast();
 
-  const handleSaveCompanySettings = () => {
-    // Simulate API call
-    setTimeout(() => {
+  // Load settings from Firebase
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      setIsLoading(true);
+      const settingsData = await SettingsService.getSettings();
+      setSettings(settingsData);
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load settings. Please refresh the page.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading || !settings) {
+    return (
+      <DashboardLayout title="Settings">
+        <div className="p-6 space-y-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const handleSaveCompanySettings = async () => {
+    try {
+      setIsSaving((prev) => ({ ...prev, company: true }));
+
+      await SettingsService.updateCompanyInfo({
+        projectName: settings.projectName,
+        companyName: settings.companyName,
+        address: settings.address,
+        phone: settings.phone,
+        email: settings.email,
+        website: settings.website,
+        description: settings.description,
+      });
+
       toast({
         title: "Settings saved",
         description: "Company settings have been updated successfully.",
       });
-    }, 500);
+    } catch (error) {
+      console.error("Failed to save company settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save company settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving((prev) => ({ ...prev, company: false }));
+    }
   };
 
-  const handleSaveNotificationSettings = () => {
-    setTimeout(() => {
+  const handleSaveNotificationSettings = async () => {
+    try {
+      setIsSaving((prev) => ({ ...prev, notification: true }));
+
+      await SettingsService.updateNotificationSettings({
+        emailNotifications: settings.emailNotifications,
+        smsNotifications: settings.smsNotifications,
+        overdueReminders: settings.overdueReminders,
+        paymentConfirmations: settings.paymentConfirmations,
+        systemAlerts: settings.systemAlerts,
+        marketingEmails: settings.marketingEmails,
+      });
+
       toast({
         title: "Notifications updated",
         description: "Notification preferences have been saved.",
       });
-    }, 500);
+    } catch (error) {
+      console.error("Failed to save notification settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save notification settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving((prev) => ({ ...prev, notification: false }));
+    }
   };
 
-  const handleSaveSystemSettings = () => {
-    setTimeout(() => {
+  const handleSaveSystemSettings = async () => {
+    try {
+      setIsSaving((prev) => ({ ...prev, system: true }));
+
+      await SettingsService.updateSystemSettings({
+        timezone: settings.timezone,
+        dateFormat: settings.dateFormat,
+        currency: settings.currency,
+        language: settings.language,
+        theme: settings.theme,
+        autoBackup: settings.autoBackup,
+        sessionTimeout: settings.sessionTimeout,
+      });
+
       toast({
         title: "System settings updated",
         description: "System configuration has been saved.",
       });
-    }, 500);
+    } catch (error) {
+      console.error("Failed to save system settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save system settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving((prev) => ({ ...prev, system: false }));
+    }
   };
 
   return (
@@ -108,13 +184,37 @@ export default function Settings() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
                 <div>
+                  <Label htmlFor="projectName">
+                    Project Name
+                    <span className="text-xs text-muted-foreground ml-2">
+                      (Shown on login page)
+                    </span>
+                  </Label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      id="projectName"
+                      value={settings.projectName}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev!,
+                          projectName: e.target.value,
+                        }))
+                      }
+                      className="pl-10"
+                      placeholder="Enter project name"
+                    />
+                  </div>
+                </div>
+
+                <div>
                   <Label htmlFor="companyName">Company Name</Label>
                   <Input
                     id="companyName"
-                    value={companySettings.companyName}
+                    value={settings.companyName}
                     onChange={(e) =>
-                      setCompanySettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         companyName: e.target.value,
                       }))
                     }
@@ -125,10 +225,10 @@ export default function Settings() {
                   <Label htmlFor="address">Address</Label>
                   <Textarea
                     id="address"
-                    value={companySettings.address}
+                    value={settings.address}
                     onChange={(e) =>
-                      setCompanySettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         address: e.target.value,
                       }))
                     }
@@ -140,10 +240,10 @@ export default function Settings() {
                     <Label htmlFor="phone">Phone</Label>
                     <Input
                       id="phone"
-                      value={companySettings.phone}
+                      value={settings.phone}
                       onChange={(e) =>
-                        setCompanySettings((prev) => ({
-                          ...prev,
+                        setSettings((prev) => ({
+                          ...prev!,
                           phone: e.target.value,
                         }))
                       }
@@ -155,10 +255,10 @@ export default function Settings() {
                     <Input
                       id="email"
                       type="email"
-                      value={companySettings.email}
+                      value={settings.email}
                       onChange={(e) =>
-                        setCompanySettings((prev) => ({
-                          ...prev,
+                        setSettings((prev) => ({
+                          ...prev!,
                           email: e.target.value,
                         }))
                       }
@@ -170,10 +270,10 @@ export default function Settings() {
                   <Label htmlFor="website">Website</Label>
                   <Input
                     id="website"
-                    value={companySettings.website}
+                    value={settings.website}
                     onChange={(e) =>
-                      setCompanySettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         website: e.target.value,
                       }))
                     }
@@ -184,10 +284,10 @@ export default function Settings() {
                   <Label htmlFor="description">Description</Label>
                   <Textarea
                     id="description"
-                    value={companySettings.description}
+                    value={settings.description}
                     onChange={(e) =>
-                      setCompanySettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         description: e.target.value,
                       }))
                     }
@@ -195,9 +295,13 @@ export default function Settings() {
                 </div>
               </div>
 
-              <Button onClick={handleSaveCompanySettings} className="w-full">
+              <Button
+                onClick={handleSaveCompanySettings}
+                className="w-full"
+                disabled={isSaving.company}
+              >
                 <Save className="mr-2 h-4 w-4" />
-                Save Company Settings
+                {isSaving.company ? "Saving..." : "Save Company Settings"}
               </Button>
             </CardContent>
           </Card>
@@ -220,10 +324,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.emailNotifications}
+                    checked={settings.emailNotifications}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         emailNotifications: checked,
                       }))
                     }
@@ -240,10 +344,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.smsNotifications}
+                    checked={settings.smsNotifications}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         smsNotifications: checked,
                       }))
                     }
@@ -260,10 +364,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.overdueReminders}
+                    checked={settings.overdueReminders}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         overdueReminders: checked,
                       }))
                     }
@@ -280,10 +384,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.paymentConfirmations}
+                    checked={settings.paymentConfirmations}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         paymentConfirmations: checked,
                       }))
                     }
@@ -300,10 +404,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.systemAlerts}
+                    checked={settings.systemAlerts}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         systemAlerts: checked,
                       }))
                     }
@@ -320,10 +424,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.marketingEmails}
+                    checked={settings.marketingEmails}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         marketingEmails: checked,
                       }))
                     }
@@ -334,9 +438,12 @@ export default function Settings() {
               <Button
                 onClick={handleSaveNotificationSettings}
                 className="w-full"
+                disabled={isSaving.notification}
               >
                 <Save className="mr-2 h-4 w-4" />
-                Save Notification Settings
+                {isSaving.notification
+                  ? "Saving..."
+                  : "Save Notification Settings"}
               </Button>
             </CardContent>
           </Card>
@@ -354,10 +461,10 @@ export default function Settings() {
                 <div>
                   <Label htmlFor="timezone">Timezone</Label>
                   <Select
-                    value={systemSettings.timezone}
+                    value={settings.timezone}
                     onValueChange={(value) =>
-                      setSystemSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         timezone: value,
                       }))
                     }
@@ -378,6 +485,9 @@ export default function Settings() {
                       <SelectItem value="America/Los_Angeles">
                         Pacific Time
                       </SelectItem>
+                      <SelectItem value="Asia/Kolkata">
+                        India Standard Time
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -386,10 +496,10 @@ export default function Settings() {
                   <div>
                     <Label htmlFor="dateFormat">Date Format</Label>
                     <Select
-                      value={systemSettings.dateFormat}
+                      value={settings.dateFormat}
                       onValueChange={(value) =>
-                        setSystemSettings((prev) => ({
-                          ...prev,
+                        setSettings((prev) => ({
+                          ...prev!,
                           dateFormat: value,
                         }))
                       }
@@ -408,10 +518,10 @@ export default function Settings() {
                   <div>
                     <Label htmlFor="currency">Currency</Label>
                     <Select
-                      value={systemSettings.currency}
+                      value={settings.currency}
                       onValueChange={(value) =>
-                        setSystemSettings((prev) => ({
-                          ...prev,
+                        setSettings((prev) => ({
+                          ...prev!,
                           currency: value,
                         }))
                       }
@@ -423,6 +533,7 @@ export default function Settings() {
                         <SelectItem value="USD">USD ($)</SelectItem>
                         <SelectItem value="EUR">EUR (€)</SelectItem>
                         <SelectItem value="GBP">GBP (£)</SelectItem>
+                        <SelectItem value="INR">INR (₹)</SelectItem>
                         <SelectItem value="CAD">CAD ($)</SelectItem>
                       </SelectContent>
                     </Select>
@@ -436,10 +547,10 @@ export default function Settings() {
                   <Input
                     id="sessionTimeout"
                     type="number"
-                    value={systemSettings.sessionTimeout}
+                    value={settings.sessionTimeout}
                     onChange={(e) =>
-                      setSystemSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         sessionTimeout: e.target.value,
                       }))
                     }
@@ -454,10 +565,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={systemSettings.autoBackup}
+                    checked={settings.autoBackup}
                     onCheckedChange={(checked) =>
-                      setSystemSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         autoBackup: checked,
                       }))
                     }
@@ -465,9 +576,13 @@ export default function Settings() {
                 </div>
               </div>
 
-              <Button onClick={handleSaveSystemSettings} className="w-full">
+              <Button
+                onClick={handleSaveSystemSettings}
+                className="w-full"
+                disabled={isSaving.system}
+              >
                 <Save className="mr-2 h-4 w-4" />
-                Save System Settings
+                {isSaving.system ? "Saving..." : "Save System Settings"}
               </Button>
             </CardContent>
           </Card>

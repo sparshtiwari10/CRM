@@ -1,21 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  LogIn,
-  AlertCircle,
-  Settings,
-  RefreshCw,
-  UserPlus,
-} from "lucide-react";
+import { SettingsService } from "@/services/settingsService";
+import { Eye, EyeOff, Mail, Lock, LogIn, AlertCircle } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState(""); // Start empty, let user enter their Firebase Auth email
@@ -26,6 +17,7 @@ export default function Login() {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const [projectName, setProjectName] = useState("AGV Cable TV");
 
   const {
     login,
@@ -35,6 +27,21 @@ export default function Login() {
     clearPermissionsError,
   } = useAuth();
   const navigate = useNavigate();
+
+  // Load project name from settings
+  useEffect(() => {
+    const loadProjectName = async () => {
+      try {
+        const name = await SettingsService.getProjectName();
+        setProjectName(name);
+      } catch (error) {
+        console.error("Failed to load project name:", error);
+        // Keep default name if loading fails
+      }
+    };
+
+    loadProjectName();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,13 +59,20 @@ export default function Login() {
       let errorMessage = "Login failed. Please try again.";
 
       if (error.code === "auth/user-not-found") {
-        errorMessage = "No account found with this email address.";
+        errorMessage = "User not registered. Please contact administrator.";
       } else if (error.code === "auth/wrong-password") {
-        errorMessage = "Incorrect password.";
+        errorMessage = "Incorrect password. Please try again.";
       } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Invalid email address.";
+        errorMessage = "Please enter a valid email address.";
       } else if (error.code === "auth/too-many-requests") {
         errorMessage = "Too many failed attempts. Please try again later.";
+      } else if (error.code === "auth/invalid-credential") {
+        errorMessage =
+          "Invalid email or password. Please check your credentials.";
+      } else if (error.code === "auth/user-disabled") {
+        errorMessage = "This account has been disabled. Contact administrator.";
+      } else if (error.message?.includes("User profile not found")) {
+        errorMessage = "User profile not found. Please contact administrator.";
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -98,94 +112,6 @@ export default function Login() {
     } catch (error: any) {
       setError(
         "Could not auto-fix permissions. Please check the console for manual instructions.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const runDiagnostics = () => {
-    console.log("🔧 Running Firebase diagnostics...");
-
-    // Check if diagnostic tools are available
-    if ((window as any).quickFixFirebase) {
-      (window as any).quickFixFirebase();
-    } else if ((window as any).testFirebase) {
-      (window as any).testFirebase();
-    } else {
-      console.log(
-        "⚠️ Diagnostic tools not loaded. Checking basic Firebase status...",
-      );
-
-      // Basic Firebase check
-      import("@/lib/firebase").then(({ db, auth }) => {
-        console.log("🔥 Firebase status:");
-        console.log(
-          "  - Database:",
-          db ? "✅ Initialized" : "❌ Not initialized",
-        );
-        console.log(
-          "  - Auth:",
-          auth ? "✅ Initialized" : "❌ Not initialized",
-        );
-
-        if (auth?.currentUser) {
-          console.log("  - Current user:", auth.currentUser.email);
-        } else {
-          console.log("  - Current user: None");
-        }
-      });
-    }
-  };
-
-  const createUserDocument = async () => {
-    setError("");
-    setIsLoading(true);
-
-    try {
-      console.log("🔧 Attempting to create user document...");
-
-      // Import Firebase directly to create user document
-      const { getAuth } = await import("firebase/auth");
-      const { doc, setDoc, Timestamp } = await import("firebase/firestore");
-      const { db } = await import("@/lib/firebase");
-
-      const auth = getAuth();
-      const currentUser = auth.currentUser;
-
-      if (!currentUser) {
-        throw new Error(
-          "No authenticated user found. Please sign in with Firebase Auth first.",
-        );
-      }
-
-      console.log("Creating user document for:", currentUser.email);
-
-      const userData = {
-        email: currentUser.email || "",
-        name: currentUser.email?.split("@")[0] || "User",
-        role: "admin", // Make them admin
-        is_active: true,
-        requires_password_reset: false,
-        created_at: Timestamp.now(),
-        updated_at: Timestamp.now(),
-        manually_created: true,
-      };
-
-      await setDoc(doc(db, "users", currentUser.uid), userData);
-
-      setResetMessage(
-        "User document created successfully! You can now use the application.",
-      );
-
-      // Refresh the page to reload with new user data
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-    } catch (error: any) {
-      console.error("❌ Failed to create user document:", error);
-      setError(
-        error.message || "Failed to create user document. Check console.",
       );
     } finally {
       setIsLoading(false);
@@ -262,7 +188,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            AGV Cable TV
+            {projectName}
           </CardTitle>
           <p className="text-sm text-muted-foreground text-center">
             Management System
@@ -303,7 +229,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your Firebase Auth email"
+                  placeholder="Enter your Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
@@ -344,32 +270,7 @@ export default function Login() {
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-2">
-                    <p>{error}</p>
-                    {error.includes("User profile not found") && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={createUserDocument}
-                        disabled={isLoading}
-                        className="mt-2"
-                      >
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Create User Profile
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={runDiagnostics}
-                      className="mt-2 ml-2"
-                    >
-                      <Settings className="mr-2 h-4 w-4" />
-                      Run Diagnostics
-                    </Button>
-                  </div>
-                </AlertDescription>
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
@@ -406,32 +307,6 @@ export default function Login() {
               </button>
             </div>
           </form>
-
-          <div className="mt-6 p-4 bg-muted rounded-lg">
-            <p className="text-xs text-muted-foreground text-center">
-              <strong>Step 1:</strong> Enter your Firebase Auth email/password
-              <br />
-              <strong>Step 2:</strong> If "User profile not found" error
-              appears, click "Create User Profile"
-              <br />
-              <em>The system will automatically create your admin profile</em>
-            </p>
-          </div>
-
-          {/* Debug Tools */}
-          <div className="mt-4 text-center space-y-2">
-            <button
-              type="button"
-              onClick={runDiagnostics}
-              className="text-xs text-muted-foreground hover:text-foreground block w-full"
-            >
-              🔧 Run Firebase Diagnostics (Check Console)
-            </button>
-
-            <div className="text-xs text-muted-foreground">
-              Console Commands: <code>testFirebase()</code>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
