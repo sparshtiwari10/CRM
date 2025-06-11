@@ -275,9 +275,27 @@ export default function EnhancedCustomerTable({
     console.log(`   Requested Status: ${newStatus}`);
 
     if (isAdmin) {
-      console.log(`✅ Admin user - proceeding with direct status change`);
-      // Admins can change status directly
-      handleDirectStatusChange(customer, newStatus);
+      console.log(`✅ Admin user - proceeding with VC selection`);
+
+      // Check if customer has multiple VCs
+      const hasMultipleVCs =
+        customer.connections &&
+        customer.connections.length > 0 &&
+        (customer.connections.length > 1 ||
+          (customer.connections.length === 1 &&
+            customer.connections[0].vcNumber !== customer.vcNumber));
+
+      if (hasMultipleVCs) {
+        console.log(`🔗 Customer has multiple VCs - showing selection modal`);
+        setVCStatusCustomer(customer);
+        setVCRequestedStatus(newStatus);
+        setShowVCStatusModal(true);
+      } else {
+        console.log(
+          `📱 Customer has single VC - proceeding with direct change`,
+        );
+        handleVCStatusChange(customer, newStatus, [customer.vcNumber]);
+      }
     } else {
       console.log(`📝 Employee user - creating status change request`);
       // Employees must request status changes
