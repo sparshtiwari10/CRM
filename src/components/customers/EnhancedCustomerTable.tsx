@@ -896,6 +896,20 @@ export default function EnhancedCustomerTable({
                                   </div>
                                 </div>
                               )}
+
+                            {/* No Status Change History Message */}
+                            {(!customer.statusLogs ||
+                              customer.statusLogs.length === 0) && (
+                              <div>
+                                <h4 className="font-semibold mb-2 flex items-center">
+                                  <Clock className="mr-2 h-4 w-4" />
+                                  Status Change History
+                                </h4>
+                                <div className="text-center py-3 text-muted-foreground border rounded bg-muted/30">
+                                  No status changes recorded for this customer
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
