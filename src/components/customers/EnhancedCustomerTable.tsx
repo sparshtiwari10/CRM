@@ -297,27 +297,36 @@ export default function EnhancedCustomerTable({
     customer: Customer,
     newStatus: CustomerStatus,
   ) => {
+    console.log(`🔥 handleDirectStatusChange called for ${customer.name}`);
+
     try {
       if (!onCustomerUpdate) {
+        console.error("❌ onCustomerUpdate function not provided");
         throw new Error("Customer update function not provided");
       }
 
-      console.log(`🔄 Starting status change for ${customer.name}:`);
+      console.log(`🔄 Starting direct status change for ${customer.name}:`);
       console.log(`   Current status: ${customer.status}`);
       console.log(`   New status: ${newStatus}`);
       console.log(`   Customer ID: ${customer.id}`);
+      console.log(`   onCustomerUpdate function:`, onCustomerUpdate);
 
       const updates = { status: newStatus };
+      console.log(`📤 Calling onCustomerUpdate with:`, updates);
+
       await onCustomerUpdate(customer.id, updates);
 
-      console.log(`✅ Status change completed for ${customer.name}`);
+      console.log(
+        `✅ onCustomerUpdate completed successfully for ${customer.name}`,
+      );
 
       toast({
         title: "Status Updated",
         description: `${customer.name} status changed to ${newStatus}`,
       });
     } catch (error) {
-      console.error("❌ Failed to update status:", error);
+      console.error("❌ Error in handleDirectStatusChange:", error);
+      console.error("❌ Error stack:", error.stack);
       toast({
         title: "Error",
         description: `Failed to update customer status: ${error.message}`,
