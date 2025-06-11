@@ -95,6 +95,47 @@
 
 **Result:** ✅ Customer status changes now work correctly for both direct admin changes and approved requests
 
+#### 7. Multiple VC Number Management & Status History
+
+**Problem:**
+
+- Status changes not appearing in status change history
+- No interface for selecting which VC numbers to activate/deactivate for multi-VC customers
+
+**Root Cause:**
+
+- Status history was showing mock data instead of real customer status logs
+- No VC selection interface for customers with multiple connections
+- Status logs not being properly created and saved
+
+**Solution:**
+
+- **File:** `src/components/customers/VCStatusChangeModal.tsx` (New)
+- **Feature:** Created comprehensive VC selection modal with:
+  - Checkbox interface for selecting specific VC numbers
+  - Visual status indicators for each VC
+  - Primary/secondary VC identification
+  - Select All/Deselect All functionality
+  - Shows current status and package details for each VC
+- **File:** `src/components/customers/EnhancedCustomerTable.tsx`
+- **Fix:**
+  - Replaced `handleDirectStatusChange` with `handleVCStatusChange`
+  - Added proper status log creation for each VC status change
+  - Fixed status history display to use real customer data instead of mock data
+  - Added detection for single vs multiple VC scenarios
+  - Enhanced status change logic with comprehensive logging
+
+**Features Added:**
+
+- **Multi-VC Selection:** Customers with multiple VC numbers now show a selection dialog
+- **Individual VC Status Tracking:** Each VC status change creates separate log entries
+- **Visual VC Management:** Clear display of all VC numbers with current status
+- **Smart Selection:** Only shows VCs that can actually change status
+- **Comprehensive Logging:** All status changes properly logged with user, timestamp, and reason
+- **Real-time History:** Status change history displays actual customer data
+
+**Result:** ✅ Complete VC status management with proper history tracking and multi-VC support
+
 #### 📋 Technical Details
 
 **Files Modified:**
