@@ -677,7 +677,10 @@ export default function Management() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="newPackage">New Package</Label>
-                      <Select value={newPackage} onValueChange={setNewPackage}>
+                      <Select
+                        value={newPackage}
+                        onValueChange={handlePackageSelection}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select a package" />
                         </SelectTrigger>
