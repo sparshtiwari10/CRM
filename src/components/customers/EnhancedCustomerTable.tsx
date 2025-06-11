@@ -289,8 +289,12 @@ export default function EnhancedCustomerTable({
     newStatus: CustomerStatus,
   ) => {
     try {
+      if (!onCustomerUpdate) {
+        throw new Error("Customer update function not provided");
+      }
+
       const updates = { status: newStatus };
-      await onCustomerUpdate?.(customer.id, updates);
+      await onCustomerUpdate(customer.id, updates);
 
       // Log the status change
       console.log(
