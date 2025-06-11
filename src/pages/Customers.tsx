@@ -208,10 +208,13 @@ export default function Customers() {
     return matchesSearch && matchesStatus && matchesArea;
   });
 
-  // Get unique areas for filter dropdown
-  const uniqueAreas = [
-    ...new Set(customers.map((customer) => customer.collectorName)),
-  ].filter(Boolean);
+  // Get areas for filter dropdown - prioritize managed areas, fallback to customer areas
+  const uniqueAreas =
+    managedAreas.length > 0
+      ? managedAreas
+      : [
+          ...new Set(customers.map((customer) => customer.collectorName)),
+        ].filter(Boolean);
 
   const handleCreateCustomer = () => {
     setEditingCustomer(null);
