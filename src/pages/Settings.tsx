@@ -184,13 +184,37 @@ export default function Settings() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
                 <div>
+                  <Label htmlFor="projectName">
+                    Project Name
+                    <span className="text-xs text-muted-foreground ml-2">
+                      (Shown on login page)
+                    </span>
+                  </Label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      id="projectName"
+                      value={settings.projectName}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev!,
+                          projectName: e.target.value,
+                        }))
+                      }
+                      className="pl-10"
+                      placeholder="Enter project name"
+                    />
+                  </div>
+                </div>
+
+                <div>
                   <Label htmlFor="companyName">Company Name</Label>
                   <Input
                     id="companyName"
-                    value={companySettings.companyName}
+                    value={settings.companyName}
                     onChange={(e) =>
-                      setCompanySettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         companyName: e.target.value,
                       }))
                     }
@@ -201,10 +225,10 @@ export default function Settings() {
                   <Label htmlFor="address">Address</Label>
                   <Textarea
                     id="address"
-                    value={companySettings.address}
+                    value={settings.address}
                     onChange={(e) =>
-                      setCompanySettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         address: e.target.value,
                       }))
                     }
@@ -216,10 +240,10 @@ export default function Settings() {
                     <Label htmlFor="phone">Phone</Label>
                     <Input
                       id="phone"
-                      value={companySettings.phone}
+                      value={settings.phone}
                       onChange={(e) =>
-                        setCompanySettings((prev) => ({
-                          ...prev,
+                        setSettings((prev) => ({
+                          ...prev!,
                           phone: e.target.value,
                         }))
                       }
@@ -231,10 +255,10 @@ export default function Settings() {
                     <Input
                       id="email"
                       type="email"
-                      value={companySettings.email}
+                      value={settings.email}
                       onChange={(e) =>
-                        setCompanySettings((prev) => ({
-                          ...prev,
+                        setSettings((prev) => ({
+                          ...prev!,
                           email: e.target.value,
                         }))
                       }
@@ -246,10 +270,10 @@ export default function Settings() {
                   <Label htmlFor="website">Website</Label>
                   <Input
                     id="website"
-                    value={companySettings.website}
+                    value={settings.website}
                     onChange={(e) =>
-                      setCompanySettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         website: e.target.value,
                       }))
                     }
@@ -260,10 +284,10 @@ export default function Settings() {
                   <Label htmlFor="description">Description</Label>
                   <Textarea
                     id="description"
-                    value={companySettings.description}
+                    value={settings.description}
                     onChange={(e) =>
-                      setCompanySettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         description: e.target.value,
                       }))
                     }
@@ -271,9 +295,13 @@ export default function Settings() {
                 </div>
               </div>
 
-              <Button onClick={handleSaveCompanySettings} className="w-full">
+              <Button
+                onClick={handleSaveCompanySettings}
+                className="w-full"
+                disabled={isSaving.company}
+              >
                 <Save className="mr-2 h-4 w-4" />
-                Save Company Settings
+                {isSaving.company ? "Saving..." : "Save Company Settings"}
               </Button>
             </CardContent>
           </Card>
