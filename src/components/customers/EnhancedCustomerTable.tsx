@@ -293,23 +293,25 @@ export default function EnhancedCustomerTable({
         throw new Error("Customer update function not provided");
       }
 
+      console.log(`🔄 Starting status change for ${customer.name}:`);
+      console.log(`   Current status: ${customer.status}`);
+      console.log(`   New status: ${newStatus}`);
+      console.log(`   Customer ID: ${customer.id}`);
+
       const updates = { status: newStatus };
       await onCustomerUpdate(customer.id, updates);
 
-      // Log the status change
-      console.log(
-        `Status changed for ${customer.name}: ${customer.status} → ${newStatus}`,
-      );
+      console.log(`✅ Status change completed for ${customer.name}`);
 
       toast({
         title: "Status Updated",
-        description: `Customer status changed to ${newStatus}`,
+        description: `${customer.name} status changed to ${newStatus}`,
       });
     } catch (error) {
-      console.error("Failed to update status:", error);
+      console.error("❌ Failed to update status:", error);
       toast({
         title: "Error",
-        description: "Failed to update customer status",
+        description: `Failed to update customer status: ${error.message}`,
         variant: "destructive",
       });
     }
