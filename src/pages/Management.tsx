@@ -288,6 +288,173 @@ export default function Management() {
     setSelectedCustomers([]);
   };
 
+  // Area management functions
+  const handleCreateArea = () => {
+    setEditingArea(null);
+    setAreaName("");
+    setAreaDescription("");
+    setShowAreaDialog(true);
+  };
+
+  const handleEditArea = (area: Area) => {
+    setEditingArea(area);
+    setAreaName(area.name);
+    setAreaDescription(area.description || "");
+    setShowAreaDialog(true);
+  };
+
+  const handleSaveArea = async () => {
+    if (!areaName.trim()) {
+      toast({
+        title: "Error",
+        description: "Area name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      if (editingArea) {
+        // Update existing area
+        await AreaService.updateArea(editingArea.id, {
+          name: areaName.trim(),
+          description: areaDescription.trim(),
+        });
+
+        toast({
+          title: "Success",
+          description: "Area updated successfully.",
+        });
+      } else {
+        // Create new area
+        await AreaService.createArea({
+          name: areaName.trim(),
+          description: areaDescription.trim(),
+          isActive: true,
+        });
+
+        toast({
+          title: "Success",
+          description: "Area created successfully.",
+        });
+      }
+
+      // Reload data
+      await loadData();
+
+      // Reset form
+      setShowAreaDialog(false);
+      setEditingArea(null);
+      setAreaName("");
+      setAreaDescription("");
+    } catch (error: any) {
+      console.error("Failed to save area:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save area.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteArea = async (area: Area) => {
+    try {
+      // Check if area can be deleted
+      const validation = await AreaService.validateAreaDeletion(area.id);
+
+      if (!validation.canDelete) {
+        toast({
+          title: "Cannot Delete Area",
+          description: validation.reason,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setIsSaving(true);
+
+      await AreaService.deleteArea(area.id);
+
+      toast({
+        title: "Success",
+        description: `Area "${area.name}" has been deleted.`,
+      });
+
+      // Reload data
+      await loadData();
+    } catch (error: any) {
+      console.error("Failed to delete area:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete area.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReactivateArea = async (area: Area) => {
+    try {
+      setIsSaving(true);
+
+      await AreaService.reactivateArea(area.id);
+
+      toast({
+        title: "Success",
+        description: `Area "${area.name}" has been reactivated.`,
+      });
+
+      // Reload data
+      await loadData();
+    } catch (error: any) {
+      console.error("Failed to reactivate area:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reactivate area.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleImportAreas = async () => {
+    try {
+      setIsSaving(true);
+
+      const importedAreas = await AreaService.importAreasFromExistingData();
+
+      if (importedAreas.length > 0) {
+        toast({
+          title: "Success",
+          description: `Imported ${importedAreas.length} areas: ${importedAreas.join(", ")}`,
+        });
+      } else {
+        toast({
+          title: "No New Areas",
+          description: "All existing areas are already managed.",
+        });
+      }
+
+      // Reload data
+      await loadData();
+    } catch (error: any) {
+      console.error("Failed to import areas:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to import areas.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout title="Management">
