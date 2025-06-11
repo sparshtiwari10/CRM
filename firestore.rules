@@ -148,6 +148,34 @@ service cloud.firestore {
       allow write: if isAdmin() && isActiveUser();
     }
 
+    // Status logs collection - customer status change history
+    match /statusLogs/{logId} {
+      // Admins can read all status logs
+      allow read: if isAdmin() && isActiveUser();
+
+      // Employees can read logs for customers in their areas
+      allow read: if isAuthenticated() &&
+                 isActiveUser() &&
+                 canAccessArea(resource.data.area);
+
+      // Only admins can create status logs
+      allow write: if isAdmin() && isActiveUser();
+    }
+
+    // Extended billing records for customer history
+    match /customerBillingHistory/{recordId} {
+      // Admins can read all billing history
+      allow read: if isAdmin() && isActiveUser();
+
+      // Employees can read billing history for customers in their areas
+      allow read: if isAuthenticated() &&
+                 isActiveUser() &&
+                 canAccessArea(resource.data.area);
+
+      // Both admins and employees can create billing records
+      allow write: if isAuthenticated() && isActiveUser();
+    }
+
     // Default deny rule for any other collections
     match /{document=**} {
       allow read, write: if false;
