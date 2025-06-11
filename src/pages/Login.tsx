@@ -69,13 +69,20 @@ export default function Login() {
       let errorMessage = "Login failed. Please try again.";
 
       if (error.code === "auth/user-not-found") {
-        errorMessage = "No account found with this email address.";
+        errorMessage = "User not registered. Please contact administrator.";
       } else if (error.code === "auth/wrong-password") {
-        errorMessage = "Incorrect password.";
+        errorMessage = "Incorrect password. Please try again.";
       } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Invalid email address.";
+        errorMessage = "Please enter a valid email address.";
       } else if (error.code === "auth/too-many-requests") {
         errorMessage = "Too many failed attempts. Please try again later.";
+      } else if (error.code === "auth/invalid-credential") {
+        errorMessage =
+          "Invalid email or password. Please check your credentials.";
+      } else if (error.code === "auth/user-disabled") {
+        errorMessage = "This account has been disabled. Contact administrator.";
+      } else if (error.message?.includes("User profile not found")) {
+        errorMessage = "User profile not found. Please contact administrator.";
       } else if (error.message) {
         errorMessage = error.message;
       }
