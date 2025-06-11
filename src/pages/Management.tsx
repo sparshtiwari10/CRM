@@ -459,6 +459,17 @@ export default function Management() {
     }
   };
 
+  // Handle package selection and auto-populate amount
+  const handlePackageSelection = (packageName: string) => {
+    setNewPackage(packageName);
+
+    // Auto-populate package amount
+    const selectedPackage = packages.find((pkg) => pkg.name === packageName);
+    if (selectedPackage) {
+      setNewPackageAmount(selectedPackage.price.toString());
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout title="Management">
