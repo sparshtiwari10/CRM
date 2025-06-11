@@ -327,7 +327,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your Firebase Auth email"
+                  placeholder="Enter your Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
