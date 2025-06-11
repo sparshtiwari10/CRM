@@ -198,50 +198,39 @@ export default function EnhancedCustomerTable({
     if (customerDetails.has(customerId)) return;
 
     try {
-      // In a real implementation, you would load:
-      // - Status change logs
-      // - Billing history
-      // - Associated requests
+      console.log(`🔄 Loading customer details for ${customerId}`);
 
-      // For now, we'll use mock data
       const customer = customers.find((c) => c.id === customerId);
       if (customer) {
+        // Load real billing history from CustomerService
+        let realBillingHistory: BillingRecord[] = [];
+        try {
+          realBillingHistory =
+            await CustomerService.getBillingHistory(customerId);
+          console.log(
+            `📊 Loaded ${realBillingHistory.length} billing records for ${customer.name}`,
+          );
+        } catch (error) {
+          console.warn(
+            `⚠️ Failed to load billing history for ${customer.name}:`,
+            error,
+          );
+          // Fallback to customer's invoice history if available
+          realBillingHistory = customer.invoiceHistory || [];
+        }
+
         const details: CustomerRowData = {
           ...customer,
-          statusLogs: [
-            {
-              id: `${customerId}-log-1`,
-              customerId,
-              previousStatus: "inactive",
-              newStatus: "active",
-              changedBy: "Admin User",
-              changedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-              reason: "Account activation",
-              requestId: "req-001",
-            },
-            {
-              id: `${customerId}-log-2`,
-              customerId,
-              previousStatus: "demo",
-              newStatus: "inactive",
-              changedBy: "System",
-              changedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-              reason: "Demo period ended",
-            },
-          ],
-          billingHistory: [
-            {
-              id: `${customerId}-bill-1`,
-              customerId,
-              amount: customer.packageAmount || 0,
-              billingMonth: "2024-01",
-              paymentDate: new Date(),
-              paymentStatus: "Paid",
-              amountPaid: customer.packageAmount || 0,
-              paymentMethod: "Cash",
-            },
-          ],
+          // Use real customer status logs instead of mock data
+          statusLogs: customer.statusLogs || [],
+          // Use real billing history
+          billingHistory: realBillingHistory,
         };
+
+        console.log(`✅ Customer details loaded for ${customer.name}:`, {
+          statusLogs: details.statusLogs.length,
+          billingHistory: details.billingHistory.length,
+        });
 
         setCustomerDetails((prev) => new Map(prev.set(customerId, details)));
       }
