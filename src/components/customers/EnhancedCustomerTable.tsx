@@ -779,25 +779,36 @@ export default function EnhancedCustomerTable({
                                         <div className="flex items-center justify-between">
                                           <div>
                                             <span className="font-medium">
-                                              ₹{bill.amount}
+                                              ₹
+                                              {bill.amount ||
+                                                bill.amountPaid ||
+                                                0}
                                             </span>
                                             <span className="text-sm text-muted-foreground ml-2">
-                                              ({bill.billingMonth})
+                                              (
+                                              {bill.billingMonth ||
+                                                bill.invoiceNumber ||
+                                                "N/A"}
+                                              )
                                             </span>
                                           </div>
                                           <div className="flex items-center space-x-2">
                                             <Badge
                                               variant={
-                                                bill.paymentStatus === "Paid"
+                                                (bill.paymentStatus ||
+                                                  "Paid") === "Paid"
                                                   ? "default"
                                                   : "destructive"
                                               }
                                             >
-                                              {bill.paymentStatus}
+                                              {bill.paymentStatus ||
+                                                "Generated"}
                                             </Badge>
                                             <span className="text-xs text-muted-foreground">
                                               {new Date(
-                                                bill.paymentDate,
+                                                bill.paymentDate ||
+                                                  bill.generatedDate ||
+                                                  Date.now(),
                                               ).toLocaleDateString()}
                                             </span>
                                           </div>
