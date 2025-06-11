@@ -89,10 +89,10 @@ export function FirebaseStatus() {
         className={`${getStatusColor()} border-0 text-xs flex items-center space-x-1`}
       >
         {getStatusIcon()}
-        <span>{getStatusText()}</span>
+        <span className="hidden sm:inline">{getStatusText()}</span>
       </Badge>
       {status === "connected" && (
-        <span className="text-xs text-muted-foreground hidden sm:inline">
+        <span className="text-xs text-muted-foreground hidden lg:inline">
           {lastCheck.toLocaleTimeString()}
         </span>
       )}
