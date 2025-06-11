@@ -86,6 +86,15 @@ The AGV Cable TV Management System is a comprehensive web application for managi
 - **Status Management:** Activate/deactivate areas as needed
 - **Centralized Control:** Single source of truth for all geographic areas
 
+#### Enhanced Customer Management System
+
+- **Role-Based Access Control:** Admin vs employee permissions with proper restrictions
+- **Expandable Table Rows:** Detailed customer information without navigation
+- **Complete Audit Trail:** Track all status changes with timestamps and reasons
+- **Request-Status Integration:** Link service requests to automatic status changes
+- **Data Validation:** Import validation against managed areas and packages
+- **Multi-Connection Support:** Display all VC numbers with individual status tracking
+
 ### ✅ Core Working Features
 
 #### Authentication & User Management
