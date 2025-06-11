@@ -29,6 +29,7 @@ The AGV Cable TV Management System is a comprehensive web application for managi
 - **Bulk Management:** Admin-only bulk update tools for customer areas and packages
 - **Dynamic Settings:** Firebase-based configuration system with real-time updates
 - **Professional Interface:** Clean, modern login and settings pages
+- **Area Management:** Centralized area management system with usage tracking
 
 ### Technology Stack
 
