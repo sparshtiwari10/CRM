@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Customer } from "@/types";
+import { AreaService } from "@/services/areaService";
+import { packageService } from "@/services/packageService";
 
 interface CustomerImportExportProps {
   open: boolean;
