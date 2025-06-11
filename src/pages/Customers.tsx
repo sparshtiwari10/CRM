@@ -41,6 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [managedAreas, setManagedAreas] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
