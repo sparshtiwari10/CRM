@@ -350,10 +350,57 @@ export default function Customers() {
     updates: Partial<Customer>,
   ) => {
     try {
-      await CustomerService.updateCustomer(customerId, updates);
+      // If status is being updated, also update connection statuses and add status log
+      const customer = customers.find((c) => c.id === customerId);
+      if (!customer) {
+        throw new Error("Customer not found");
+      }
+
+      let enhancedUpdates = { ...updates };
+
+      // Handle status changes
+      if (updates.status && updates.status !== customer.status) {
+        const newStatus = updates.status;
+
+        // Update connection statuses if they exist
+        if (customer.connections && customer.connections.length > 0) {
+          enhancedUpdates.connections = customer.connections.map((conn) => ({
+            ...conn,
+            status: newStatus as any, // Update all connections to the new status
+          }));
+        }
+
+        // Add status log entry
+        const statusLog = {
+          id: `log-${Date.now()}`,
+          customerId: customerId,
+          previousStatus: customer.status,
+          newStatus: newStatus,
+          changedBy: user?.name || "Unknown",
+          changedAt: new Date(),
+          reason: `Status changed to ${newStatus}`,
+        };
+
+        enhancedUpdates.statusLogs = [
+          ...(customer.statusLogs || []),
+          statusLog,
+        ];
+
+        console.log(
+          `🔄 Updating customer ${customer.name} status from ${customer.status} to ${newStatus}`,
+        );
+      }
+
+      await CustomerService.updateCustomer(customerId, enhancedUpdates);
+
+      // Update local state with all the enhanced updates
       setCustomers((prev) =>
-        prev.map((c) => (c.id === customerId ? { ...c, ...updates } : c)),
+        prev.map((c) =>
+          c.id === customerId ? { ...c, ...enhancedUpdates } : c,
+        ),
       );
+
+      console.log(`✅ Customer ${customer.name} updated successfully`);
     } catch (error) {
       console.error("Failed to update customer:", error);
       throw error;
