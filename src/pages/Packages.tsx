@@ -600,7 +600,11 @@ export default function Packages() {
         >
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>{viewingPackage?.name} Package Details</DialogTitle>
+              <DialogTitle>
+                {viewingPackage?.name
+                  ? `${viewingPackage.name} Package Details`
+                  : "Package Details"}
+              </DialogTitle>
               <DialogDescription>
                 Complete information and statistics for this package
               </DialogDescription>
