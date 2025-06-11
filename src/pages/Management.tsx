@@ -669,7 +669,17 @@ export default function Management() {
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    disabled={selectedCustomers.length === 0}
+                    disabled={
+                      selectedCustomers.length === 0 ||
+                      packages.filter((pkg) => pkg.isActive).length === 0
+                    }
+                    title={
+                      packages.filter((pkg) => pkg.isActive).length === 0
+                        ? "No active packages available. Create packages first."
+                        : selectedCustomers.length === 0
+                          ? "Select customers first"
+                          : "Update package for selected customers"
+                    }
                   >
                     <PackageIcon className="mr-2 h-4 w-4" />
                     Bulk Update Package
