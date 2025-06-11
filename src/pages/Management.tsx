@@ -267,9 +267,9 @@ export default function Management() {
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm("");
-    setFilterArea("");
-    setFilterPackage("");
-    setFilterStatus("");
+    setFilterArea("ALL_AREAS");
+    setFilterPackage("ALL_PACKAGES");
+    setFilterStatus("ALL_STATUSES");
     setSelectedCustomers([]);
   };
 
