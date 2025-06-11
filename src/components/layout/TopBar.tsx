@@ -38,25 +38,16 @@ export function TopBar({ title }: TopBarProps) {
 
   return (
     <header className="bg-background border-b border-border h-16 flex items-center justify-between px-4 lg:px-6">
-      {/* Left side - Title and Search */}
-      <div className="flex items-center space-x-4 flex-1">
+      {/* Left side - Title only */}
+      <div className="flex items-center flex-1">
         {/* Page Title */}
         {title && (
-          <div className="hidden sm:block">
-            <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+          <div>
+            <h1 className="text-lg sm:text-xl font-semibold text-foreground">
+              {title}
+            </h1>
           </div>
         )}
-
-        {/* Search */}
-        <div className="hidden md:flex items-center max-w-md flex-1">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search customers, invoices..."
-              className="pl-10"
-            />
-          </div>
-        </div>
       </div>
 
       {/* Right side - Notifications and User Menu */}
