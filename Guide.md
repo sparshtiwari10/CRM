@@ -25,7 +25,7 @@ The AGV Cable TV Management System is a comprehensive web application for managi
 - **Permissions:** Advanced role-based access with multi-area employee support
 - **Security:** Production-grade Firestore rules with granular access control
 - **Employee Management:** Multi-area assignment with secure user creation
-- **Customer Management:** Complete CRUD with area-based permissions and detailed views
+- **Customer Management:** Enhanced system with role-based permissions, expandable details, and request integration
 - **Bulk Management:** Admin-only bulk update tools for customer areas and packages
 - **Dynamic Settings:** Firebase-based configuration system with real-time updates
 - **Professional Interface:** Clean, modern login and settings pages
