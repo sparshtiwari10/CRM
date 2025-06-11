@@ -38,6 +38,21 @@ export default function Login() {
   } = useAuth();
   const navigate = useNavigate();
 
+  // Load project name from settings
+  useEffect(() => {
+    const loadProjectName = async () => {
+      try {
+        const name = await SettingsService.getProjectName();
+        setProjectName(name);
+      } catch (error) {
+        console.error("Failed to load project name:", error);
+        // Keep default name if loading fails
+      }
+    };
+
+    loadProjectName();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
