@@ -281,12 +281,20 @@ export default function Customers() {
 
       if (editingCustomer) {
         // Update existing customer
-        await CustomerService.updateCustomer(editingCustomer.id, customerData);
+        const updatedCustomer = await CustomerService.updateCustomer(
+          editingCustomer.id,
+          customerData,
+        );
+
+        // Update the customers state with the new data including the ID
         setCustomers((prev) =>
           prev.map((c) =>
-            c.id === editingCustomer.id ? { ...customerData } : c,
+            c.id === editingCustomer.id
+              ? { ...updatedCustomer, id: editingCustomer.id }
+              : c,
           ),
         );
+
         toast({
           title: "Success",
           description: "Customer updated successfully",
@@ -301,6 +309,7 @@ export default function Customers() {
         });
       }
 
+      // Close modal and reset state
       setIsModalOpen(false);
       setEditingCustomer(null);
     } catch (error) {
