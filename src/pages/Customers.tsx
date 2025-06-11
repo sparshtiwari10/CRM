@@ -532,7 +532,7 @@ export default function Customers() {
         </Card>
 
         {/* Customer Table */}
-        <CustomerTable
+        <EnhancedCustomerTable
           customers={filteredCustomers}
           searchTerm={searchTerm}
           onEdit={handleEditCustomer}
