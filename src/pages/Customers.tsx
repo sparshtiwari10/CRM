@@ -512,7 +512,8 @@ export default function Customers() {
           <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                Customer Details - {viewingCustomer?.name}
+                Customer Details
+                {viewingCustomer?.name ? ` - ${viewingCustomer.name}` : ""}
               </DialogTitle>
               <DialogDescription>
                 Complete customer information and service details
