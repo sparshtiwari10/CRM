@@ -169,7 +169,20 @@ export default function Customers() {
       }
     };
 
+    const loadManagedAreas = async () => {
+      try {
+        const areaNames = await AreaService.getAreaNames();
+        if (mounted) {
+          setManagedAreas(areaNames);
+        }
+      } catch (error) {
+        console.error("Failed to load managed areas:", error);
+        // Fallback will be handled in the component rendering
+      }
+    };
+
     loadCustomers();
+    loadManagedAreas();
 
     return () => {
       mounted = false;
