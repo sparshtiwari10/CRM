@@ -713,12 +713,13 @@ export default function Management() {
                       <Input
                         id="newPackageAmount"
                         type="number"
-                        placeholder="Enter package amount (optional)"
+                        placeholder="Auto-populated from selected package"
                         value={newPackageAmount}
                         onChange={(e) => setNewPackageAmount(e.target.value)}
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Leave empty to keep existing amount
+                        Amount is auto-populated from selected package. You can
+                        modify it if needed.
                       </p>
                     </div>
                   </div>
