@@ -77,6 +77,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ActionRequest } from "@/types/auth";
 import { ActionRequestModal } from "./ActionRequestModal";
+import { VCStatusChangeModal } from "./VCStatusChangeModal";
 import { CustomerService } from "@/services/customerService";
 
 interface EnhancedCustomerTableProps {
