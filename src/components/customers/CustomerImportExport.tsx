@@ -341,11 +341,6 @@ export function CustomerImportExport({
         hasErrors = true;
       }
 
-      if (!customer.collectorName?.trim()) {
-        errors.push(`Row ${rowNumber}: Area name is required`);
-        hasErrors = true;
-      }
-
       // Validate email format if provided
       if (customer.email && customer.email.trim() !== "") {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
