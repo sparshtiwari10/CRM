@@ -64,33 +64,76 @@
 - **Fix:** Ensured both columns use consistent right-text alignment
 - **Result:** ✅ Professional table layout with proper numeric alignment
 
+#### 6. Customer Status Change Bug Fixes
+
+**Problem:** Deactivate customer button not actually changing customer status
+**Root Cause:**
+
+- Inconsistent status field mapping between UI and Firestore
+- Missing connection status synchronization
+- Incomplete status log tracking
+- No data refresh after status changes
+
+**Solution:**
+
+- **File:** `src/pages/Customers.tsx`
+- **Fix:**
+  - Enhanced `handleCustomerUpdate` with comprehensive status change logic
+  - Added `isActive` field synchronization
+  - Implemented connection status updates for multi-connection customers
+  - Added automatic status log creation
+  - Added data refresh after status changes for consistency
+- **File:** `src/components/customers/EnhancedCustomerTable.tsx`
+- **Fix:**
+  - Enhanced debugging output for status change operations
+  - Improved error messages with specific failure details
+- **File:** `src/pages/RequestManagement.tsx`
+- **Fix:**
+  - Fixed request approval system to use same robust status update logic
+  - Added comprehensive status logging for approved requests
+  - Fixed status synchronization between primary VC and connections
+
+**Result:** ✅ Customer status changes now work correctly for both direct admin changes and approved requests
+
 #### 📋 Technical Details
 
 **Files Modified:**
 
 - `src/components/layout/TopBar.tsx` - Mobile sidebar integration
-- `src/pages/Customers.tsx` - Statistics removal and modal fixes
+- `src/pages/Customers.tsx` - Statistics removal, modal fixes, and status change improvements
 - `src/components/customers/EnhancedCustomerTable.tsx` - Status changes and alignment
+- `src/pages/RequestManagement.tsx` - Request approval status updates
 
 **State Management Improvements:**
 
 - Enhanced modal state handling with proper cleanup
-- Improved customer data synchronization
+- Improved customer data synchronization with automatic refresh
 - Better error boundary handling for status changes
+- Comprehensive status logging and audit trail
 
 **UI/UX Enhancements:**
 
 - Removed clutter from customer interface
 - Fixed mobile responsive layout issues
 - Improved button functionality consistency
+- Better feedback for status change operations
+
+**Status Management Fixes:**
+
+- Fixed status field mapping consistency
+- Added connection status synchronization
+- Implemented automatic data refresh after updates
+- Enhanced request approval workflow
 
 **Testing Results:**
 
 - ✅ Mobile layout properly centered
 - ✅ Customer editing works smoothly
-- ✅ Status changes function correctly
+- ✅ Status changes function correctly in all scenarios
+- ✅ Request approval properly updates customer status
 - ✅ Clean interface without metrics clutter
 - ✅ Proper column alignment in tables
+- ✅ Comprehensive status logging and audit trail
 
 ## Latest Updates - Management Features & Settings Enhancement
 
