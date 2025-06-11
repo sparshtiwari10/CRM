@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import CustomerModal from "@/components/customers/CustomerModal";
-import CustomerTable from "@/components/customers/CustomerTable";
+import EnhancedCustomerTable from "@/components/customers/EnhancedCustomerTable";
 import { CustomerImportExport } from "@/components/customers/CustomerImportExport";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
