@@ -383,15 +383,6 @@ export default function Login() {
                         Create User Profile
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={runDiagnostics}
-                      className="mt-2 ml-2"
-                    >
-                      <Settings className="mr-2 h-4 w-4" />
-                      Run Diagnostics
-                    </Button>
                   </div>
                 </AlertDescription>
               </Alert>
