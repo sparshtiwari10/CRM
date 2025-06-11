@@ -251,6 +251,29 @@ export default function EnhancedCustomerTable({
     setExpandedRows(newExpanded);
   };
 
+  // Force refresh customer details when customer data changes
+  const refreshCustomerDetails = (customerId: string) => {
+    console.log(`🔄 Refreshing customer details for ${customerId}`);
+    // Remove from cache to force reload
+    setCustomerDetails((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(customerId);
+      return newMap;
+    });
+    // Reload if expanded
+    if (expandedRows.has(customerId)) {
+      loadCustomerDetails(customerId);
+    }
+  };
+
+  // Watch for customer data changes to refresh details
+  React.useEffect(() => {
+    // When customers array changes, refresh details for any expanded customers
+    expandedRows.forEach((customerId) => {
+      refreshCustomerDetails(customerId);
+    });
+  }, [customers]);
+
   // Handle status change requests
   const handleStatusChangeRequest = (
     customer: Customer,
