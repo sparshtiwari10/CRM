@@ -366,16 +366,19 @@ export function InvoiceGenerator({
                               {customer.address}
                             </div>
                           </div>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        selectedCustomer.isActive
-                          ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
-                          : "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200",
-                      )}
-                    >
-                      {selectedCustomer.isActive ? "Active" : "Inactive"}
-                    </Badge>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              customer.isActive
+                                ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+                                : "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200",
+                            )}
+                          >
+                            {customer.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
