@@ -451,6 +451,40 @@ Displays complete transaction history:
 - **Default Fallbacks:** System maintains functionality even if settings unavailable
 - **Project Branding:** Login page displays configurable project name
 
+### Area Management System (Admin Only)
+
+#### Area Management Features
+
+- **Centralized Control:** Single interface for managing all geographic areas
+- **CRUD Operations:** Create, read, update, and delete areas with validation
+- **Usage Tracking:** Monitor which areas are assigned to customers and employees
+- **Import Functionality:** Automatically import areas from existing customer/employee data
+- **Status Management:** Activate or deactivate areas as organizational needs change
+- **Safe Deletion:** System prevents deletion of areas currently assigned to users
+
+#### Area Management Workflow
+
+1. **View Areas:** Browse all managed areas with usage statistics
+2. **Create Areas:** Add new geographic areas with name and description
+3. **Edit Areas:** Update existing area information
+4. **Import Areas:** One-click import from existing customer/employee assignments
+5. **Delete Areas:** Safe deletion with validation to prevent data inconsistency
+6. **Monitor Usage:** Track customer and employee assignments per area
+
+#### Integration with Other Systems
+
+- **Customer Management:** Area dropdowns use centrally managed areas
+- **Employee Management:** Multi-area assignment uses managed area list
+- **Bulk Operations:** Area updates reference centralized area database
+- **Data Consistency:** Eliminates duplicate or inconsistent area names across system
+
+#### Security and Permissions
+
+- **Admin-Only Access:** Area management restricted to administrator accounts
+- **Usage Validation:** System checks area usage before allowing deletion
+- **Audit Trail:** All area operations logged for security and compliance
+- **Data Integrity:** Prevents orphaned customer/employee assignments
+
 ## Technical Architecture
 
 ### Frontend Architecture
