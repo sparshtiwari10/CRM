@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerService } from "@/services/customerService";
-import { PackageService } from "@/services/packageService";
+import { packageService } from "@/services/packageService";
 import { Customer, Package } from "@/types";
 import {
   Settings,
