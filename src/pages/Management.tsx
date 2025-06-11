@@ -701,6 +701,149 @@ export default function Management() {
           </CardContent>
         </Card>
 
+        {/* Area Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Building className="h-5 w-5" />
+                <span>Area Management</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleImportAreas}
+                  disabled={isSaving}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import from Data
+                </Button>
+                <Button size="sm" onClick={handleCreateArea}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Area
+                </Button>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Area Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Customers</TableHead>
+                    <TableHead>Employees</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {areas.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <div className="text-muted-foreground">
+                          No areas found. Click "Add Area" to create one.
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    areas.map((area) => {
+                      const customerCount = customers.filter(
+                        (c) => c.collectorName === area.name,
+                      ).length;
+                      const isInUse = customerCount > 0;
+
+                      return (
+                        <TableRow key={area.id}>
+                          <TableCell>
+                            <div className="font-medium">{area.name}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-muted-foreground">
+                              {area.description || "No description"}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                area.isActive ? "default" : "destructive"
+                              }
+                            >
+                              {area.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-1">
+                              <Users className="h-4 w-4 text-muted-foreground" />
+                              <span>{customerCount}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-1">
+                              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                              <span>
+                                {/* This would show employee count - we'll calculate it */}
+                                {
+                                  customers.filter(
+                                    (c) => c.collectorName === area.name,
+                                  ).length
+                                }
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(area.created_at).toLocaleDateString()}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditArea(area)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              {area.isActive ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteArea(area)}
+                                  disabled={isInUse}
+                                  title={
+                                    isInUse
+                                      ? "Cannot delete area with assigned customers"
+                                      : "Delete area"
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleReactivateArea(area)}
+                                  title="Reactivate area"
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Customer Table */}
         <Card>
           <CardHeader>
