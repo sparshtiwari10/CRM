@@ -22,6 +22,7 @@ import {
 import { Customer, Connection, CustomerStatus } from "@/types";
 import { authService } from "@/services/authService";
 import { firestoreService } from "@/services/firestoreService";
+import { AreaService } from "@/services/areaService";
 
 interface CustomerModalProps {
   open: boolean;
