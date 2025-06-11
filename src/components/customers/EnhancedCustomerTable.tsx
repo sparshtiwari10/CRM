@@ -548,26 +548,32 @@ export default function EnhancedCustomerTable({
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
-                            {/* Status Change Actions */}
-                            {status !== "active" && (
+                            {/* Status Change Actions - Use main customer status for buttons */}
+                            {customerStatus !== "active" && (
                               <DropdownMenuItem
-                                onClick={() =>
-                                  handleStatusChangeRequest(customer, "active")
-                                }
+                                onClick={() => {
+                                  console.log(
+                                    `🔥 Activate button clicked for ${customer.name}`,
+                                  );
+                                  handleStatusChangeRequest(customer, "active");
+                                }}
                                 className="text-green-600"
                               >
                                 <Power className="mr-2 h-4 w-4" />
                                 Activate
                               </DropdownMenuItem>
                             )}
-                            {status !== "inactive" && (
+                            {customerStatus !== "inactive" && (
                               <DropdownMenuItem
-                                onClick={() =>
+                                onClick={() => {
+                                  console.log(
+                                    `🔥 Deactivate button clicked for ${customer.name}`,
+                                  );
                                   handleStatusChangeRequest(
                                     customer,
                                     "inactive",
-                                  )
-                                }
+                                  );
+                                }}
                                 className="text-red-600"
                               >
                                 <PowerOff className="mr-2 h-4 w-4" />
