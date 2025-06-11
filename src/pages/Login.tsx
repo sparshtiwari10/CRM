@@ -280,23 +280,7 @@ export default function Login() {
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-2">
-                    <p>{error}</p>
-                    {error.includes("User profile not found") && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={createUserDocument}
-                        disabled={isLoading}
-                        className="mt-2"
-                      >
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Create User Profile
-                      </Button>
-                    )}
-                  </div>
-                </AlertDescription>
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
