@@ -956,6 +956,60 @@ export default function Management() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Area Management Dialog */}
+        <Dialog open={showAreaDialog} onOpenChange={setShowAreaDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingArea ? "Edit Area" : "Create New Area"}
+              </DialogTitle>
+              <DialogDescription>
+                {editingArea
+                  ? "Update the area information below."
+                  : "Add a new area that can be assigned to customers and employees."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="areaName">Area Name</Label>
+                <Input
+                  id="areaName"
+                  placeholder="Enter area name (e.g., Downtown, Suburbs)"
+                  value={areaName}
+                  onChange={(e) => setAreaName(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="areaDescription">Description (Optional)</Label>
+                <Input
+                  id="areaDescription"
+                  placeholder="Brief description of the area"
+                  value={areaDescription}
+                  onChange={(e) => setAreaDescription(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowAreaDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveArea}
+                disabled={isSaving || !areaName.trim()}
+              >
+                {isSaving
+                  ? "Saving..."
+                  : editingArea
+                    ? "Update Area"
+                    : "Create Area"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
