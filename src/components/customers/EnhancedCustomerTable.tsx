@@ -798,43 +798,50 @@ export default function EnhancedCustomerTable({
                                     Status Change History
                                   </h4>
                                   <div className="space-y-1">
-                                    {details.statusLogs.map((log) => (
-                                      <div
-                                        key={log.id}
-                                        className="border rounded p-2 bg-background"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center space-x-2">
-                                            <Badge
-                                              variant="outline"
-                                              className="text-xs px-1 py-0"
-                                            >
-                                              {log.previousStatus}
-                                            </Badge>
-                                            <span className="text-xs">→</span>
-                                            <Badge
-                                              variant="outline"
-                                              className="text-xs px-1 py-0"
-                                            >
-                                              {log.newStatus}
-                                            </Badge>
-                                          </div>
-                                          <span className="text-xs text-muted-foreground">
-                                            {new Date(
-                                              log.changedAt,
-                                            ).toLocaleDateString()}
-                                          </span>
-                                        </div>
-                                        <div className="text-xs text-muted-foreground mt-1">
-                                          <span>{log.changedBy}</span>
-                                          {log.reason && (
-                                            <span className="ml-2">
-                                              • {log.reason}
+                                    {customer.statusLogs
+                                      .slice(0, 5) // Show last 5 status changes
+                                      .sort(
+                                        (a, b) =>
+                                          new Date(b.changedAt).getTime() -
+                                          new Date(a.changedAt).getTime(),
+                                      ) // Sort by newest first
+                                      .map((log) => (
+                                        <div
+                                          key={log.id}
+                                          className="border rounded p-2 bg-background"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-2">
+                                              <Badge
+                                                variant="outline"
+                                                className="text-xs px-1 py-0"
+                                              >
+                                                {log.previousStatus}
+                                              </Badge>
+                                              <span className="text-xs">→</span>
+                                              <Badge
+                                                variant="outline"
+                                                className="text-xs px-1 py-0"
+                                              >
+                                                {log.newStatus}
+                                              </Badge>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground">
+                                              {new Date(
+                                                log.changedAt,
+                                              ).toLocaleDateString()}
                                             </span>
-                                          )}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground mt-1">
+                                            <span>{log.changedBy}</span>
+                                            {log.reason && (
+                                              <span className="ml-2">
+                                                • {log.reason}
+                                              </span>
+                                            )}
+                                          </div>
                                         </div>
-                                      </div>
-                                    ))}
+                                      ))}
                                   </div>
                                 </div>
                               )}
