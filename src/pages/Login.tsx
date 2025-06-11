@@ -421,32 +421,6 @@ export default function Login() {
               </button>
             </div>
           </form>
-
-          <div className="mt-6 p-4 bg-muted rounded-lg">
-            <p className="text-xs text-muted-foreground text-center">
-              <strong>Step 1:</strong> Enter your Firebase Auth email/password
-              <br />
-              <strong>Step 2:</strong> If "User profile not found" error
-              appears, click "Create User Profile"
-              <br />
-              <em>The system will automatically create your admin profile</em>
-            </p>
-          </div>
-
-          {/* Debug Tools */}
-          <div className="mt-4 text-center space-y-2">
-            <button
-              type="button"
-              onClick={runDiagnostics}
-              className="text-xs text-muted-foreground hover:text-foreground block w-full"
-            >
-              🔧 Run Firebase Diagnostics (Check Console)
-            </button>
-
-            <div className="text-xs text-muted-foreground">
-              Console Commands: <code>testFirebase()</code>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
