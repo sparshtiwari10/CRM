@@ -82,7 +82,7 @@ export default function Management() {
       setIsLoading(true);
       const [customersData, packagesData] = await Promise.all([
         CustomerService.getAllCustomers(),
-        PackageService.getAllPackages(),
+        packageService.getAllPackages(),
       ]);
       setCustomers(customersData);
       setPackages(packagesData);
