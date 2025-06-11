@@ -353,16 +353,16 @@ export function InvoiceGenerator({
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="font-medium">{customer.name}</div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-muted-foreground">
                               {customer.vcNumber} • {customer.currentPackage}
                               {customer.customPlan && (
-                                <span className="text-blue-600">
+                                <span className="text-blue-600 dark:text-blue-400">
                                   {" "}
                                   (Custom Plan)
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-gray-400">
+                            <div className="text-xs text-muted-foreground">
                               {customer.address}
                             </div>
                           </div>
