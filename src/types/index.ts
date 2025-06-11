@@ -90,15 +90,20 @@ export interface Payment {
 export interface BillingRecord {
   id: string;
   customerId: string;
-  customerName: string;
-  packageName: string;
+  customerName?: string;
+  packageName?: string;
   amount: number;
-  dueDate: string;
-  status?: "Paid" | "Pending" | "Overdue";
-  invoiceNumber: string;
-  generatedDate: string;
-  generatedBy: string; // Employee who generated the invoice
-  employeeId: string; // Employee ID who generated the invoice
+  billingMonth: string; // Format: YYYY-MM
+  paymentDate: Date;
+  paymentStatus: "Paid" | "Pending" | "Overdue";
+  amountPaid: number;
+  paymentMethod?: "Cash" | "Card" | "Bank Transfer" | "Online";
+  dueDate?: string;
+  invoiceNumber?: string;
+  generatedDate?: string;
+  generatedBy?: string; // Employee who generated the invoice
+  employeeId?: string; // Employee ID who generated the invoice
+}
   billingMonth: string; // e.g., "January 2024"
   billingYear: string;
   vcNumber: string; // Primary VC Number (handles billing for all connections)
