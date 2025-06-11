@@ -354,7 +354,7 @@ export default function Management() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL_AREAS">All areas</SelectItem>
-                    {areas.map((area) => (
+                    {areaNames.map((area) => (
                       <SelectItem key={area} value={area}>
                         {area}
                       </SelectItem>
