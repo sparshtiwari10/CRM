@@ -21,11 +21,13 @@ export type CustomerStatus = "active" | "inactive" | "demo";
 
 export interface StatusLog {
   id: string;
+  customerId: string;
   previousStatus: CustomerStatus;
   newStatus: CustomerStatus;
   changedBy: string; // Admin who changed the status
-  changedDate: string;
+  changedAt: Date; // Changed to Date type for consistency
   reason?: string;
+  requestId?: string; // Link to request that triggered this change
 }
 
 export interface Customer {
@@ -88,24 +90,24 @@ export interface Payment {
 export interface BillingRecord {
   id: string;
   customerId: string;
-  customerName: string;
-  packageName: string;
+  customerName?: string;
+  packageName?: string;
   amount: number;
-  dueDate: string;
-  status?: "Paid" | "Pending" | "Overdue";
-  invoiceNumber: string;
-  generatedDate: string;
-  generatedBy: string; // Employee who generated the invoice
-  employeeId: string; // Employee ID who generated the invoice
-  billingMonth: string; // e.g., "January 2024"
-  billingYear: string;
-  vcNumber: string; // Primary VC Number (handles billing for all connections)
+  billingMonth: string; // Format: YYYY-MM or "January 2024"
+  billingYear?: string;
+  paymentDate: Date;
+  paymentStatus: "Paid" | "Pending" | "Overdue";
+  amountPaid: number;
+  paymentMethod?: "Cash" | "Card" | "Bank Transfer" | "Online";
+  vcNumber?: string; // Primary VC Number (handles billing for all connections)
   allVcNumbers?: string[]; // All VC numbers for this customer (primary + secondary)
   customAmount?: number; // For custom invoice amounts
-  paymentDate?: string; // Date when payment was received
-  paymentMethod?: string; // Payment method used
+  dueDate?: string;
+  invoiceNumber?: string;
+  generatedDate?: string;
+  generatedBy?: string; // Employee who generated the invoice
+  employeeId?: string; // Employee ID who generated the invoice
   notes?: string; // Additional notes
-  // Fields to ensure proper saving in both admin and employee views
   savedInBillingRecords?: boolean; // Ensures record is saved in billing section
 }
 

@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import CustomerModal from "@/components/customers/CustomerModal";
-import CustomerTable from "@/components/customers/CustomerTable";
+import EnhancedCustomerTable from "@/components/customers/EnhancedCustomerTable";
 import { CustomerImportExport } from "@/components/customers/CustomerImportExport";
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
@@ -399,10 +399,12 @@ export default function Customers() {
                 Import/Export
               </Button>
             )}
-            <Button onClick={handleCreateCustomer}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Customer
-            </Button>
+            {isAdmin && (
+              <Button onClick={handleCreateCustomer}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Customer
+              </Button>
+            )}
           </div>
         </div>
 
@@ -530,7 +532,7 @@ export default function Customers() {
         </Card>
 
         {/* Customer Table */}
-        <CustomerTable
+        <EnhancedCustomerTable
           customers={filteredCustomers}
           searchTerm={searchTerm}
           onEdit={handleEditCustomer}

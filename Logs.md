@@ -51,7 +51,70 @@
 - ✅ **Safe Deletion**: Prevents deletion of areas with assigned users
 - ✅ **Easy Migration**: Import existing areas with one click
 
-#### 2. Admin Management Section
+#### 2. Enhanced Customer Management System
+
+**Feature:** Complete overhaul of customer management with improved permissions and data validation
+
+**Implementation:**
+
+**File:** `src/pages/Customers.tsx`, `src/components/customers/EnhancedCustomerTable.tsx`
+
+**Permission System Updates:**
+
+```typescript
+// Restricted admin-only features
+- **Add Customer Button**: Now only visible to administrators
+- **Import/Export**: Restricted to admin users only
+- **Direct Status Changes**: Admins can change status immediately
+- **Employee Requests**: Employees must request status changes through approval system
+```
+
+**Enhanced Customer Table:**
+
+```typescript
+// New column structure for better data visibility
+1. **Name**: Customer name with contact information
+2. **Address**: Full address with location indicator
+3. **Area**: Area assignment with badge display
+4. **Previous O/S**: Previous outstanding amount with color coding
+5. **Package**: Current package with pricing information
+6. **Current O/S**: Current outstanding amount with status indication
+7. **Status**: Primary VC status with VC number display
+```
+
+**Expandable Row Details:**
+
+- **All VC Numbers**: Display of primary and secondary connections
+- **Status Change History**: Complete audit trail of status changes
+- **Recent Billing History**: Transaction history with payment details
+- **Request Integration**: Links to associated service requests
+
+**Data Validation Enhancements:**
+
+```typescript
+// Import validation with managed data
+- **Area Validation**: Must exist in managed areas (firestore collection)
+- **Package Validation**: Must exist in active packages
+- **Real-time Feedback**: Clear error messages for validation failures
+- **Bulk Validation**: Validates entire import before processing
+```
+
+**Status Change Management:**
+
+- **Admin Direct Changes**: Immediate status updates with automatic logging
+- **Employee Request System**: Submit requests for admin approval
+- **Request-Status Linking**: Automatic status changes when requests approved
+- **Audit Trail**: Complete history of who changed what and when
+
+**Benefits:**
+
+- ✅ **Enhanced Security**: Role-based access with proper restrictions
+- ✅ **Data Integrity**: Validation ensures only valid areas and packages
+- ✅ **Complete Audit Trail**: Track all status changes and their triggers
+- ✅ **Improved UX**: Expandable rows show detailed information without new pages
+- ✅ **Request Integration**: Seamless workflow between requests and status changes
+
+#### 3. Admin Management Section
 
 **Feature:** New "Management" section in sidebar accessible only to administrators
 
