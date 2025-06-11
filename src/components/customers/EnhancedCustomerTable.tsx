@@ -502,14 +502,14 @@ export default function EnhancedCustomerTable({
                         <div className="space-y-1">
                           <Badge
                             variant={
-                              status === "active"
+                              displayStatus === "active"
                                 ? "default"
-                                : status === "demo"
+                                : displayStatus === "demo"
                                   ? "secondary"
                                   : "destructive"
                             }
                           >
-                            {status}
+                            {displayStatus}
                           </Badge>
                           <div className="text-xs text-muted-foreground flex items-center space-x-1">
                             <Tv className="h-3 w-3" />
