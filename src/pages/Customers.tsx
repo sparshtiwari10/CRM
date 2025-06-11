@@ -113,7 +113,7 @@ export default function Customers() {
 
           // First, get ALL customers to debug assignment
           const allCustomers = await CustomerService.getAllCustomers();
-          console.log("🔍 DEBUG - All customers in system:");
+          console.log("���� DEBUG - All customers in system:");
           allCustomers.forEach((c) => {
             console.log(
               `  - ${c.name} (VC: ${c.vcNumber}) → area: "${c.collectorName}"`,
@@ -424,13 +424,17 @@ export default function Customers() {
       }
 
       // Update the customer in Firestore
+      console.log(`📤 Calling CustomerService.updateCustomer with:`, enhancedUpdates);
       await CustomerService.updateCustomer(customerId, enhancedUpdates);
+      console.log(`✅ CustomerService.updateCustomer completed successfully`);
 
       // Update local state with all the enhanced updates
-      setCustomers((prev) =>
-        prev.map((c) =>
-          c.id === customerId ? { ...c, ...enhancedUpdates } : c,
-        ),
+      console.log(`🔄 Updating local state for customer ID: ${customerId}`);
+      setCustomers((prev) => {
+        const updated = prev.map((c) => (c.id === customerId ? { ...c, ...enhancedUpdates } : c));
+        console.log(`📊 Local state updated. Updated customer:`, updated.find(c => c.id === customerId));
+        return updated;
+      });
       );
 
       // Force a reload of customer data after status change to ensure consistency
