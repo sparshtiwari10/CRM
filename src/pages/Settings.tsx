@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Save,
   User,
@@ -7,6 +7,7 @@ import {
   Shield,
   Database,
   Palette,
+  Globe,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,38 +25,52 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { SettingsService, AppSettings } from "@/services/settingsService";
 
 export default function Settings() {
-  const [companySettings, setCompanySettings] = useState({
-    companyName: "CableTV Operator",
-    address: "123 Main Street, Anytown, State 12345",
-    phone: "+1 (555) 123-4567",
-    email: "info@cabletv.com",
-    website: "https://cabletv.com",
-    description:
-      "Premium cable TV services for residential and commercial customers.",
-  });
-
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
-    overdueReminders: true,
-    paymentConfirmations: true,
-    systemAlerts: true,
-    marketingEmails: false,
-  });
-
-  const [systemSettings, setSystemSettings] = useState({
-    timezone: "America/New_York",
-    dateFormat: "MM/DD/YYYY",
-    currency: "USD",
-    language: "en",
-    theme: "light",
-    autoBackup: true,
-    sessionTimeout: "30",
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState({
+    company: false,
+    notification: false,
+    system: false,
   });
 
   const { toast } = useToast();
+
+  // Load settings from Firebase
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      setIsLoading(true);
+      const settingsData = await SettingsService.getSettings();
+      setSettings(settingsData);
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load settings. Please refresh the page.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading || !settings) {
+    return (
+      <DashboardLayout title="Settings">
+        <div className="p-6 space-y-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const handleSaveCompanySettings = () => {
     // Simulate API call
