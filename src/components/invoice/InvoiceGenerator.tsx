@@ -348,7 +348,7 @@ export function InvoiceGenerator({
                       <button
                         key={customer.id}
                         onClick={() => handleCustomerSelect(customer)}
-                        className="w-full text-left p-3 hover:bg-gray-50 rounded-md transition-colors"
+                        className="w-full text-left p-3 hover:bg-muted rounded-md transition-colors"
                       >
                         <div className="flex items-center justify-between">
                           <div>
