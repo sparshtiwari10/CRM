@@ -34,6 +34,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { CustomerService } from "@/services/customerService";
 import { packageService } from "@/services/packageService";
+import { AreaService, Area } from "@/services/areaService";
 import { Customer, Package } from "@/types";
 import {
   Settings,
