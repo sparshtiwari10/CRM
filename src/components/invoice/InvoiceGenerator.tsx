@@ -320,7 +320,7 @@ export function InvoiceGenerator({
           <div className="space-y-2">
             <label className="text-sm font-medium">Search Customer</label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by name, address, VC number, or phone..."
                 value={searchTerm}
@@ -348,21 +348,21 @@ export function InvoiceGenerator({
                       <button
                         key={customer.id}
                         onClick={() => handleCustomerSelect(customer)}
-                        className="w-full text-left p-3 hover:bg-gray-50 rounded-md transition-colors"
+                        className="w-full text-left p-3 hover:bg-muted rounded-md transition-colors"
                       >
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="font-medium">{customer.name}</div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-muted-foreground">
                               {customer.vcNumber} • {customer.currentPackage}
                               {customer.customPlan && (
-                                <span className="text-blue-600">
+                                <span className="text-blue-600 dark:text-blue-400">
                                   {" "}
                                   (Custom Plan)
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-gray-400">
+                            <div className="text-xs text-muted-foreground">
                               {customer.address}
                             </div>
                           </div>
@@ -370,8 +370,8 @@ export function InvoiceGenerator({
                             variant="outline"
                             className={cn(
                               customer.isActive
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800",
+                                ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+                                : "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200",
                             )}
                           >
                             {customer.isActive ? "Active" : "Inactive"}
@@ -393,20 +393,23 @@ export function InvoiceGenerator({
                       <div className="font-medium text-lg">
                         {selectedCustomer.name}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {selectedCustomer.vcNumber} •{" "}
                         {selectedCustomer.currentPackage}
                         {selectedCustomer.customPlan && (
-                          <span className="text-blue-600"> (Custom Plan)</span>
+                          <span className="text-blue-600 dark:text-blue-400">
+                            {" "}
+                            (Custom Plan)
+                          </span>
                         )}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {selectedCustomer.address}
                       </div>
-                      <div className="text-sm font-medium text-green-600 mt-1">
-                        Default Rate: ��{defaultAmount.toFixed(2)}/month
+                      <div className="text-sm font-medium text-green-600 dark:text-green-400 mt-1">
+                        Default Rate: ₹{defaultAmount.toFixed(2)}/month
                         {selectedCustomer.numberOfConnections > 1 && (
-                          <span className="text-blue-600">
+                          <span className="text-blue-600 dark:text-blue-400">
                             {" "}
                             ({selectedCustomer.numberOfConnections} connections)
                           </span>
@@ -417,8 +420,8 @@ export function InvoiceGenerator({
                       variant="outline"
                       className={cn(
                         selectedCustomer.isActive
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800",
+                          ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+                          : "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200",
                       )}
                     >
                       {selectedCustomer.isActive ? "Active" : "Inactive"}
@@ -474,19 +477,19 @@ export function InvoiceGenerator({
               </div>
 
               {/* Custom Amount Section */}
-              <Card className="border-blue-200 bg-blue-50">
+              <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-2">
-                      <DollarSign className="h-4 w-4 text-blue-600" />
-                      <Label className="text-blue-800 font-medium">
+                      <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <Label className="text-blue-800 dark:text-blue-200 font-medium">
                         Invoice Amount
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Label
                         htmlFor="custom-amount"
-                        className="text-sm text-blue-700"
+                        className="text-sm text-blue-700 dark:text-blue-300"
                       >
                         Custom Amount
                       </Label>

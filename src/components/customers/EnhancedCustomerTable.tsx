@@ -619,60 +619,6 @@ export default function EnhancedCustomerTable({
                               </div>
                             </div>
 
-                            {/* Status Change History */}
-                            {details?.statusLogs &&
-                              details.statusLogs.length > 0 && (
-                                <div>
-                                  <h4 className="font-semibold mb-3 flex items-center">
-                                    <Clock className="mr-2 h-4 w-4" />
-                                    Status Change History
-                                  </h4>
-                                  <div className="space-y-2">
-                                    {details.statusLogs.map((log) => (
-                                      <div
-                                        key={log.id}
-                                        className="border rounded p-3 bg-background"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <div>
-                                            <span className="text-sm">
-                                              Changed from{" "}
-                                              <Badge
-                                                variant="outline"
-                                                className="mx-1"
-                                              >
-                                                {log.previousStatus}
-                                              </Badge>
-                                              to{" "}
-                                              <Badge
-                                                variant="outline"
-                                                className="mx-1"
-                                              >
-                                                {log.newStatus}
-                                              </Badge>
-                                            </span>
-                                          </div>
-                                          <span className="text-xs text-muted-foreground">
-                                            {new Date(
-                                              log.changedAt,
-                                            ).toLocaleDateString()}
-                                          </span>
-                                        </div>
-                                        <div className="text-sm text-muted-foreground mt-1">
-                                          <div>By: {log.changedBy}</div>
-                                          <div>Reason: {log.reason}</div>
-                                          {log.requestId && (
-                                            <div>
-                                              Request ID: {log.requestId}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
                             {/* Recent Billing History */}
                             {details?.billingHistory &&
                               details.billingHistory.length > 0 && (
@@ -723,6 +669,56 @@ export default function EnhancedCustomerTable({
                                           )}
                                         </div>
                                       ))}
+                                  </div>
+                                </div>
+                              )}
+
+                            {/* Status Change History - Compact */}
+                            {details?.statusLogs &&
+                              details.statusLogs.length > 0 && (
+                                <div>
+                                  <h4 className="font-semibold mb-2 flex items-center">
+                                    <Clock className="mr-2 h-4 w-4" />
+                                    Status Change History
+                                  </h4>
+                                  <div className="space-y-1">
+                                    {details.statusLogs.map((log) => (
+                                      <div
+                                        key={log.id}
+                                        className="border rounded p-2 bg-background"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center space-x-2">
+                                            <Badge
+                                              variant="outline"
+                                              className="text-xs px-1 py-0"
+                                            >
+                                              {log.previousStatus}
+                                            </Badge>
+                                            <span className="text-xs">→</span>
+                                            <Badge
+                                              variant="outline"
+                                              className="text-xs px-1 py-0"
+                                            >
+                                              {log.newStatus}
+                                            </Badge>
+                                          </div>
+                                          <span className="text-xs text-muted-foreground">
+                                            {new Date(
+                                              log.changedAt,
+                                            ).toLocaleDateString()}
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                          <span>{log.changedBy}</span>
+                                          {log.reason && (
+                                            <span className="ml-2">
+                                              • {log.reason}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
                               )}

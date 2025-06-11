@@ -38,29 +38,20 @@ export function TopBar({ title }: TopBarProps) {
 
   return (
     <header className="bg-background border-b border-border h-16 flex items-center justify-between px-4 lg:px-6">
-      {/* Left side - Title and Search */}
-      <div className="flex items-center space-x-4 flex-1">
+      {/* Left side - Title only */}
+      <div className="flex items-center flex-1">
         {/* Page Title */}
         {title && (
-          <div className="hidden sm:block">
-            <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+          <div>
+            <h1 className="text-lg sm:text-xl font-semibold text-foreground">
+              {title}
+            </h1>
           </div>
         )}
-
-        {/* Search */}
-        <div className="hidden md:flex items-center max-w-md flex-1">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search customers, invoices..."
-              className="pl-10"
-            />
-          </div>
-        </div>
       </div>
 
       {/* Right side - Notifications and User Menu */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 sm:space-x-4">
         {/* Firebase Status */}
         <FirebaseStatus />
 
@@ -69,16 +60,11 @@ export function TopBar({ title }: TopBarProps) {
           variant="ghost"
           size="icon"
           onClick={toggleTheme}
-          className="relative h-9 w-9"
+          className="relative h-8 w-8 sm:h-9 sm:w-9"
           title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
         >
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-        </Button>
-
-        {/* Mobile Search */}
-        <Button variant="ghost" size="icon" className="md:hidden">
-          <Search className="h-5 w-5" />
         </Button>
 
         {/* Notifications */}
