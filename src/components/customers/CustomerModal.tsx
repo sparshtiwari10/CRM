@@ -137,10 +137,12 @@ export default function CustomerModal({
         try {
           // Load managed areas from AreaService
           const areaNames = await AreaService.getAreaNames();
-          setAvailableAreas(areaNames);
 
-          // Fallback: Load areas from existing data if no managed areas
-          if (areaNames.length === 0) {
+          if (areaNames.length > 0) {
+            setAvailableAreas(areaNames);
+            console.log("📍 Loaded managed areas:", areaNames);
+          } else {
+            // Fallback: Load areas from existing data if no managed areas
             const customers = await firestoreService.getAllCustomers();
             const areas = customers
               .map((c) => c.collectorName)
@@ -151,23 +153,18 @@ export default function CustomerModal({
             const employees = await authService.getAllEmployees();
             const employeeAreas = employees
               .map((e) => e.collector_name)
-            .filter(Boolean);
+              .filter(Boolean);
 
-          // Combine and deduplicate
-          const allAreas = [...new Set([...areas, ...employeeAreas])].sort();
-          setAvailableAreas(allAreas);
+            // Combine and deduplicate
+            const allAreas = [...new Set([...areas, ...employeeAreas])].sort();
+            setAvailableAreas(allAreas);
 
-          console.log("📍 Available areas:", allAreas);
+            console.log("📍 Fallback areas from existing data:", allAreas);
+          }
         } catch (error) {
           console.error("Failed to load areas:", error);
           // Set some default areas if loading fails
-          setAvailableAreas([
-            "Area 1",
-            "Area 2",
-            "Area 3",
-            "Downtown",
-            "Suburb",
-          ]);
+          setAvailableAreas(["Downtown", "Suburbs", "Industrial"]);
         }
 
         try {
