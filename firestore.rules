@@ -139,6 +139,15 @@ service cloud.firestore {
       allow read: if settingsId == 'app_settings';
     }
 
+    // Areas collection - area management
+    match /areas/{areaId} {
+      // All authenticated users can read areas (for dropdowns)
+      allow read: if isAuthenticated() && isActiveUser();
+
+      // Only admins can modify areas
+      allow write: if isAdmin() && isActiveUser();
+    }
+
     // Default deny rule for any other collections
     match /{document=**} {
       allow read, write: if false;

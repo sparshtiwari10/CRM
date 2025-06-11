@@ -34,12 +34,14 @@ import { CustomerImportExport } from "@/components/customers/CustomerImportExpor
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
 import { authService } from "@/services/authService";
+import { AreaService } from "@/services/areaService";
 import { Customer } from "@/types";
 import { ActionRequest } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [managedAreas, setManagedAreas] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -167,7 +169,20 @@ export default function Customers() {
       }
     };
 
+    const loadManagedAreas = async () => {
+      try {
+        const areaNames = await AreaService.getAreaNames();
+        if (mounted) {
+          setManagedAreas(areaNames);
+        }
+      } catch (error) {
+        console.error("Failed to load managed areas:", error);
+        // Fallback will be handled in the component rendering
+      }
+    };
+
     loadCustomers();
+    loadManagedAreas();
 
     return () => {
       mounted = false;
@@ -193,10 +208,13 @@ export default function Customers() {
     return matchesSearch && matchesStatus && matchesArea;
   });
 
-  // Get unique areas for filter dropdown
-  const uniqueAreas = [
-    ...new Set(customers.map((customer) => customer.collectorName)),
-  ].filter(Boolean);
+  // Get areas for filter dropdown - prioritize managed areas, fallback to customer areas
+  const uniqueAreas =
+    managedAreas.length > 0
+      ? managedAreas
+      : [
+          ...new Set(customers.map((customer) => customer.collectorName)),
+        ].filter(Boolean);
 
   const handleCreateCustomer = () => {
     setEditingCustomer(null);

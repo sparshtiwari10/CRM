@@ -52,6 +52,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authService } from "@/services/authService";
 import { firestoreService } from "@/services/firestoreService";
+import { AreaService } from "@/services/areaService";
 
 interface Employee {
   id: string;
@@ -101,29 +102,37 @@ export default function Employees() {
 
   const loadAvailableAreas = async () => {
     try {
-      // Get all customers to extract unique areas
-      const customers = await firestoreService.getAllCustomers();
-      const customerAreas = customers
-        .map((c) => c.collectorName)
-        .filter(Boolean);
+      // Get managed areas from AreaService
+      const areaNames = await AreaService.getAreaNames();
+      setAvailableAreas(areaNames);
 
-      // Get areas from employees
-      const employees = await authService.getAllEmployees();
-      const employeeAreas = employees
-        .flatMap((e) => e.assigned_areas || [e.collector_name])
-        .filter(Boolean);
-
-      // Combine, deduplicate, and sort
-      const allAreas = [
-        ...new Set([...customerAreas, ...employeeAreas]),
-      ].sort();
-      setAvailableAreas(allAreas);
-
-      console.log("📍 Available areas:", allAreas);
+      console.log("📍 Available managed areas:", areaNames);
     } catch (error) {
-      console.error("Failed to load areas:", error);
-      // Set some default areas if loading fails
-      setAvailableAreas(["Area 1", "Area 2", "Area 3", "Downtown", "Suburb"]);
+      console.error("Failed to load managed areas:", error);
+
+      // Fallback: Get areas from existing data
+      try {
+        const customers = await firestoreService.getAllCustomers();
+        const customerAreas = customers
+          .map((c) => c.collectorName)
+          .filter(Boolean);
+
+        const employees = await authService.getAllEmployees();
+        const employeeAreas = employees
+          .flatMap((e) => e.assigned_areas || [e.collector_name])
+          .filter(Boolean);
+
+        const allAreas = [
+          ...new Set([...customerAreas, ...employeeAreas]),
+        ].sort();
+        setAvailableAreas(allAreas);
+
+        console.log("📍 Fallback areas from existing data:", allAreas);
+      } catch (fallbackError) {
+        console.error("Failed to load fallback areas:", fallbackError);
+        // Set some default areas if everything fails
+        setAvailableAreas(["Downtown", "Suburbs", "Industrial"]);
+      }
     }
   };
 
