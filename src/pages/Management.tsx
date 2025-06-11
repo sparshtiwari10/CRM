@@ -601,12 +601,24 @@ export default function Management() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="newArea">New Area</Label>
-                      <Input
-                        id="newArea"
-                        placeholder="Enter new area name"
-                        value={newArea}
-                        onChange={(e) => setNewArea(e.target.value)}
-                      />
+                      <Select value={newArea} onValueChange={setNewArea}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an area" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {areaNames.map((area) => (
+                            <SelectItem key={area} value={area}>
+                              {area}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {areaNames.length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          No areas available. Create areas in the Area
+                          Management section first.
+                        </p>
+                      )}
                     </div>
                   </div>
                   <DialogFooter>
