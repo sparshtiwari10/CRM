@@ -824,6 +824,22 @@ export default function EnhancedCustomerTable({
                               </div>
                             )}
 
+                            {/* No Billing History Message */}
+                            {(!details?.billingHistory ||
+                              details.billingHistory.length === 0) &&
+                              (!customer.invoiceHistory ||
+                                customer.invoiceHistory.length === 0) && (
+                                <div>
+                                  <h4 className="font-semibold mb-3 flex items-center">
+                                    <CreditCard className="mr-2 h-4 w-4" />
+                                    Recent Billing History
+                                  </h4>
+                                  <div className="text-center py-4 text-muted-foreground border rounded bg-muted/30">
+                                    No billing records found for this customer
+                                  </div>
+                                </div>
+                              )}
+
                             {/* Status Change History - Compact */}
                             {customer.statusLogs &&
                               customer.statusLogs.length > 0 && (
