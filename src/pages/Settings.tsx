@@ -324,10 +324,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.emailNotifications}
+                    checked={settings.emailNotifications}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         emailNotifications: checked,
                       }))
                     }
@@ -344,10 +344,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.smsNotifications}
+                    checked={settings.smsNotifications}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         smsNotifications: checked,
                       }))
                     }
@@ -364,10 +364,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.overdueReminders}
+                    checked={settings.overdueReminders}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         overdueReminders: checked,
                       }))
                     }
@@ -384,10 +384,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.paymentConfirmations}
+                    checked={settings.paymentConfirmations}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         paymentConfirmations: checked,
                       }))
                     }
@@ -404,10 +404,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.systemAlerts}
+                    checked={settings.systemAlerts}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         systemAlerts: checked,
                       }))
                     }
@@ -424,10 +424,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationSettings.marketingEmails}
+                    checked={settings.marketingEmails}
                     onCheckedChange={(checked) =>
-                      setNotificationSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         marketingEmails: checked,
                       }))
                     }
