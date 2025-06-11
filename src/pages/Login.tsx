@@ -6,17 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 import { SettingsService } from "@/services/settingsService";
-import {
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  LogIn,
-  AlertCircle,
-  Settings,
-  RefreshCw,
-  UserPlus,
-} from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, LogIn, AlertCircle } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState(""); // Start empty, let user enter their Firebase Auth email
