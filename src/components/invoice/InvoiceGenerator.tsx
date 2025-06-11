@@ -471,19 +471,19 @@ export function InvoiceGenerator({
               </div>
 
               {/* Custom Amount Section */}
-              <Card className="border-blue-200 bg-blue-50">
+              <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-2">
-                      <DollarSign className="h-4 w-4 text-blue-600" />
-                      <Label className="text-blue-800 font-medium">
+                      <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <Label className="text-blue-800 dark:text-blue-200 font-medium">
                         Invoice Amount
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Label
                         htmlFor="custom-amount"
-                        className="text-sm text-blue-700"
+                        className="text-sm text-blue-700 dark:text-blue-300"
                       >
                         Custom Amount
                       </Label>
