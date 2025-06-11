@@ -397,7 +397,10 @@ export function InvoiceGenerator({
                         {selectedCustomer.vcNumber} •{" "}
                         {selectedCustomer.currentPackage}
                         {selectedCustomer.customPlan && (
-                          <span className="text-blue-600 dark:text-blue-400"> (Custom Plan)</span>
+                          <span className="text-blue-600 dark:text-blue-400">
+                            {" "}
+                            (Custom Plan)
+                          </span>
                         )}
                       </div>
                       <div className="text-sm text-muted-foreground">
@@ -412,10 +415,13 @@ export function InvoiceGenerator({
                           </span>
                         )}
                       </div>
+                    </div>
+                    <Badge
+                      variant="outline"
                       className={cn(
                         selectedCustomer.isActive
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800",
+                          ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+                          : "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200",
                       )}
                     >
                       {selectedCustomer.isActive ? "Active" : "Inactive"}
