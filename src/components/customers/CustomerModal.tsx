@@ -135,18 +135,22 @@ export default function CustomerModal({
     if (open) {
       const loadData = async () => {
         try {
-          // Load areas from existing customers
-          const customers = await firestoreService.getAllCustomers();
-          const areas = customers
-            .map((c) => c.collectorName)
-            .filter(Boolean)
-            .filter((area, index, arr) => arr.indexOf(area) === index) // Remove duplicates
-            .sort();
+          // Load managed areas from AreaService
+          const areaNames = await AreaService.getAreaNames();
+          setAvailableAreas(areaNames);
 
-          // Also get areas from employees
-          const employees = await authService.getAllEmployees();
-          const employeeAreas = employees
-            .map((e) => e.collector_name)
+          // Fallback: Load areas from existing data if no managed areas
+          if (areaNames.length === 0) {
+            const customers = await firestoreService.getAllCustomers();
+            const areas = customers
+              .map((c) => c.collectorName)
+              .filter(Boolean)
+              .filter((area, index, arr) => arr.indexOf(area) === index)
+              .sort();
+
+            const employees = await authService.getAllEmployees();
+            const employeeAreas = employees
+              .map((e) => e.collector_name)
             .filter(Boolean);
 
           // Combine and deduplicate
