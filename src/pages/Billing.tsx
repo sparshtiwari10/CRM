@@ -516,7 +516,7 @@ export default function Billing() {
                 <TableBody>
                   {filteredRecords.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         <div className="text-muted-foreground">
                           <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
                           <div className="font-medium">
@@ -556,18 +556,10 @@ export default function Billing() {
                           {formatCurrency(record.amount)}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={getStatusBadgeVariant(record.status)}
-                            className={cn(getStatusBadgeColor(record.status))}
-                          >
-                            {record.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
                           <div className="flex items-center space-x-2">
                             <User className="h-4 w-4 text-muted-foreground" />
                             <span className="text-sm text-foreground">
-                              {record.generatedBy}
+                              {record.generatedBy || user?.name || "System"}
                             </span>
                           </div>
                         </TableCell>
