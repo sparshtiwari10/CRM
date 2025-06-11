@@ -319,12 +319,15 @@ export default function EnhancedCustomerTable({
     }
   };
 
-  // Handle direct status change (admin only)
-  const handleDirectStatusChange = async (
+  // Handle VC status change with proper status logging
+  const handleVCStatusChange = async (
     customer: Customer,
     newStatus: CustomerStatus,
+    selectedVCs: string[],
   ) => {
-    console.log(`🔥 handleDirectStatusChange called for ${customer.name}`);
+    console.log(`🔥 handleVCStatusChange called for ${customer.name}`);
+    console.log(`   Selected VCs:`, selectedVCs);
+    console.log(`   New status: ${newStatus}`);
 
     try {
       if (!onCustomerUpdate) {
@@ -332,31 +335,81 @@ export default function EnhancedCustomerTable({
         throw new Error("Customer update function not provided");
       }
 
-      console.log(`🔄 Starting direct status change for ${customer.name}:`);
-      console.log(`   Current status: ${customer.status}`);
-      console.log(`   New status: ${newStatus}`);
-      console.log(`   Customer ID: ${customer.id}`);
-      console.log(`   onCustomerUpdate function:`, onCustomerUpdate);
+      // Create comprehensive update object
+      let updates: Partial<Customer> = {};
+      let statusLogsToAdd: any[] = [];
 
-      const updates = { status: newStatus };
+      // Check if primary VC is being updated
+      const primaryVCUpdated = selectedVCs.includes(customer.vcNumber);
+
+      if (primaryVCUpdated) {
+        console.log(`📱 Updating primary VC and main customer status`);
+        updates.status = newStatus;
+        updates.isActive = newStatus === "active";
+
+        // Create status log for main customer status change
+        const mainStatusLog = {
+          id: `log-${Date.now()}-main`,
+          customerId: customer.id,
+          previousStatus: customer.status || "inactive",
+          newStatus: newStatus,
+          changedBy: user?.name || "Unknown",
+          changedAt: new Date(),
+          reason: `Primary VC ${customer.vcNumber} ${newStatus === "active" ? "activated" : "deactivated"}`,
+        };
+        statusLogsToAdd.push(mainStatusLog);
+      }
+
+      // Update connection statuses for selected VCs
+      if (customer.connections && customer.connections.length > 0) {
+        console.log(`🔗 Updating connection statuses`);
+        updates.connections = customer.connections.map((conn) => {
+          if (selectedVCs.includes(conn.vcNumber)) {
+            console.log(
+              `   Updating connection ${conn.vcNumber} to ${newStatus}`,
+            );
+
+            // Create status log for connection change
+            const connStatusLog = {
+              id: `log-${Date.now()}-${conn.vcNumber}`,
+              customerId: customer.id,
+              previousStatus: conn.status || "inactive",
+              newStatus: newStatus,
+              changedBy: user?.name || "Unknown",
+              changedAt: new Date(),
+              reason: `Connection ${conn.vcNumber} ${newStatus === "active" ? "activated" : "deactivated"}`,
+            };
+            statusLogsToAdd.push(connStatusLog);
+
+            return { ...conn, status: newStatus };
+          }
+          return conn;
+        });
+      }
+
+      // Add all status logs
+      updates.statusLogs = [...(customer.statusLogs || []), ...statusLogsToAdd];
+
       console.log(`📤 Calling onCustomerUpdate with:`, updates);
+      console.log(`📝 Adding ${statusLogsToAdd.length} status log entries`);
 
       await onCustomerUpdate(customer.id, updates);
 
       console.log(
-        `✅ onCustomerUpdate completed successfully for ${customer.name}`,
+        `✅ VC status change completed successfully for ${customer.name}`,
       );
 
+      const vcList = selectedVCs.join(", ");
       toast({
         title: "Status Updated",
-        description: `${customer.name} status changed to ${newStatus}`,
+        description: `${customer.name} - VC${selectedVCs.length > 1 ? "s" : ""} ${vcList} ${newStatus === "active" ? "activated" : "deactivated"}`,
       });
     } catch (error) {
-      console.error("❌ Error in handleDirectStatusChange:", error);
+      console.error("❌ Error in handleVCStatusChange:", error);
       console.error("❌ Error stack:", error.stack);
       toast({
         title: "Error",
-        description: `Failed to update customer status: ${error.message}`,
+        description: `Failed to update VC status: ${error.message}`,
         variant: "destructive",
       });
     }
