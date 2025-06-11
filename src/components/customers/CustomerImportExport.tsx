@@ -388,7 +388,7 @@ export function CustomerImportExport({
       }
 
       const mappedCustomers = mapImportData(parsedData);
-      const validationResult = validateImportData(mappedCustomers);
+      const validationResult = await validateImportData(mappedCustomers);
 
       setImportResult(validationResult);
 
