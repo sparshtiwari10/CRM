@@ -59,6 +59,7 @@ import {
 export default function Management() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
