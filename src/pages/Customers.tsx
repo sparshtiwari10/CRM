@@ -623,7 +623,8 @@ export default function Customers() {
           <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                Customer History - {historyCustomer?.name}
+                Customer History
+                {historyCustomer?.name ? ` - ${historyCustomer.name}` : ""}
               </DialogTitle>
               <DialogDescription>
                 Complete transaction and service history
