@@ -52,6 +52,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authService } from "@/services/authService";
 import { firestoreService } from "@/services/firestoreService";
+import { AreaService } from "@/services/areaService";
 
 interface Employee {
   id: string;
