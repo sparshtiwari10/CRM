@@ -879,6 +879,15 @@ export default function EnhancedCustomerTable({
           }
         }}
       />
+
+      {/* VC Status Change Modal for Admins */}
+      <VCStatusChangeModal
+        open={showVCStatusModal}
+        onOpenChange={setShowVCStatusModal}
+        customer={vcStatusCustomer}
+        requestedStatus={vcRequestedStatus}
+        onConfirm={handleVCStatusChange}
+      />
     </>
   );
 }
