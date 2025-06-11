@@ -390,10 +390,16 @@ export default function EnhancedCustomerTable({
               </TableRow>
             ) : (
               filteredCustomers.map((customer) => {
-                const { vcNumber, status, connection } =
-                  getPrimaryConnection(customer);
+                const { vcNumber, connection } = getPrimaryConnection(customer);
                 const isExpanded = expandedRows.has(customer.id);
                 const details = customerDetails.get(customer.id);
+
+                // Use main customer status for action buttons, not connection status
+                const customerStatus = customer.status || "inactive";
+                const displayStatus =
+                  customer.connections && customer.connections.length > 0
+                    ? getPrimaryConnection(customer).status
+                    : customerStatus;
 
                 return (
                   <React.Fragment key={customer.id}>
