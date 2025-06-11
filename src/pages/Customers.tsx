@@ -349,12 +349,25 @@ export default function Customers() {
     customerId: string,
     updates: Partial<Customer>,
   ) => {
+    console.log(`🔥 handleCustomerUpdate called:`);
+    console.log(`   Customer ID: ${customerId}`);
+    console.log(`   Updates:`, updates);
+
     try {
       // If status is being updated, also update connection statuses and add status log
       const customer = customers.find((c) => c.id === customerId);
       if (!customer) {
+        console.error(`❌ Customer not found with ID: ${customerId}`);
+        console.log(
+          `   Available customers:`,
+          customers.map((c) => ({ id: c.id, name: c.name })),
+        );
         throw new Error("Customer not found");
       }
+
+      console.log(
+        `✅ Found customer: ${customer.name} (current status: ${customer.status})`,
+      );
 
       let enhancedUpdates = { ...updates };
 
