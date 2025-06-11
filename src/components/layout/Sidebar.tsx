@@ -110,32 +110,10 @@ function SidebarContent({ onLinkClick }: SidebarContentProps) {
   );
 }
 
-export function Sidebar() {
-  const [isOpen, setIsOpen] = useState(false);
+interface SidebarProps {
+  onLinkClick?: () => void;
+}
 
-  return (
-    <>
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
-        <SidebarContent />
-      </div>
-
-      {/* Mobile Sidebar - Only Sheet Component */}
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            aria-label="Open sidebar"
-          >
-            <Menu className="h-6 w-6" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-64">
-          <SidebarContent onLinkClick={() => setIsOpen(false)} />
-        </SheetContent>
-      </Sheet>
-    </>
-  );
+export function Sidebar({ onLinkClick }: SidebarProps = {}) {
+  return <SidebarContent onLinkClick={onLinkClick} />;
 }

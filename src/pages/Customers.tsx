@@ -349,11 +349,118 @@ export default function Customers() {
     customerId: string,
     updates: Partial<Customer>,
   ) => {
+    console.log(`🔥 handleCustomerUpdate called:`);
+    console.log(`   Customer ID: ${customerId}`);
+    console.log(`   Updates:`, updates);
+
     try {
-      await CustomerService.updateCustomer(customerId, updates);
-      setCustomers((prev) =>
-        prev.map((c) => (c.id === customerId ? { ...c, ...updates } : c)),
+      // If status is being updated, also update connection statuses and add status log
+      const customer = customers.find((c) => c.id === customerId);
+      if (!customer) {
+        console.error(`❌ Customer not found with ID: ${customerId}`);
+        console.log(
+          `   Available customers:`,
+          customers.map((c) => ({ id: c.id, name: c.name })),
+        );
+        throw new Error("Customer not found");
+      }
+
+      console.log(
+        `✅ Found customer: ${customer.name} (current status: ${customer.status})`,
       );
+
+      let enhancedUpdates = { ...updates };
+
+      // Handle status changes
+      if (updates.status && updates.status !== customer.status) {
+        const newStatus = updates.status;
+        console.log(
+          `🔄 Processing status change from ${customer.status} to ${newStatus}`,
+        );
+
+        // Ensure isActive is also updated for consistency
+        enhancedUpdates.isActive = newStatus === "active";
+        console.log(`   Setting isActive to: ${enhancedUpdates.isActive}`);
+
+        // Update connection statuses if they exist
+        if (customer.connections && customer.connections.length > 0) {
+          console.log(
+            `   Updating ${customer.connections.length} connections to status: ${newStatus}`,
+          );
+          enhancedUpdates.connections = customer.connections.map((conn) => ({
+            ...conn,
+            status: newStatus as any, // Update all connections to the new status
+          }));
+        } else {
+          console.log(`   No connections to update`);
+        }
+
+        // Add status log entry
+        const statusLog = {
+          id: `log-${Date.now()}`,
+          customerId: customerId,
+          previousStatus: customer.status,
+          newStatus: newStatus,
+          changedBy: user?.name || "Unknown",
+          changedAt: new Date(),
+          reason: `Status changed to ${newStatus}`,
+        };
+
+        enhancedUpdates.statusLogs = [
+          ...(customer.statusLogs || []),
+          statusLog,
+        ];
+
+        console.log(`📝 Created status log:`, statusLog);
+        console.log(
+          `🔄 Updating customer ${customer.name} status from ${customer.status} to ${newStatus}`,
+        );
+      } else if (updates.status) {
+        console.log(
+          `⚠️ Status update skipped - same status (${updates.status})`,
+        );
+      } else {
+        console.log(`ℹ️ No status field in updates`);
+      }
+
+      // Update the customer in Firestore
+      console.log(
+        `📤 Calling CustomerService.updateCustomer with:`,
+        enhancedUpdates,
+      );
+      await CustomerService.updateCustomer(customerId, enhancedUpdates);
+      console.log(`✅ CustomerService.updateCustomer completed successfully`);
+
+      // Update local state with all the enhanced updates
+      console.log(`🔄 Updating local state for customer ID: ${customerId}`);
+      setCustomers((prev) => {
+        const updated = prev.map((c) =>
+          c.id === customerId ? { ...c, ...enhancedUpdates } : c,
+        );
+        console.log(
+          `📊 Local state updated. Updated customer:`,
+          updated.find((c) => c.id === customerId),
+        );
+        return updated;
+      });
+
+      // Force a reload of customer data after status change to ensure consistency
+      if (updates.status) {
+        try {
+          const updatedCustomer = await CustomerService.getCustomer(customerId);
+          setCustomers((prev) =>
+            prev.map((c) => (c.id === customerId ? updatedCustomer : c)),
+          );
+          console.log(
+            `🔄 Reloaded customer ${customer.name} data from database`,
+          );
+        } catch (reloadError) {
+          console.warn("Failed to reload customer data:", reloadError);
+          // Continue without reloading if it fails
+        }
+      }
+
+      console.log(`✅ Customer ${customer.name} updated successfully`);
     } catch (error) {
       console.error("Failed to update customer:", error);
       throw error;
@@ -512,7 +619,8 @@ export default function Customers() {
           <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                Customer Details - {viewingCustomer?.name}
+                Customer Details
+                {viewingCustomer?.name ? ` - ${viewingCustomer.name}` : ""}
               </DialogTitle>
               <DialogDescription>
                 Complete customer information and service details
@@ -622,7 +730,8 @@ export default function Customers() {
           <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                Customer History - {historyCustomer?.name}
+                Customer History
+                {historyCustomer?.name ? ` - ${historyCustomer.name}` : ""}
               </DialogTitle>
               <DialogDescription>
                 Complete transaction and service history

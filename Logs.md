@@ -64,33 +64,157 @@
 - **Fix:** Ensured both columns use consistent right-text alignment
 - **Result:** ✅ Professional table layout with proper numeric alignment
 
+#### 6. Customer Status Change Bug Fixes
+
+**Problem:** Deactivate customer button not actually changing customer status
+**Root Cause:**
+
+- Inconsistent status field mapping between UI and Firestore
+- Missing connection status synchronization
+- Incomplete status log tracking
+- No data refresh after status changes
+
+**Solution:**
+
+- **File:** `src/pages/Customers.tsx`
+- **Fix:**
+  - Enhanced `handleCustomerUpdate` with comprehensive status change logic
+  - Added `isActive` field synchronization
+  - Implemented connection status updates for multi-connection customers
+  - Added automatic status log creation
+  - Added data refresh after status changes for consistency
+- **File:** `src/components/customers/EnhancedCustomerTable.tsx`
+- **Fix:**
+  - Enhanced debugging output for status change operations
+  - Improved error messages with specific failure details
+- **File:** `src/pages/RequestManagement.tsx`
+- **Fix:**
+  - Fixed request approval system to use same robust status update logic
+  - Added comprehensive status logging for approved requests
+  - Fixed status synchronization between primary VC and connections
+
+**Result:** ✅ Customer status changes now work correctly for both direct admin changes and approved requests
+
+#### 7. Multiple VC Number Management & Status History
+
+**Problem:**
+
+- Status changes not appearing in status change history
+- No interface for selecting which VC numbers to activate/deactivate for multi-VC customers
+
+**Root Cause:**
+
+- Status history was showing mock data instead of real customer status logs
+- No VC selection interface for customers with multiple connections
+- Status logs not being properly created and saved
+
+**Solution:**
+
+- **File:** `src/components/customers/VCStatusChangeModal.tsx` (New)
+- **Feature:** Created comprehensive VC selection modal with:
+  - Checkbox interface for selecting specific VC numbers
+  - Visual status indicators for each VC
+  - Primary/secondary VC identification
+  - Select All/Deselect All functionality
+  - Shows current status and package details for each VC
+- **File:** `src/components/customers/EnhancedCustomerTable.tsx`
+- **Fix:**
+  - Replaced `handleDirectStatusChange` with `handleVCStatusChange`
+  - Added proper status log creation for each VC status change
+  - Fixed status history display to use real customer data instead of mock data
+  - Added detection for single vs multiple VC scenarios
+  - Enhanced status change logic with comprehensive logging
+
+**Features Added:**
+
+- **Multi-VC Selection:** Customers with multiple VC numbers now show a selection dialog
+- **Individual VC Status Tracking:** Each VC status change creates separate log entries
+- **Visual VC Management:** Clear display of all VC numbers with current status
+- **Smart Selection:** Only shows VCs that can actually change status
+- **Comprehensive Logging:** All status changes properly logged with user, timestamp, and reason
+- **Real-time History:** Status change history displays actual customer data
+
+**Result:** ✅ Complete VC status management with proper history tracking and multi-VC support
+
+#### 8. Status History and Billing History Display Bugs
+
+**Problem:**
+
+- Status history not visible inside customer expanded details
+- Recent billing history not reflecting new bills created
+- Both sections showing mock data instead of real customer data
+
+**Root Cause:**
+
+- `loadCustomerDetails` function was using hardcoded mock data for both status logs and billing history
+- Status history was not using real customer statusLogs data
+- Billing history was not fetching real billing records from CustomerService
+- No refresh mechanism when new bills or status changes were created
+
+**Solution:**
+
+- **File:** `src/components/customers/EnhancedCustomerTable.tsx`
+- **Fix:**
+  - Replaced mock data in `loadCustomerDetails` with real data fetching
+  - Status history now uses `customer.statusLogs` directly
+  - Billing history fetches real data from `CustomerService.getBillingHistory()`
+  - Added fallback to `customer.invoiceHistory` when billing service unavailable
+  - Added automatic refresh mechanism when customer data changes
+  - Improved sorting to show newest records first (last 5 items)
+  - Added fallback displays for customers with no history data
+  - Enhanced billing display to handle both billing records and invoice history
+
+**Features Enhanced:**
+
+- **Real Status History:** Shows actual customer status change logs with proper sorting
+- **Real Billing History:** Fetches and displays actual billing records and invoices
+- **Automatic Refresh:** Customer details refresh when underlying data changes
+- **Better Data Handling:** Graceful fallback between different data sources
+- **Improved Display:** Shows newest records first with proper formatting
+- **No Data States:** Clear messages when customers have no history
+- **Enhanced Debugging:** Console logging for data loading operations
+
+**Result:** ✅ Status history and billing history now display real data and update properly when changes are made
+
 #### 📋 Technical Details
 
 **Files Modified:**
 
 - `src/components/layout/TopBar.tsx` - Mobile sidebar integration
-- `src/pages/Customers.tsx` - Statistics removal and modal fixes
+- `src/pages/Customers.tsx` - Statistics removal, modal fixes, and status change improvements
 - `src/components/customers/EnhancedCustomerTable.tsx` - Status changes and alignment
+- `src/pages/RequestManagement.tsx` - Request approval status updates
 
 **State Management Improvements:**
 
 - Enhanced modal state handling with proper cleanup
-- Improved customer data synchronization
+- Improved customer data synchronization with automatic refresh
 - Better error boundary handling for status changes
+- Comprehensive status logging and audit trail
 
 **UI/UX Enhancements:**
 
 - Removed clutter from customer interface
 - Fixed mobile responsive layout issues
 - Improved button functionality consistency
+- Better feedback for status change operations
+
+**Status Management Fixes:**
+
+- Fixed status field mapping consistency
+- Added connection status synchronization
+- Implemented automatic data refresh after updates
+- Enhanced request approval workflow
 
 **Testing Results:**
 
 - ✅ Mobile layout properly centered
 - ✅ Customer editing works smoothly
-- ✅ Status changes function correctly
+- ✅ Status changes function correctly in all scenarios
+- ✅ Request approval properly updates customer status
 - ✅ Clean interface without metrics clutter
 - ✅ Proper column alignment in tables
+- ✅ Comprehensive status logging and audit trail
 
 ## Latest Updates - Management Features & Settings Enhancement
 

@@ -77,6 +77,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ActionRequest } from "@/types/auth";
 import { ActionRequestModal } from "./ActionRequestModal";
+import { VCStatusChangeModal } from "./VCStatusChangeModal";
 import { CustomerService } from "@/services/customerService";
 
 interface EnhancedCustomerTableProps {
@@ -121,6 +122,14 @@ export default function EnhancedCustomerTable({
   const [customerDetails, setCustomerDetails] = useState<
     Map<string, CustomerRowData>
   >(new Map());
+
+  // VC Status Change Modal state
+  const [showVCStatusModal, setShowVCStatusModal] = useState(false);
+  const [vcStatusCustomer, setVCStatusCustomer] = useState<Customer | null>(
+    null,
+  );
+  const [vcRequestedStatus, setVCRequestedStatus] =
+    useState<CustomerStatus>("inactive");
 
   const { user, isAdmin } = useAuth();
   const { toast } = useToast();
@@ -189,50 +198,39 @@ export default function EnhancedCustomerTable({
     if (customerDetails.has(customerId)) return;
 
     try {
-      // In a real implementation, you would load:
-      // - Status change logs
-      // - Billing history
-      // - Associated requests
+      console.log(`🔄 Loading customer details for ${customerId}`);
 
-      // For now, we'll use mock data
       const customer = customers.find((c) => c.id === customerId);
       if (customer) {
+        // Load real billing history from CustomerService
+        let realBillingHistory: BillingRecord[] = [];
+        try {
+          realBillingHistory =
+            await CustomerService.getBillingHistory(customerId);
+          console.log(
+            `📊 Loaded ${realBillingHistory.length} billing records for ${customer.name}`,
+          );
+        } catch (error) {
+          console.warn(
+            `⚠️ Failed to load billing history for ${customer.name}:`,
+            error,
+          );
+          // Fallback to customer's invoice history if available
+          realBillingHistory = customer.invoiceHistory || [];
+        }
+
         const details: CustomerRowData = {
           ...customer,
-          statusLogs: [
-            {
-              id: `${customerId}-log-1`,
-              customerId,
-              previousStatus: "inactive",
-              newStatus: "active",
-              changedBy: "Admin User",
-              changedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-              reason: "Account activation",
-              requestId: "req-001",
-            },
-            {
-              id: `${customerId}-log-2`,
-              customerId,
-              previousStatus: "demo",
-              newStatus: "inactive",
-              changedBy: "System",
-              changedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-              reason: "Demo period ended",
-            },
-          ],
-          billingHistory: [
-            {
-              id: `${customerId}-bill-1`,
-              customerId,
-              amount: customer.packageAmount || 0,
-              billingMonth: "2024-01",
-              paymentDate: new Date(),
-              paymentStatus: "Paid",
-              amountPaid: customer.packageAmount || 0,
-              paymentMethod: "Cash",
-            },
-          ],
+          // Use real customer status logs instead of mock data
+          statusLogs: customer.statusLogs || [],
+          // Use real billing history
+          billingHistory: realBillingHistory,
         };
+
+        console.log(`✅ Customer details loaded for ${customer.name}:`, {
+          statusLogs: details.statusLogs.length,
+          billingHistory: details.billingHistory.length,
+        });
 
         setCustomerDetails((prev) => new Map(prev.set(customerId, details)));
       }
@@ -253,15 +251,65 @@ export default function EnhancedCustomerTable({
     setExpandedRows(newExpanded);
   };
 
+  // Force refresh customer details when customer data changes
+  const refreshCustomerDetails = (customerId: string) => {
+    console.log(`🔄 Refreshing customer details for ${customerId}`);
+    // Remove from cache to force reload
+    setCustomerDetails((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(customerId);
+      return newMap;
+    });
+    // Reload if expanded
+    if (expandedRows.has(customerId)) {
+      loadCustomerDetails(customerId);
+    }
+  };
+
+  // Watch for customer data changes to refresh details
+  React.useEffect(() => {
+    // When customers array changes, refresh details for any expanded customers
+    expandedRows.forEach((customerId) => {
+      refreshCustomerDetails(customerId);
+    });
+  }, [customers]);
+
   // Handle status change requests
   const handleStatusChangeRequest = (
     customer: Customer,
     newStatus: CustomerStatus,
   ) => {
+    console.log(`🔄 Status change request for ${customer.name}:`);
+    console.log(`   User: ${user?.name} (ID: ${user?.id})`);
+    console.log(`   User Role: ${user?.role}`);
+    console.log(`   IsAdmin: ${isAdmin}`);
+    console.log(`   Current Status: ${customer.status}`);
+    console.log(`   Requested Status: ${newStatus}`);
+
     if (isAdmin) {
-      // Admins can change status directly
-      handleDirectStatusChange(customer, newStatus);
+      console.log(`✅ Admin user - proceeding with VC selection`);
+
+      // Check if customer has multiple VCs
+      const hasMultipleVCs =
+        customer.connections &&
+        customer.connections.length > 0 &&
+        (customer.connections.length > 1 ||
+          (customer.connections.length === 1 &&
+            customer.connections[0].vcNumber !== customer.vcNumber));
+
+      if (hasMultipleVCs) {
+        console.log(`🔗 Customer has multiple VCs - showing selection modal`);
+        setVCStatusCustomer(customer);
+        setVCRequestedStatus(newStatus);
+        setShowVCStatusModal(true);
+      } else {
+        console.log(
+          `📱 Customer has single VC - proceeding with direct change`,
+        );
+        handleVCStatusChange(customer, newStatus, [customer.vcNumber]);
+      }
     } else {
+      console.log(`📝 Employee user - creating status change request`);
       // Employees must request status changes
       const request: ActionRequest = {
         id: `req-${Date.now()}`,
@@ -283,33 +331,97 @@ export default function EnhancedCustomerTable({
     }
   };
 
-  // Handle direct status change (admin only)
-  const handleDirectStatusChange = async (
+  // Handle VC status change with proper status logging
+  const handleVCStatusChange = async (
     customer: Customer,
     newStatus: CustomerStatus,
+    selectedVCs: string[],
   ) => {
+    console.log(`🔥 handleVCStatusChange called for ${customer.name}`);
+    console.log(`   Selected VCs:`, selectedVCs);
+    console.log(`   New status: ${newStatus}`);
+
     try {
       if (!onCustomerUpdate) {
+        console.error("❌ onCustomerUpdate function not provided");
         throw new Error("Customer update function not provided");
       }
 
-      const updates = { status: newStatus };
+      // Create comprehensive update object
+      let updates: Partial<Customer> = {};
+      let statusLogsToAdd: any[] = [];
+
+      // Check if primary VC is being updated
+      const primaryVCUpdated = selectedVCs.includes(customer.vcNumber);
+
+      if (primaryVCUpdated) {
+        console.log(`📱 Updating primary VC and main customer status`);
+        updates.status = newStatus;
+        updates.isActive = newStatus === "active";
+
+        // Create status log for main customer status change
+        const mainStatusLog = {
+          id: `log-${Date.now()}-main`,
+          customerId: customer.id,
+          previousStatus: customer.status || "inactive",
+          newStatus: newStatus,
+          changedBy: user?.name || "Unknown",
+          changedAt: new Date(),
+          reason: `Primary VC ${customer.vcNumber} ${newStatus === "active" ? "activated" : "deactivated"}`,
+        };
+        statusLogsToAdd.push(mainStatusLog);
+      }
+
+      // Update connection statuses for selected VCs
+      if (customer.connections && customer.connections.length > 0) {
+        console.log(`🔗 Updating connection statuses`);
+        updates.connections = customer.connections.map((conn) => {
+          if (selectedVCs.includes(conn.vcNumber)) {
+            console.log(
+              `   Updating connection ${conn.vcNumber} to ${newStatus}`,
+            );
+
+            // Create status log for connection change
+            const connStatusLog = {
+              id: `log-${Date.now()}-${conn.vcNumber}`,
+              customerId: customer.id,
+              previousStatus: conn.status || "inactive",
+              newStatus: newStatus,
+              changedBy: user?.name || "Unknown",
+              changedAt: new Date(),
+              reason: `Connection ${conn.vcNumber} ${newStatus === "active" ? "activated" : "deactivated"}`,
+            };
+            statusLogsToAdd.push(connStatusLog);
+
+            return { ...conn, status: newStatus };
+          }
+          return conn;
+        });
+      }
+
+      // Add all status logs
+      updates.statusLogs = [...(customer.statusLogs || []), ...statusLogsToAdd];
+
+      console.log(`📤 Calling onCustomerUpdate with:`, updates);
+      console.log(`📝 Adding ${statusLogsToAdd.length} status log entries`);
+
       await onCustomerUpdate(customer.id, updates);
 
-      // Log the status change
       console.log(
-        `Status changed for ${customer.name}: ${customer.status} → ${newStatus}`,
+        `✅ VC status change completed successfully for ${customer.name}`,
       );
 
+      const vcList = selectedVCs.join(", ");
       toast({
         title: "Status Updated",
-        description: `Customer status changed to ${newStatus}`,
+        description: `${customer.name} - VC${selectedVCs.length > 1 ? "s" : ""} ${vcList} ${newStatus === "active" ? "activated" : "deactivated"}`,
       });
     } catch (error) {
-      console.error("Failed to update status:", error);
+      console.error("❌ Error in handleVCStatusChange:", error);
+      console.error("❌ Error stack:", error.stack);
       toast({
         title: "Error",
-        description: "Failed to update customer status",
+        description: `Failed to update VC status: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -370,10 +482,16 @@ export default function EnhancedCustomerTable({
               </TableRow>
             ) : (
               filteredCustomers.map((customer) => {
-                const { vcNumber, status, connection } =
-                  getPrimaryConnection(customer);
+                const { vcNumber, connection } = getPrimaryConnection(customer);
                 const isExpanded = expandedRows.has(customer.id);
                 const details = customerDetails.get(customer.id);
+
+                // Use main customer status for action buttons, not connection status
+                const customerStatus = customer.status || "inactive";
+                const displayStatus =
+                  customer.connections && customer.connections.length > 0
+                    ? getPrimaryConnection(customer).status
+                    : customerStatus;
 
                 return (
                   <React.Fragment key={customer.id}>
@@ -476,14 +594,14 @@ export default function EnhancedCustomerTable({
                         <div className="space-y-1">
                           <Badge
                             variant={
-                              status === "active"
+                              displayStatus === "active"
                                 ? "default"
-                                : status === "demo"
+                                : displayStatus === "demo"
                                   ? "secondary"
                                   : "destructive"
                             }
                           >
-                            {status}
+                            {displayStatus}
                           </Badge>
                           <div className="text-xs text-muted-foreground flex items-center space-x-1">
                             <Tv className="h-3 w-3" />
@@ -522,26 +640,32 @@ export default function EnhancedCustomerTable({
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
-                            {/* Status Change Actions */}
-                            {status !== "active" && (
+                            {/* Status Change Actions - Use main customer status for buttons */}
+                            {customerStatus !== "active" && (
                               <DropdownMenuItem
-                                onClick={() =>
-                                  handleStatusChangeRequest(customer, "active")
-                                }
+                                onClick={() => {
+                                  console.log(
+                                    `🔥 Activate button clicked for ${customer.name}`,
+                                  );
+                                  handleStatusChangeRequest(customer, "active");
+                                }}
                                 className="text-green-600"
                               >
                                 <Power className="mr-2 h-4 w-4" />
                                 Activate
                               </DropdownMenuItem>
                             )}
-                            {status !== "inactive" && (
+                            {customerStatus !== "inactive" && (
                               <DropdownMenuItem
-                                onClick={() =>
+                                onClick={() => {
+                                  console.log(
+                                    `🔥 Deactivate button clicked for ${customer.name}`,
+                                  );
                                   handleStatusChangeRequest(
                                     customer,
                                     "inactive",
-                                  )
-                                }
+                                  );
+                                }}
                                 className="text-red-600"
                               >
                                 <PowerOff className="mr-2 h-4 w-4" />
@@ -624,108 +748,168 @@ export default function EnhancedCustomerTable({
                             </div>
 
                             {/* Recent Billing History */}
-                            {details?.billingHistory &&
-                              details.billingHistory.length > 0 && (
+                            {(details?.billingHistory?.length > 0 ||
+                              customer.invoiceHistory?.length > 0) && (
+                              <div>
+                                <h4 className="font-semibold mb-3 flex items-center">
+                                  <CreditCard className="mr-2 h-4 w-4" />
+                                  Recent Billing History
+                                </h4>
+                                <div className="space-y-2">
+                                  {(details?.billingHistory?.length > 0
+                                    ? details.billingHistory
+                                    : customer.invoiceHistory || []
+                                  )
+                                    .sort((a, b) => {
+                                      // Sort by newest first
+                                      const dateA = new Date(
+                                        a.paymentDate || a.generatedDate || 0,
+                                      );
+                                      const dateB = new Date(
+                                        b.paymentDate || b.generatedDate || 0,
+                                      );
+                                      return dateB.getTime() - dateA.getTime();
+                                    })
+                                    .slice(0, 5) // Show last 5 billing records
+                                    .map((bill) => (
+                                      <div
+                                        key={bill.id}
+                                        className="border rounded p-3 bg-background"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div>
+                                            <span className="font-medium">
+                                              ₹
+                                              {bill.amount ||
+                                                bill.amountPaid ||
+                                                0}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground ml-2">
+                                              (
+                                              {bill.billingMonth ||
+                                                bill.invoiceNumber ||
+                                                "N/A"}
+                                              )
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center space-x-2">
+                                            <Badge
+                                              variant={
+                                                (bill.paymentStatus ||
+                                                  "Paid") === "Paid"
+                                                  ? "default"
+                                                  : "destructive"
+                                              }
+                                            >
+                                              {bill.paymentStatus ||
+                                                "Generated"}
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground">
+                                              {new Date(
+                                                bill.paymentDate ||
+                                                  bill.generatedDate ||
+                                                  Date.now(),
+                                              ).toLocaleDateString()}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        {bill.paymentMethod && (
+                                          <div className="text-sm text-muted-foreground mt-1">
+                                            Payment Method: {bill.paymentMethod}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* No Billing History Message */}
+                            {(!details?.billingHistory ||
+                              details.billingHistory.length === 0) &&
+                              (!customer.invoiceHistory ||
+                                customer.invoiceHistory.length === 0) && (
                                 <div>
                                   <h4 className="font-semibold mb-3 flex items-center">
                                     <CreditCard className="mr-2 h-4 w-4" />
                                     Recent Billing History
                                   </h4>
-                                  <div className="space-y-2">
-                                    {details.billingHistory
-                                      .slice(0, 3)
-                                      .map((bill) => (
-                                        <div
-                                          key={bill.id}
-                                          className="border rounded p-3 bg-background"
-                                        >
-                                          <div className="flex items-center justify-between">
-                                            <div>
-                                              <span className="font-medium">
-                                                ₹{bill.amount}
-                                              </span>
-                                              <span className="text-sm text-muted-foreground ml-2">
-                                                ({bill.billingMonth})
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                              <Badge
-                                                variant={
-                                                  bill.paymentStatus === "Paid"
-                                                    ? "default"
-                                                    : "destructive"
-                                                }
-                                              >
-                                                {bill.paymentStatus}
-                                              </Badge>
-                                              <span className="text-xs text-muted-foreground">
-                                                {new Date(
-                                                  bill.paymentDate,
-                                                ).toLocaleDateString()}
-                                              </span>
-                                            </div>
-                                          </div>
-                                          {bill.paymentMethod && (
-                                            <div className="text-sm text-muted-foreground mt-1">
-                                              Payment Method:{" "}
-                                              {bill.paymentMethod}
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
+                                  <div className="text-center py-4 text-muted-foreground border rounded bg-muted/30">
+                                    No billing records found for this customer
                                   </div>
                                 </div>
                               )}
 
                             {/* Status Change History - Compact */}
-                            {details?.statusLogs &&
-                              details.statusLogs.length > 0 && (
+                            {customer.statusLogs &&
+                              customer.statusLogs.length > 0 && (
                                 <div>
                                   <h4 className="font-semibold mb-2 flex items-center">
                                     <Clock className="mr-2 h-4 w-4" />
                                     Status Change History
                                   </h4>
                                   <div className="space-y-1">
-                                    {details.statusLogs.map((log) => (
-                                      <div
-                                        key={log.id}
-                                        className="border rounded p-2 bg-background"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center space-x-2">
-                                            <Badge
-                                              variant="outline"
-                                              className="text-xs px-1 py-0"
-                                            >
-                                              {log.previousStatus}
-                                            </Badge>
-                                            <span className="text-xs">→</span>
-                                            <Badge
-                                              variant="outline"
-                                              className="text-xs px-1 py-0"
-                                            >
-                                              {log.newStatus}
-                                            </Badge>
-                                          </div>
-                                          <span className="text-xs text-muted-foreground">
-                                            {new Date(
-                                              log.changedAt,
-                                            ).toLocaleDateString()}
-                                          </span>
-                                        </div>
-                                        <div className="text-xs text-muted-foreground mt-1">
-                                          <span>{log.changedBy}</span>
-                                          {log.reason && (
-                                            <span className="ml-2">
-                                              • {log.reason}
+                                    {customer.statusLogs
+                                      .slice(0, 5) // Show last 5 status changes
+                                      .sort(
+                                        (a, b) =>
+                                          new Date(b.changedAt).getTime() -
+                                          new Date(a.changedAt).getTime(),
+                                      ) // Sort by newest first
+                                      .map((log) => (
+                                        <div
+                                          key={log.id}
+                                          className="border rounded p-2 bg-background"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-2">
+                                              <Badge
+                                                variant="outline"
+                                                className="text-xs px-1 py-0"
+                                              >
+                                                {log.previousStatus}
+                                              </Badge>
+                                              <span className="text-xs">→</span>
+                                              <Badge
+                                                variant="outline"
+                                                className="text-xs px-1 py-0"
+                                              >
+                                                {log.newStatus}
+                                              </Badge>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground">
+                                              {new Date(
+                                                log.changedAt,
+                                              ).toLocaleDateString()}
                                             </span>
-                                          )}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground mt-1">
+                                            <span>{log.changedBy}</span>
+                                            {log.reason && (
+                                              <span className="ml-2">
+                                                • {log.reason}
+                                              </span>
+                                            )}
+                                          </div>
                                         </div>
-                                      </div>
-                                    ))}
+                                      ))}
                                   </div>
                                 </div>
                               )}
+
+                            {/* No Status Change History Message */}
+                            {(!customer.statusLogs ||
+                              customer.statusLogs.length === 0) && (
+                              <div>
+                                <h4 className="font-semibold mb-2 flex items-center">
+                                  <Clock className="mr-2 h-4 w-4" />
+                                  Status Change History
+                                </h4>
+                                <div className="text-center py-3 text-muted-foreground border rounded bg-muted/30">
+                                  No status changes recorded for this customer
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -766,6 +950,15 @@ export default function EnhancedCustomerTable({
             });
           }
         }}
+      />
+
+      {/* VC Status Change Modal for Admins */}
+      <VCStatusChangeModal
+        open={showVCStatusModal}
+        onOpenChange={setShowVCStatusModal}
+        customer={vcStatusCustomer}
+        requestedStatus={vcRequestedStatus}
+        onConfirm={handleVCStatusChange}
       />
     </>
   );

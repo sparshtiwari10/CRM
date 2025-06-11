@@ -211,18 +211,47 @@ export default function RequestManagement() {
               `🔄 Updating VC ${request.vcNumber} status to ${newVCStatus} for customer ${customer.name}`,
             );
 
+            // Prepare comprehensive status update
+            let statusUpdates: any = {
+              status: newVCStatus,
+              isActive: newVCStatus === "active",
+            };
+
+            // Add status log entry
+            const statusLog = {
+              id: `log-${Date.now()}`,
+              customerId: customer.id,
+              previousStatus: customer.status,
+              newStatus: newVCStatus,
+              changedBy: user?.name || "Admin",
+              changedAt: new Date(),
+              reason: `Request approved: ${request.reason || `${request.actionType} request`}`,
+              requestId: request.id,
+            };
+
+            statusUpdates.statusLogs = [
+              ...(customer.statusLogs || []),
+              statusLog,
+            ];
+
             // Check if it's primary VC or secondary VC
             if (request.vcNumber === customer.vcNumber) {
-              // Primary VC - update customer status
-              await CustomerService.updateCustomer(customer.id, {
-                status: newVCStatus,
-                isActive: newVCStatus === "active",
-              });
+              // Primary VC - update main customer status and all connections
+              if (customer.connections && customer.connections.length > 0) {
+                statusUpdates.connections = customer.connections.map(
+                  (conn) => ({
+                    ...conn,
+                    status: newVCStatus, // Update all connections to match
+                  }),
+                );
+              }
+
+              await CustomerService.updateCustomer(customer.id, statusUpdates);
               console.log(
-                `✅ Primary VC ${request.vcNumber} status updated to ${newVCStatus}`,
+                `✅ Primary VC ${request.vcNumber} and all connections updated to ${newVCStatus}`,
               );
             } else {
-              // Secondary VC - update connection status
+              // Secondary VC - update only the specific connection
               const updatedConnections =
                 customer.connections?.map((conn) =>
                   conn.vcNumber === request.vcNumber
@@ -232,6 +261,7 @@ export default function RequestManagement() {
 
               await CustomerService.updateCustomer(customer.id, {
                 connections: updatedConnections,
+                statusLogs: statusUpdates.statusLogs,
               });
               console.log(
                 `✅ Secondary VC ${request.vcNumber} status updated to ${newVCStatus}`,
