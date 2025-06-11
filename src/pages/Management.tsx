@@ -77,6 +77,12 @@ export default function Management() {
   const [newPackage, setNewPackage] = useState("");
   const [newPackageAmount, setNewPackageAmount] = useState("");
 
+  // Area management states
+  const [showAreaDialog, setShowAreaDialog] = useState(false);
+  const [editingArea, setEditingArea] = useState<Area | null>(null);
+  const [areaName, setAreaName] = useState("");
+  const [areaDescription, setAreaDescription] = useState("");
+
   const { toast } = useToast();
 
   // Load initial data
