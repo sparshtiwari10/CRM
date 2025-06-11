@@ -74,11 +74,11 @@ export function FirebaseStatus() {
   const getStatusText = () => {
     switch (status) {
       case "connected":
-        return "Firebase Online";
+        return "Online";
       case "disconnected":
         return "Connecting...";
       case "error":
-        return "Firebase Error";
+        return "Error";
     }
   };
 
