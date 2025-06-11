@@ -399,6 +399,48 @@ Displays complete transaction history:
 3. **Status Tracking:** Real-time status updates
 4. **Area-Based Access:** Employees see requests for their areas only
 
+### Bulk Management System (Admin Only)
+
+#### Management Features
+
+- **Multi-Customer Selection:** Checkbox interface for selecting customers across filters
+- **Bulk Area Updates:** Reassign multiple customers to different collectors/areas
+- **Bulk Package Updates:** Change packages and pricing for selected customers
+- **Advanced Filtering:** Search and filter by multiple criteria simultaneously
+- **Real-time Updates:** Live data synchronization with immediate reflection
+
+#### Management Workflow
+
+1. **Filter Customers:** Use search and filter options to find target customers
+2. **Select Customers:** Use checkboxes to select individual or all filtered customers
+3. **Choose Action:** Select bulk area update or bulk package update
+4. **Execute Changes:** Apply changes to all selected customers simultaneously
+5. **Verify Results:** System provides confirmation and updates data in real-time
+
+#### Security and Permissions
+
+- **Admin-Only Access:** Management section restricted to administrator accounts
+- **Validation Checks:** System validates all changes before applying updates
+- **Audit Trail:** All bulk operations logged for security and compliance
+- **Error Handling:** Graceful failure modes with detailed error reporting
+
+### Dynamic Settings Management
+
+#### Settings Categories
+
+- **Company Information:** Project name, company details, contact information
+- **Notification Settings:** Email, SMS, and system alert preferences
+- **System Configuration:** Timezone, date format, currency, session settings
+- **Security Settings:** Password requirements, data retention policies
+
+#### Settings Features
+
+- **Firebase Storage:** All configuration stored in Firestore database
+- **Real-time Updates:** Changes reflect immediately across all user sessions
+- **Admin Control:** Only administrators can modify system settings
+- **Default Fallbacks:** System maintains functionality even if settings unavailable
+- **Project Branding:** Login page displays configurable project name
+
 ## Technical Architecture
 
 ### Frontend Architecture
