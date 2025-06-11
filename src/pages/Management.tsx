@@ -49,6 +49,11 @@ import {
   Search,
   MapPin,
   Zap,
+  Plus,
+  Trash2,
+  RotateCcw,
+  Building,
+  TrendingUp,
 } from "lucide-react";
 
 export default function Management() {
