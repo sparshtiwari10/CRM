@@ -251,9 +251,7 @@ export default function Management() {
             const updatedCustomer = {
               ...customer,
               currentPackage: newPackage,
-              packageAmount: newPackageAmount
-                ? parseFloat(newPackageAmount)
-                : customer.packageAmount,
+              packageAmount: packagePrice || customer.packageAmount,
             };
             await CustomerService.updateCustomer(customerId, updatedCustomer);
           }
@@ -680,7 +678,7 @@ export default function Management() {
                                 <div className="flex items-center justify-between w-full">
                                   <span>{pkg.name}</span>
                                   <span className="text-muted-foreground ml-2">
-                                    ���{pkg.price}
+                                    ₹{pkg.price}
                                   </span>
                                 </div>
                               </SelectItem>
