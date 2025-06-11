@@ -662,12 +662,31 @@ export default function Management() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="newPackage">New Package</Label>
-                      <Input
-                        id="newPackage"
-                        placeholder="Enter package name"
-                        value={newPackage}
-                        onChange={(e) => setNewPackage(e.target.value)}
-                      />
+                      <Select value={newPackage} onValueChange={setNewPackage}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a package" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {packages
+                            .filter((pkg) => pkg.isActive)
+                            .map((pkg) => (
+                              <SelectItem key={pkg.id} value={pkg.name}>
+                                <div className="flex items-center justify-between w-full">
+                                  <span>{pkg.name}</span>
+                                  <span className="text-muted-foreground ml-2">
+                                    ₹{pkg.price}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {packages.filter((pkg) => pkg.isActive).length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          No active packages available. Create packages in the
+                          Packages section first.
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="newPackageAmount">
