@@ -93,12 +93,14 @@ export default function Management() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [customersData, packagesData] = await Promise.all([
+      const [customersData, packagesData, areasData] = await Promise.all([
         CustomerService.getAllCustomers(),
         packageService.getAllPackages(),
+        AreaService.getAllAreas(),
       ]);
       setCustomers(customersData);
       setPackages(packagesData);
+      setAreas(areasData);
     } catch (error) {
       console.error("Failed to load management data:", error);
       toast({
