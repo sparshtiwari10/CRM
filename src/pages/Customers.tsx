@@ -399,10 +399,12 @@ export default function Customers() {
                 Import/Export
               </Button>
             )}
-            <Button onClick={handleCreateCustomer}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Customer
-            </Button>
+            {isAdmin && (
+              <Button onClick={handleCreateCustomer}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Customer
+              </Button>
+            )}
           </div>
         </div>
 
