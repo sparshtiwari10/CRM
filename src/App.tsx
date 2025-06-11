@@ -103,6 +103,14 @@ function AppContent() {
 
         {/* Admin-only routes */}
         <Route
+          path="/management"
+          element={
+            <ProtectedRoute adminOnly>
+              <Management />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/employees"
           element={
             <ProtectedRoute adminOnly>
