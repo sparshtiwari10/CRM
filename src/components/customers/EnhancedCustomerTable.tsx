@@ -790,8 +790,8 @@ export default function EnhancedCustomerTable({
                               )}
 
                             {/* Status Change History - Compact */}
-                            {details?.statusLogs &&
-                              details.statusLogs.length > 0 && (
+                            {customer.statusLogs &&
+                              customer.statusLogs.length > 0 && (
                                 <div>
                                   <h4 className="font-semibold mb-2 flex items-center">
                                     <Clock className="mr-2 h-4 w-4" />
