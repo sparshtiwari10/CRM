@@ -281,12 +281,20 @@ export default function Customers() {
 
       if (editingCustomer) {
         // Update existing customer
-        await CustomerService.updateCustomer(editingCustomer.id, customerData);
+        const updatedCustomer = await CustomerService.updateCustomer(
+          editingCustomer.id,
+          customerData,
+        );
+
+        // Update the customers state with the new data including the ID
         setCustomers((prev) =>
           prev.map((c) =>
-            c.id === editingCustomer.id ? { ...customerData } : c,
+            c.id === editingCustomer.id
+              ? { ...updatedCustomer, id: editingCustomer.id }
+              : c,
           ),
         );
+
         toast({
           title: "Success",
           description: "Customer updated successfully",
@@ -301,6 +309,7 @@ export default function Customers() {
         });
       }
 
+      // Close modal and reset state
       setIsModalOpen(false);
       setEditingCustomer(null);
     } catch (error) {
@@ -408,66 +417,6 @@ export default function Customers() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Customers
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{customers.length}</div>
-              <p className="text-xs text-muted-foreground">
-                {filteredCustomers.length} matching filters
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Active Customers
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {customers.filter((c) => c.status === "active").length}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {(
-                  (customers.filter((c) => c.status === "active").length /
-                    customers.length) *
-                  100
-                ).toFixed(1)}
-                % of total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {isAdmin ? "Total Areas" : "Your Areas"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {isAdmin
-                  ? uniqueAreas.length
-                  : user?.assigned_areas?.length || 1}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {isAdmin
-                  ? `${uniqueAreas.length} areas covered`
-                  : user?.assigned_areas?.join(", ") ||
-                    user?.collector_name ||
-                    user?.name}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Filters */}
         <Card>
           <CardContent className="p-6">
@@ -546,7 +495,13 @@ export default function Customers() {
         {/* Customer Modal */}
         <CustomerModal
           open={isModalOpen}
-          onOpenChange={setIsModalOpen}
+          onOpenChange={(open) => {
+            setIsModalOpen(open);
+            if (!open) {
+              setEditingCustomer(null);
+              setIsSaving(false);
+            }
+          }}
           customer={editingCustomer}
           onSave={handleSaveCustomer}
           isLoading={isSaving}
