@@ -228,11 +228,17 @@ export default function Management() {
     if (!newPackage || selectedCustomers.length === 0) {
       toast({
         title: "Error",
-        description: "Please select customers and enter a new package.",
+        description: "Please select customers and choose a package.",
         variant: "destructive",
       });
       return;
     }
+
+    // Find the selected package to get its price
+    const selectedPackage = packages.find((pkg) => pkg.name === newPackage);
+    const packagePrice = selectedPackage
+      ? selectedPackage.price
+      : parseFloat(newPackageAmount) || 0;
 
     try {
       setIsSaving(true);
@@ -674,7 +680,7 @@ export default function Management() {
                                 <div className="flex items-center justify-between w-full">
                                   <span>{pkg.name}</span>
                                   <span className="text-muted-foreground ml-2">
-                                    ₹{pkg.price}
+                                    ���{pkg.price}
                                   </span>
                                 </div>
                               </SelectItem>
