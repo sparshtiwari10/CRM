@@ -27,6 +27,7 @@ export default function Login() {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const [projectName, setProjectName] = useState("AGV Cable TV");
 
   const {
     login,
