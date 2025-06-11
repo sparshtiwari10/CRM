@@ -438,9 +438,12 @@ export default function Settings() {
               <Button
                 onClick={handleSaveNotificationSettings}
                 className="w-full"
+                disabled={isSaving.notification}
               >
                 <Save className="mr-2 h-4 w-4" />
-                Save Notification Settings
+                {isSaving.notification
+                  ? "Saving..."
+                  : "Save Notification Settings"}
               </Button>
             </CardContent>
           </Card>
@@ -458,10 +461,10 @@ export default function Settings() {
                 <div>
                   <Label htmlFor="timezone">Timezone</Label>
                   <Select
-                    value={systemSettings.timezone}
+                    value={settings.timezone}
                     onValueChange={(value) =>
-                      setSystemSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         timezone: value,
                       }))
                     }
@@ -482,6 +485,9 @@ export default function Settings() {
                       <SelectItem value="America/Los_Angeles">
                         Pacific Time
                       </SelectItem>
+                      <SelectItem value="Asia/Kolkata">
+                        India Standard Time
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -490,10 +496,10 @@ export default function Settings() {
                   <div>
                     <Label htmlFor="dateFormat">Date Format</Label>
                     <Select
-                      value={systemSettings.dateFormat}
+                      value={settings.dateFormat}
                       onValueChange={(value) =>
-                        setSystemSettings((prev) => ({
-                          ...prev,
+                        setSettings((prev) => ({
+                          ...prev!,
                           dateFormat: value,
                         }))
                       }
@@ -512,10 +518,10 @@ export default function Settings() {
                   <div>
                     <Label htmlFor="currency">Currency</Label>
                     <Select
-                      value={systemSettings.currency}
+                      value={settings.currency}
                       onValueChange={(value) =>
-                        setSystemSettings((prev) => ({
-                          ...prev,
+                        setSettings((prev) => ({
+                          ...prev!,
                           currency: value,
                         }))
                       }
@@ -527,6 +533,7 @@ export default function Settings() {
                         <SelectItem value="USD">USD ($)</SelectItem>
                         <SelectItem value="EUR">EUR (€)</SelectItem>
                         <SelectItem value="GBP">GBP (£)</SelectItem>
+                        <SelectItem value="INR">INR (₹)</SelectItem>
                         <SelectItem value="CAD">CAD ($)</SelectItem>
                       </SelectContent>
                     </Select>
@@ -540,10 +547,10 @@ export default function Settings() {
                   <Input
                     id="sessionTimeout"
                     type="number"
-                    value={systemSettings.sessionTimeout}
+                    value={settings.sessionTimeout}
                     onChange={(e) =>
-                      setSystemSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         sessionTimeout: e.target.value,
                       }))
                     }
@@ -558,10 +565,10 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={systemSettings.autoBackup}
+                    checked={settings.autoBackup}
                     onCheckedChange={(checked) =>
-                      setSystemSettings((prev) => ({
-                        ...prev,
+                      setSettings((prev) => ({
+                        ...prev!,
                         autoBackup: checked,
                       }))
                     }
@@ -569,9 +576,13 @@ export default function Settings() {
                 </div>
               </div>
 
-              <Button onClick={handleSaveSystemSettings} className="w-full">
+              <Button
+                onClick={handleSaveSystemSettings}
+                className="w-full"
+                disabled={isSaving.system}
+              >
                 <Save className="mr-2 h-4 w-4" />
-                Save System Settings
+                {isSaving.system ? "Saving..." : "Save System Settings"}
               </Button>
             </CardContent>
           </Card>
