@@ -228,11 +228,17 @@ export default function Management() {
     if (!newPackage || selectedCustomers.length === 0) {
       toast({
         title: "Error",
-        description: "Please select customers and enter a new package.",
+        description: "Please select customers and choose a package.",
         variant: "destructive",
       });
       return;
     }
+
+    // Find the selected package to get its price
+    const selectedPackage = packages.find((pkg) => pkg.name === newPackage);
+    const packagePrice = selectedPackage
+      ? selectedPackage.price
+      : parseFloat(newPackageAmount) || 0;
 
     try {
       setIsSaving(true);
@@ -245,9 +251,7 @@ export default function Management() {
             const updatedCustomer = {
               ...customer,
               currentPackage: newPackage,
-              packageAmount: newPackageAmount
-                ? parseFloat(newPackageAmount)
-                : customer.packageAmount,
+              packageAmount: packagePrice || customer.packageAmount,
             };
             await CustomerService.updateCustomer(customerId, updatedCustomer);
           }
@@ -455,6 +459,17 @@ export default function Management() {
     }
   };
 
+  // Handle package selection and auto-populate amount
+  const handlePackageSelection = (packageName: string) => {
+    setNewPackage(packageName);
+
+    // Auto-populate package amount
+    const selectedPackage = packages.find((pkg) => pkg.name === packageName);
+    if (selectedPackage) {
+      setNewPackageAmount(selectedPackage.price.toString());
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout title="Management">
@@ -584,7 +599,16 @@ export default function Management() {
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    disabled={selectedCustomers.length === 0}
+                    disabled={
+                      selectedCustomers.length === 0 || areaNames.length === 0
+                    }
+                    title={
+                      areaNames.length === 0
+                        ? "No areas available. Create areas first."
+                        : selectedCustomers.length === 0
+                          ? "Select customers first"
+                          : "Update area for selected customers"
+                    }
                   >
                     <MapPin className="mr-2 h-4 w-4" />
                     Bulk Update Area
@@ -601,12 +625,24 @@ export default function Management() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="newArea">New Area</Label>
-                      <Input
-                        id="newArea"
-                        placeholder="Enter new area name"
-                        value={newArea}
-                        onChange={(e) => setNewArea(e.target.value)}
-                      />
+                      <Select value={newArea} onValueChange={setNewArea}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an area" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {areaNames.map((area) => (
+                            <SelectItem key={area} value={area}>
+                              {area}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {areaNames.length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          No areas available. Create areas in the Area
+                          Management section first.
+                        </p>
+                      )}
                     </div>
                   </div>
                   <DialogFooter>
@@ -633,7 +669,17 @@ export default function Management() {
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    disabled={selectedCustomers.length === 0}
+                    disabled={
+                      selectedCustomers.length === 0 ||
+                      packages.filter((pkg) => pkg.isActive).length === 0
+                    }
+                    title={
+                      packages.filter((pkg) => pkg.isActive).length === 0
+                        ? "No active packages available. Create packages first."
+                        : selectedCustomers.length === 0
+                          ? "Select customers first"
+                          : "Update package for selected customers"
+                    }
                   >
                     <PackageIcon className="mr-2 h-4 w-4" />
                     Bulk Update Package
@@ -650,12 +696,34 @@ export default function Management() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="newPackage">New Package</Label>
-                      <Input
-                        id="newPackage"
-                        placeholder="Enter package name"
+                      <Select
                         value={newPackage}
-                        onChange={(e) => setNewPackage(e.target.value)}
-                      />
+                        onValueChange={handlePackageSelection}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a package" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {packages
+                            .filter((pkg) => pkg.isActive)
+                            .map((pkg) => (
+                              <SelectItem key={pkg.id} value={pkg.name}>
+                                <div className="flex items-center justify-between w-full">
+                                  <span>{pkg.name}</span>
+                                  <span className="text-muted-foreground ml-2">
+                                    ₹{pkg.price}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {packages.filter((pkg) => pkg.isActive).length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          No active packages available. Create packages in the
+                          Packages section first.
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="newPackageAmount">
@@ -664,12 +732,13 @@ export default function Management() {
                       <Input
                         id="newPackageAmount"
                         type="number"
-                        placeholder="Enter package amount (optional)"
+                        placeholder="Auto-populated from selected package"
                         value={newPackageAmount}
                         onChange={(e) => setNewPackageAmount(e.target.value)}
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Leave empty to keep existing amount
+                        Amount is auto-populated from selected package. You can
+                        modify it if needed.
                       </p>
                     </div>
                   </div>
