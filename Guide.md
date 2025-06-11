@@ -77,6 +77,15 @@ The AGV Cable TV Management System is a comprehensive web application for managi
 - **Write Protection:** Prevents unauthorized modification of system settings
 - **Admin Verification:** Double-layer security for sensitive configuration changes
 
+#### Centralized Area Management System
+
+- **Complete CRUD Operations:** Create, read, update, delete areas with validation
+- **Usage Tracking:** Monitor area usage by customers and employees
+- **Import Functionality:** Automatically import areas from existing data
+- **Safe Deletion:** Prevent deletion of areas with assigned users
+- **Status Management:** Activate/deactivate areas as needed
+- **Centralized Control:** Single source of truth for all geographic areas
+
 ### ✅ Core Working Features
 
 #### Authentication & User Management
