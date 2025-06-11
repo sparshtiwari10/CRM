@@ -34,6 +34,7 @@ import { CustomerImportExport } from "@/components/customers/CustomerImportExpor
 import { AuthContext } from "@/contexts/AuthContext";
 import { CustomerService } from "@/services/customerService";
 import { authService } from "@/services/authService";
+import { AreaService } from "@/services/areaService";
 import { Customer } from "@/types";
 import { ActionRequest } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
