@@ -362,6 +362,9 @@ export default function Customers() {
       if (updates.status && updates.status !== customer.status) {
         const newStatus = updates.status;
 
+        // Ensure isActive is also updated for consistency
+        enhancedUpdates.isActive = newStatus === "active";
+
         // Update connection statuses if they exist
         if (customer.connections && customer.connections.length > 0) {
           enhancedUpdates.connections = customer.connections.map((conn) => ({
@@ -391,6 +394,7 @@ export default function Customers() {
         );
       }
 
+      // Update the customer in Firestore
       await CustomerService.updateCustomer(customerId, enhancedUpdates);
 
       // Update local state with all the enhanced updates
@@ -399,6 +403,22 @@ export default function Customers() {
           c.id === customerId ? { ...c, ...enhancedUpdates } : c,
         ),
       );
+
+      // Force a reload of customer data after status change to ensure consistency
+      if (updates.status) {
+        try {
+          const updatedCustomer = await CustomerService.getCustomer(customerId);
+          setCustomers((prev) =>
+            prev.map((c) => (c.id === customerId ? updatedCustomer : c)),
+          );
+          console.log(
+            `🔄 Reloaded customer ${customer.name} data from database`,
+          );
+        } catch (reloadError) {
+          console.warn("Failed to reload customer data:", reloadError);
+          // Continue without reloading if it fails
+        }
+      }
 
       console.log(`✅ Customer ${customer.name} updated successfully`);
     } catch (error) {
