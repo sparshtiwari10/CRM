@@ -495,7 +495,13 @@ export default function Customers() {
         {/* Customer Modal */}
         <CustomerModal
           open={isModalOpen}
-          onOpenChange={setIsModalOpen}
+          onOpenChange={(open) => {
+            setIsModalOpen(open);
+            if (!open) {
+              setEditingCustomer(null);
+              setIsSaving(false);
+            }
+          }}
           customer={editingCustomer}
           onSave={handleSaveCustomer}
           isLoading={isSaving}
