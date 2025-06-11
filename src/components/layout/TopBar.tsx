@@ -12,7 +12,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { FirebaseStatus } from "@/components/common/FirebaseStatus";
-import { Sidebar } from "./Sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -39,13 +38,8 @@ export function TopBar({ title }: TopBarProps) {
 
   return (
     <header className="bg-background border-b border-border h-16 flex items-center justify-between px-4 lg:px-6">
-      {/* Left side - Mobile Menu + Title */}
+      {/* Left side - Title only */}
       <div className="flex items-center flex-1">
-        {/* Mobile Sidebar Toggle */}
-        <div className="lg:hidden mr-3">
-          <Sidebar />
-        </div>
-
         {/* Page Title */}
         {title && (
           <div>
