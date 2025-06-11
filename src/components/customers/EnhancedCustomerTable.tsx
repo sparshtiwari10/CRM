@@ -748,58 +748,70 @@ export default function EnhancedCustomerTable({
                             </div>
 
                             {/* Recent Billing History */}
-                            {details?.billingHistory &&
-                              details.billingHistory.length > 0 && (
-                                <div>
-                                  <h4 className="font-semibold mb-3 flex items-center">
-                                    <CreditCard className="mr-2 h-4 w-4" />
-                                    Recent Billing History
-                                  </h4>
-                                  <div className="space-y-2">
-                                    {details.billingHistory
-                                      .slice(0, 3)
-                                      .map((bill) => (
-                                        <div
-                                          key={bill.id}
-                                          className="border rounded p-3 bg-background"
-                                        >
-                                          <div className="flex items-center justify-between">
-                                            <div>
-                                              <span className="font-medium">
-                                                ₹{bill.amount}
-                                              </span>
-                                              <span className="text-sm text-muted-foreground ml-2">
-                                                ({bill.billingMonth})
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                              <Badge
-                                                variant={
-                                                  bill.paymentStatus === "Paid"
-                                                    ? "default"
-                                                    : "destructive"
-                                                }
-                                              >
-                                                {bill.paymentStatus}
-                                              </Badge>
-                                              <span className="text-xs text-muted-foreground">
-                                                {new Date(
-                                                  bill.paymentDate,
-                                                ).toLocaleDateString()}
-                                              </span>
-                                            </div>
+                            {(details?.billingHistory?.length > 0 ||
+                              customer.invoiceHistory?.length > 0) && (
+                              <div>
+                                <h4 className="font-semibold mb-3 flex items-center">
+                                  <CreditCard className="mr-2 h-4 w-4" />
+                                  Recent Billing History
+                                </h4>
+                                <div className="space-y-2">
+                                  {(details?.billingHistory?.length > 0
+                                    ? details.billingHistory
+                                    : customer.invoiceHistory || []
+                                  )
+                                    .sort((a, b) => {
+                                      // Sort by newest first
+                                      const dateA = new Date(
+                                        a.paymentDate || a.generatedDate || 0,
+                                      );
+                                      const dateB = new Date(
+                                        b.paymentDate || b.generatedDate || 0,
+                                      );
+                                      return dateB.getTime() - dateA.getTime();
+                                    })
+                                    .slice(0, 5) // Show last 5 billing records
+                                    .map((bill) => (
+                                      <div
+                                        key={bill.id}
+                                        className="border rounded p-3 bg-background"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div>
+                                            <span className="font-medium">
+                                              ₹{bill.amount}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground ml-2">
+                                              ({bill.billingMonth})
+                                            </span>
                                           </div>
-                                          {bill.paymentMethod && (
-                                            <div className="text-sm text-muted-foreground mt-1">
-                                              Payment Method:{" "}
-                                              {bill.paymentMethod}
-                                            </div>
-                                          )}
+                                          <div className="flex items-center space-x-2">
+                                            <Badge
+                                              variant={
+                                                bill.paymentStatus === "Paid"
+                                                  ? "default"
+                                                  : "destructive"
+                                              }
+                                            >
+                                              {bill.paymentStatus}
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground">
+                                              {new Date(
+                                                bill.paymentDate,
+                                              ).toLocaleDateString()}
+                                            </span>
+                                          </div>
                                         </div>
-                                      ))}
-                                  </div>
+                                        {bill.paymentMethod && (
+                                          <div className="text-sm text-muted-foreground mt-1">
+                                            Payment Method: {bill.paymentMethod}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
                                 </div>
-                              )}
+                              </div>
+                            )}
 
                             {/* Status Change History - Compact */}
                             {customer.statusLogs &&
