@@ -106,10 +106,18 @@ export default function Management() {
       customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.vcNumber?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesArea = !filterArea || customer.collectorName === filterArea;
+    const matchesArea =
+      !filterArea ||
+      filterArea === "ALL_AREAS" ||
+      customer.collectorName === filterArea;
     const matchesPackage =
-      !filterPackage || customer.currentPackage === filterPackage;
-    const matchesStatus = !filterStatus || customer.status === filterStatus;
+      !filterPackage ||
+      filterPackage === "ALL_PACKAGES" ||
+      customer.currentPackage === filterPackage;
+    const matchesStatus =
+      !filterStatus ||
+      filterStatus === "ALL_STATUSES" ||
+      customer.status === filterStatus;
 
     return matchesSearch && matchesArea && matchesPackage && matchesStatus;
   });
