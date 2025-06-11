@@ -374,7 +374,8 @@ export function InvoiceGenerator({
                           : "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200",
                       )}
                     >
-                    ))}
+                      {selectedCustomer.isActive ? "Active" : "Inactive"}
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
