@@ -21,11 +21,13 @@ export type CustomerStatus = "active" | "inactive" | "demo";
 
 export interface StatusLog {
   id: string;
+  customerId: string;
   previousStatus: CustomerStatus;
   newStatus: CustomerStatus;
   changedBy: string; // Admin who changed the status
-  changedDate: string;
+  changedAt: Date; // Changed to Date type for consistency
   reason?: string;
+  requestId?: string; // Link to request that triggered this change
 }
 
 export interface Customer {
