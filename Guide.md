@@ -494,6 +494,43 @@ Displays complete transaction history:
 - **Audit Trail:** All area operations logged for security and compliance
 - **Data Integrity:** Prevents orphaned customer/employee assignments
 
+### Enhanced Customer Management System
+
+#### Customer Table Enhancement
+
+- **Reorganized Columns:** Name, Address, Area, Previous O/S, Package, Current O/S, Status
+- **Primary VC Display:** Shows primary VC number with status in status column
+- **Expandable Rows:** Click to expand for detailed customer information
+- **Role-Based Actions:** Different action menus for admins vs employees
+
+#### Detailed Customer Information (Expandable Rows)
+
+- **All VC Numbers:** Display of primary and secondary connections with individual status
+- **Status Change History:** Complete audit trail of status changes with timestamps and reasons
+- **Billing History:** Recent transaction history with payment details and methods
+- **Request Integration:** Links to associated service requests and their outcomes
+
+#### Permission System Integration
+
+- **Add Customer Restriction:** Only administrators can create new customers
+- **Edit Permissions:** Area-based editing restrictions for employees
+- **Status Change Workflow:** Admins can change directly, employees submit requests
+- **Data Validation:** Import validation ensures areas and packages exist in system
+
+#### Status Change Management
+
+- **Admin Direct Changes:** Immediate status updates with automatic audit logging
+- **Employee Request System:** Submit requests for admin approval through modal interface
+- **Request-Status Linking:** Automatic status changes when requests are approved
+- **Change Tracking:** Complete history of who changed what, when, and why
+
+#### Data Import Validation
+
+- **Area Validation:** Imported customers must have areas that exist in managed areas
+- **Package Validation:** Imported packages must exist in active package list
+- **Error Reporting:** Clear validation errors with suggested corrections
+- **Bulk Processing:** Validates entire import file before processing any records
+
 ## Technical Architecture
 
 ### Frontend Architecture
