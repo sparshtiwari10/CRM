@@ -120,24 +120,22 @@ export function Sidebar() {
         <SidebarContent />
       </div>
 
-      {/* Mobile Sidebar */}
-      <div className="lg:hidden">
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              aria-label="Open sidebar"
-            >
-              <Menu className="h-6 w-6" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">
-            <SidebarContent onLinkClick={() => setIsOpen(false)} />
-          </SheetContent>
-        </Sheet>
-      </div>
+      {/* Mobile Sidebar - Only Sheet Component */}
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            aria-label="Open sidebar"
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="p-0 w-64">
+          <SidebarContent onLinkClick={() => setIsOpen(false)} />
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
