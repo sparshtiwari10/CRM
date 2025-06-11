@@ -393,28 +393,25 @@ export function InvoiceGenerator({
                       <div className="font-medium text-lg">
                         {selectedCustomer.name}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {selectedCustomer.vcNumber} •{" "}
                         {selectedCustomer.currentPackage}
                         {selectedCustomer.customPlan && (
-                          <span className="text-blue-600"> (Custom Plan)</span>
+                          <span className="text-blue-600 dark:text-blue-400"> (Custom Plan)</span>
                         )}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         {selectedCustomer.address}
                       </div>
-                      <div className="text-sm font-medium text-green-600 mt-1">
-                        Default Rate: ��{defaultAmount.toFixed(2)}/month
+                      <div className="text-sm font-medium text-green-600 dark:text-green-400 mt-1">
+                        Default Rate: ₹{defaultAmount.toFixed(2)}/month
                         {selectedCustomer.numberOfConnections > 1 && (
-                          <span className="text-blue-600">
+                          <span className="text-blue-600 dark:text-blue-400">
                             {" "}
                             ({selectedCustomer.numberOfConnections} connections)
                           </span>
                         )}
                       </div>
-                    </div>
-                    <Badge
-                      variant="outline"
                       className={cn(
                         selectedCustomer.isActive
                           ? "bg-green-100 text-green-800"
