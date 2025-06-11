@@ -136,6 +136,46 @@
 
 **Result:** ✅ Complete VC status management with proper history tracking and multi-VC support
 
+#### 8. Status History and Billing History Display Bugs
+
+**Problem:**
+
+- Status history not visible inside customer expanded details
+- Recent billing history not reflecting new bills created
+- Both sections showing mock data instead of real customer data
+
+**Root Cause:**
+
+- `loadCustomerDetails` function was using hardcoded mock data for both status logs and billing history
+- Status history was not using real customer statusLogs data
+- Billing history was not fetching real billing records from CustomerService
+- No refresh mechanism when new bills or status changes were created
+
+**Solution:**
+
+- **File:** `src/components/customers/EnhancedCustomerTable.tsx`
+- **Fix:**
+  - Replaced mock data in `loadCustomerDetails` with real data fetching
+  - Status history now uses `customer.statusLogs` directly
+  - Billing history fetches real data from `CustomerService.getBillingHistory()`
+  - Added fallback to `customer.invoiceHistory` when billing service unavailable
+  - Added automatic refresh mechanism when customer data changes
+  - Improved sorting to show newest records first (last 5 items)
+  - Added fallback displays for customers with no history data
+  - Enhanced billing display to handle both billing records and invoice history
+
+**Features Enhanced:**
+
+- **Real Status History:** Shows actual customer status change logs with proper sorting
+- **Real Billing History:** Fetches and displays actual billing records and invoices
+- **Automatic Refresh:** Customer details refresh when underlying data changes
+- **Better Data Handling:** Graceful fallback between different data sources
+- **Improved Display:** Shows newest records first with proper formatting
+- **No Data States:** Clear messages when customers have no history
+- **Enhanced Debugging:** Console logging for data loading operations
+
+**Result:** ✅ Status history and billing history now display real data and update properly when changes are made
+
 #### 📋 Technical Details
 
 **Files Modified:**
