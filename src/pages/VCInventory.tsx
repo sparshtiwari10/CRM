@@ -713,9 +713,12 @@ export default function VCInventory() {
               <div>
                 <Label htmlFor="customer">Customer</Label>
                 <Select
-                  value={formData.customerId}
+                  value={formData.customerId || "unassigned"}
                   onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, customerId: value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      customerId: value === "unassigned" ? "" : value,
+                    }))
                   }
                 >
                   <SelectTrigger>
