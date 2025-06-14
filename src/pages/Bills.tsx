@@ -52,6 +52,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Bills() {
   const { user } = useContext(AuthContext) as { user: any };
   const { toast } = useToast();
+  const isAdmin = user?.role === "admin";
   const [bills, setBills] = useState<MonthlyBill[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
