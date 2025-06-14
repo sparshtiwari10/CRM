@@ -137,20 +137,41 @@ export interface Invoice {
   status: "Paid" | "Pending" | "Overdue";
 }
 
-// VC Inventory Management
+// VC Inventory Management Types
 export interface VCInventoryItem {
   id: string;
-  vcNumber: string; // Unique VC number
-  customerId: string; // Reference to customer
-  customerName?: string; // Cached for display
-  packageId: string; // Reference to package
-  packageName?: string; // Cached for display
-  packageAmount?: number; // Cached for display
-  status: "active" | "inactive";
-  statusHistory: VCStatusHistory[];
-  ownershipHistory: VCOwnershipHistory[];
+  vcNumber: string;
+  customerId?: string;
+  customerName?: string;
+  packageId?: string;
+  packageName?: string;
+  area: string;
+  status: "available" | "active" | "inactive" | "maintenance";
+  installationDate?: Date;
+  lastMaintenanceDate?: Date;
+  notes?: string;
   createdAt: Date;
   updatedAt: Date;
+  createdBy: string;
+  statusHistory: VCStatusHistory[];
+  ownershipHistory: VCOwnershipHistory[];
+}
+
+// VC Status Change History
+export interface VCStatusHistory {
+  status: "available" | "active" | "inactive" | "maintenance";
+  changedAt: Date;
+  changedBy: string;
+  reason?: string;
+}
+
+// VC Ownership History
+export interface VCOwnershipHistory {
+  customerId: string;
+  customerName: string;
+  startDate: Date;
+  endDate?: Date;
+  assignedBy: string;
 }
 
 export interface VCStatusHistory {

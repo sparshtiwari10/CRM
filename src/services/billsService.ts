@@ -13,6 +13,7 @@ import {
   getDoc,
   addDoc,
   updateDoc,
+  setDoc,
   query,
   where,
   orderBy,
@@ -131,13 +132,115 @@ export class BillsService {
     }
   }
 
+  // ================== AUTO BILLING SETTINGS ==================
+
+  static async getAutoBillingSettings(): Promise<{
+    enabled: boolean;
+    lastRunDate?: Date;
+    dayOfMonth: number;
+  }> {
+    try {
+      const settingsRef = doc(db, "settings", "auto_billing");
+      const settingsDoc = await getDoc(settingsRef);
+
+      if (!settingsDoc.exists()) {
+        return { enabled: false, dayOfMonth: 1 };
+      }
+
+      const data = settingsDoc.data();
+      return {
+        enabled: data.enabled || false,
+        lastRunDate: data.lastRunDate?.toDate(),
+        dayOfMonth: data.dayOfMonth || 1,
+      };
+    } catch (error) {
+      console.error("Failed to get auto billing settings:", error);
+      return { enabled: false, dayOfMonth: 1 };
+    }
+  }
+
+  static async updateAutoBillingSettings(settings: {
+    enabled: boolean;
+    dayOfMonth?: number;
+  }): Promise<void> {
+    try {
+      const currentUser = await authService.getCurrentUser();
+      if (!currentUser || currentUser.role !== "admin") {
+        throw new Error("Only admins can modify auto billing settings");
+      }
+
+      const settingsRef = doc(db, "settings", "auto_billing");
+
+      // Use setDoc to create or update the document
+      await setDoc(
+        settingsRef,
+        {
+          enabled: settings.enabled,
+          dayOfMonth: settings.dayOfMonth || 1,
+          updatedAt: Timestamp.now(),
+          updatedBy: currentUser.uid,
+        },
+        { merge: true },
+      );
+    } catch (error) {
+      console.error("Failed to update auto billing settings:", error);
+      throw error;
+    }
+  }
+
+  static async runAutoBillingCheck(): Promise<boolean> {
+    try {
+      const settings = await this.getAutoBillingSettings();
+
+      if (!settings.enabled) {
+        return false;
+      }
+
+      const now = new Date();
+      const currentDay = now.getDate();
+
+      // Check if we should run auto billing today
+      if (currentDay !== settings.dayOfMonth) {
+        return false;
+      }
+
+      // Check if we already ran this month
+      if (settings.lastRunDate) {
+        const lastRun = new Date(settings.lastRunDate);
+        if (
+          lastRun.getFullYear() === now.getFullYear() &&
+          lastRun.getMonth() === now.getMonth()
+        ) {
+          return false; // Already ran this month
+        }
+      }
+
+      // Run auto billing
+      const result = await this.generateMonthlyBills();
+
+      // Update last run date
+      const settingsRef = doc(db, "settings", "auto_billing");
+      await updateDoc(settingsRef, {
+        lastRunDate: Timestamp.now(),
+      });
+
+      console.log(
+        `🤖 Auto billing completed: ${result.success.length} bills generated`,
+      );
+      return true;
+    } catch (error) {
+      console.error("Failed to run auto billing check:", error);
+      return false;
+    }
+  }
+
   // ================== BILL GENERATION ==================
 
   static async generateMonthlyBills(
-    month: string, // Format: YYYY-MM
-    dueDays: number = 15, // Days from generation to due date
+    targetMonth?: string,
+    customerIds?: string[],
   ): Promise<{
-    success: string[];
+    success: MonthlyBill[];
     failed: { customerId: string; customerName: string; error: string }[];
     summary: {
       totalCustomers: number;
@@ -229,7 +332,7 @@ export class BillsService {
   ): Promise<MonthlyBill | null> {
     try {
       // Get active VCs for this customer
-      const activeVCs = await VCInventoryService.getActiveVCsForCustomer(
+      const activeVCs = await VCInventoryService.getActiveVCsByCustomer(
         customer.id,
       );
 
