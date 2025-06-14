@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
+  const [showDebugTest, setShowDebugTest] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
