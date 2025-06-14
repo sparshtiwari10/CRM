@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useContext } from "react";
-import { Plus, Search, Filter, Edit, Trash2, Power, PowerOff, Users, History } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
+  Power,
+  PowerOff,
+  Users,
+  History,
+} from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -103,7 +113,8 @@ export default function VCInventory() {
         vcData = await VCInventoryService.getAllVCItems();
       } else {
         // Employees can only see VCs for customers in their areas
-        const userAreas = user?.assigned_areas || 
+        const userAreas =
+          user?.assigned_areas ||
           (user?.collector_name ? [user.collector_name] : []);
         vcData = await VCInventoryService.getVCItemsByArea(userAreas);
       }
@@ -131,14 +142,16 @@ export default function VCInventory() {
 
   // Filter VCs based on search and filters
   const filteredVCs = vcItems.filter((vc) => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch =
+      !searchTerm ||
       vc.vcNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       vc.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       vc.packageName?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || vc.status === statusFilter;
-    
-    const matchesCustomer = customerFilter === "all" || 
+
+    const matchesCustomer =
+      customerFilter === "all" ||
       (customerFilter === "unassigned" && !vc.customerId) ||
       vc.customerId === customerFilter;
 
@@ -147,8 +160,10 @@ export default function VCInventory() {
 
   // Get unique customers for filter
   const assignedCustomers = Array.from(
-    new Set(vcItems.filter(vc => vc.customerId).map(vc => vc.customerId))
-  ).map(customerId => customers.find(c => c.id === customerId)).filter(Boolean) as Customer[];
+    new Set(vcItems.filter((vc) => vc.customerId).map((vc) => vc.customerId)),
+  )
+    .map((customerId) => customers.find((c) => c.id === customerId))
+    .filter(Boolean) as Customer[];
 
   const handleAddVC = () => {
     setFormData({
@@ -185,9 +200,16 @@ export default function VCInventory() {
     setShowReassignModal(true);
   };
 
-  const handleChangeStatus = async (vc: VCInventoryItem, newStatus: "active" | "inactive") => {
+  const handleChangeStatus = async (
+    vc: VCInventoryItem,
+    newStatus: "active" | "inactive",
+  ) => {
     try {
-      await VCInventoryService.changeVCStatus(vc.id, newStatus, `Status changed via UI`);
+      await VCInventoryService.changeVCStatus(
+        vc.id,
+        newStatus,
+        `Status changed via UI`,
+      );
       await loadData();
       toast({
         title: "Status Updated",
@@ -214,8 +236,8 @@ export default function VCInventory() {
         return;
       }
 
-      const customer = customers.find(c => c.id === formData.customerId);
-      const pkg = packages.find(p => p.id === formData.packageId);
+      const customer = customers.find((c) => c.id === formData.customerId);
+      const pkg = packages.find((p) => p.id === formData.packageId);
 
       if (selectedVC) {
         // Update existing VC
@@ -240,18 +262,24 @@ export default function VCInventory() {
           packageName: pkg?.name || "",
           packageAmount: pkg?.price || 0,
           status: formData.status,
-          statusHistory: [{
-            status: formData.status,
-            changedAt: new Date(),
-            changedBy: user?.name || "Unknown",
-            reason: "Initial creation",
-          }],
-          ownershipHistory: formData.customerId ? [{
-            customerId: formData.customerId,
-            customerName: customer?.name || "",
-            startDate: new Date(),
-            assignedBy: user?.name || "Unknown",
-          }] : [],
+          statusHistory: [
+            {
+              status: formData.status,
+              changedAt: new Date(),
+              changedBy: user?.name || "Unknown",
+              reason: "Initial creation",
+            },
+          ],
+          ownershipHistory: formData.customerId
+            ? [
+                {
+                  customerId: formData.customerId,
+                  customerName: customer?.name || "",
+                  startDate: new Date(),
+                  assignedBy: user?.name || "Unknown",
+                },
+              ]
+            : [],
         };
 
         await VCInventoryService.createVCItem(vcData);
@@ -286,12 +314,16 @@ export default function VCInventory() {
         return;
       }
 
-      const customer = customers.find(c => c.id === formData.customerId);
+      const customer = customers.find((c) => c.id === formData.customerId);
       if (!customer) {
         throw new Error("Customer not found");
       }
 
-      await VCInventoryService.reassignVC(selectedVC.id, formData.customerId, customer.name);
+      await VCInventoryService.reassignVC(
+        selectedVC.id,
+        formData.customerId,
+        customer.name,
+      );
       await loadData();
       setShowReassignModal(false);
       setSelectedVC(null);
@@ -386,10 +418,15 @@ export default function VCInventory() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {vcItems.filter(vc => vc.status === "active").length}
+                {vcItems.filter((vc) => vc.status === "active").length}
               </div>
               <p className="text-xs text-muted-foreground">
-                {((vcItems.filter(vc => vc.status === "active").length / vcItems.length) * 100).toFixed(1)}% of total
+                {(
+                  (vcItems.filter((vc) => vc.status === "active").length /
+                    vcItems.length) *
+                  100
+                ).toFixed(1)}
+                % of total
               </p>
             </CardContent>
           </Card>
@@ -402,10 +439,10 @@ export default function VCInventory() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {vcItems.filter(vc => vc.customerId).length}
+                {vcItems.filter((vc) => vc.customerId).length}
               </div>
               <p className="text-xs text-muted-foreground">
-                {vcItems.filter(vc => !vc.customerId).length} unassigned
+                {vcItems.filter((vc) => !vc.customerId).length} unassigned
               </p>
             </CardContent>
           </Card>
@@ -418,11 +455,13 @@ export default function VCInventory() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{vcItems.filter(vc => vc.status === "active").reduce((sum, vc) => sum + (vc.packageAmount || 0), 0).toLocaleString()}
+                ₹
+                {vcItems
+                  .filter((vc) => vc.status === "active")
+                  .reduce((sum, vc) => sum + (vc.packageAmount || 0), 0)
+                  .toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                From active VCs
-              </p>
+              <p className="text-xs text-muted-foreground">From active VCs</p>
             </CardContent>
           </Card>
         </div>
@@ -461,7 +500,7 @@ export default function VCInventory() {
                 <SelectContent>
                   <SelectItem value="all">All Customers</SelectItem>
                   <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {assignedCustomers.map(customer => (
+                  {assignedCustomers.map((customer) => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
                     </SelectItem>
@@ -469,7 +508,9 @@ export default function VCInventory() {
                 </SelectContent>
               </Select>
 
-              {(searchTerm || statusFilter !== "all" || customerFilter !== "all") && (
+              {(searchTerm ||
+                statusFilter !== "all" ||
+                customerFilter !== "all") && (
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -507,24 +548,35 @@ export default function VCInventory() {
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8">
                         <div className="text-muted-foreground">
-                          {vcItems.length === 0 ? "No VC entries found" : "No VCs match the current filters"}
+                          {vcItems.length === 0
+                            ? "No VC entries found"
+                            : "No VCs match the current filters"}
                         </div>
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredVCs.map((vc) => (
                       <TableRow key={vc.id}>
-                        <TableCell className="font-medium">{vc.vcNumber}</TableCell>
+                        <TableCell className="font-medium">
+                          {vc.vcNumber}
+                        </TableCell>
                         <TableCell>
                           {vc.customerName ? (
                             <div>
-                              <div className="font-medium">{vc.customerName}</div>
+                              <div className="font-medium">
+                                {vc.customerName}
+                              </div>
                               <div className="text-sm text-muted-foreground">
-                                {customers.find(c => c.id === vc.customerId)?.phoneNumber}
+                                {
+                                  customers.find((c) => c.id === vc.customerId)
+                                    ?.phoneNumber
+                                }
                               </div>
                             </div>
                           ) : (
-                            <span className="text-muted-foreground">Unassigned</span>
+                            <span className="text-muted-foreground">
+                              Unassigned
+                            </span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -534,7 +586,11 @@ export default function VCInventory() {
                         </TableCell>
                         <TableCell>₹{vc.packageAmount || 0}</TableCell>
                         <TableCell>
-                          <Badge variant={vc.status === "active" ? "default" : "secondary"}>
+                          <Badge
+                            variant={
+                              vc.status === "active" ? "default" : "secondary"
+                            }
+                          >
                             {vc.status}
                           </Badge>
                         </TableCell>
@@ -551,35 +607,60 @@ export default function VCInventory() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => setSelectedVC(vc); setShowHistoryModal(true)}>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedVC(vc);
+                                  setShowHistoryModal(true);
+                                }}
+                              >
                                 <History className="mr-2 h-4 w-4" />
                                 View History
                               </DropdownMenuItem>
                               {isAdmin && (
                                 <>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleEditVC(vc)}>
+                                  <DropdownMenuItem
+                                    onClick={() => handleEditVC(vc)}
+                                  >
                                     <Edit className="mr-2 h-4 w-4" />
                                     Edit
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleReassignVC(vc)}>
+                                  <DropdownMenuItem
+                                    onClick={() => handleReassignVC(vc)}
+                                  >
                                     <Users className="mr-2 h-4 w-4" />
                                     Reassign
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   {vc.status === "inactive" ? (
-                                    <DropdownMenuItem onClick={() => handleChangeStatus(vc, "active")} className="text-green-600">
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleChangeStatus(vc, "active")
+                                      }
+                                      className="text-green-600"
+                                    >
                                       <Power className="mr-2 h-4 w-4" />
                                       Activate
                                     </DropdownMenuItem>
                                   ) : (
-                                    <DropdownMenuItem onClick={() => handleChangeStatus(vc, "inactive")} className="text-red-600">
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleChangeStatus(vc, "inactive")
+                                      }
+                                      className="text-red-600"
+                                    >
                                       <PowerOff className="mr-2 h-4 w-4" />
                                       Deactivate
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => { setDeleteVC(vc); setShowDeleteDialog(true); }} className="text-red-600">
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setDeleteVC(vc);
+                                      setShowDeleteDialog(true);
+                                    }}
+                                    className="text-red-600"
+                                  >
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     Delete
                                   </DropdownMenuItem>
@@ -598,11 +679,14 @@ export default function VCInventory() {
         </Card>
 
         {/* Add/Edit VC Modal */}
-        <Dialog open={showAddModal || showEditModal} onOpenChange={(open) => {
-          setShowAddModal(false);
-          setShowEditModal(false);
-          if (!open) setSelectedVC(null);
-        }}>
+        <Dialog
+          open={showAddModal || showEditModal}
+          onOpenChange={(open) => {
+            setShowAddModal(false);
+            setShowEditModal(false);
+            if (!open) setSelectedVC(null);
+          }}
+        >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{selectedVC ? "Edit VC" : "Add New VC"}</DialogTitle>
@@ -616,20 +700,30 @@ export default function VCInventory() {
                 <Input
                   id="vcNumber"
                   value={formData.vcNumber}
-                  onChange={(e) => setFormData(prev => ({...prev, vcNumber: e.target.value}))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      vcNumber: e.target.value,
+                    }))
+                  }
                   placeholder="Enter VC number"
                   disabled={!!selectedVC}
                 />
               </div>
               <div>
                 <Label htmlFor="customer">Customer</Label>
-                <Select value={formData.customerId} onValueChange={(value) => setFormData(prev => ({...prev, customerId: value}))}>
+                <Select
+                  value={formData.customerId}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, customerId: value }))
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select customer (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Unassigned</SelectItem>
-                    {customers.map(customer => (
+                    {customers.map((customer) => (
                       <SelectItem key={customer.id} value={customer.id}>
                         {customer.name} - {customer.phoneNumber}
                       </SelectItem>
@@ -639,12 +733,17 @@ export default function VCInventory() {
               </div>
               <div>
                 <Label htmlFor="package">Package</Label>
-                <Select value={formData.packageId} onValueChange={(value) => setFormData(prev => ({...prev, packageId: value}))}>
+                <Select
+                  value={formData.packageId}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, packageId: value }))
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select package" />
                   </SelectTrigger>
                   <SelectContent>
-                    {packages.map(pkg => (
+                    {packages.map((pkg) => (
                       <SelectItem key={pkg.id} value={pkg.id}>
                         {pkg.name} - ₹{pkg.price}
                       </SelectItem>
@@ -655,7 +754,12 @@ export default function VCInventory() {
               {!selectedVC && (
                 <div>
                   <Label htmlFor="status">Initial Status</Label>
-                  <Select value={formData.status} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({...prev, status: value}))}>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value: "active" | "inactive") =>
+                      setFormData((prev) => ({ ...prev, status: value }))
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -668,7 +772,13 @@ export default function VCInventory() {
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setShowAddModal(false); setShowEditModal(false); }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setShowEditModal(false);
+                }}
+              >
                 Cancel
               </Button>
               <Button onClick={handleSaveVC}>
@@ -690,12 +800,17 @@ export default function VCInventory() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="newCustomer">New Customer</Label>
-                <Select value={formData.customerId} onValueChange={(value) => setFormData(prev => ({...prev, customerId: value}))}>
+                <Select
+                  value={formData.customerId}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, customerId: value }))
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select new customer" />
                   </SelectTrigger>
                   <SelectContent>
-                    {customers.map(customer => (
+                    {customers.map((customer) => (
                       <SelectItem key={customer.id} value={customer.id}>
                         {customer.name} - {customer.phoneNumber}
                       </SelectItem>
@@ -708,18 +823,21 @@ export default function VCInventory() {
                 <Textarea
                   id="reason"
                   value={formData.reason}
-                  onChange={(e) => setFormData(prev => ({...prev, reason: e.target.value}))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, reason: e.target.value }))
+                  }
                   placeholder="Enter reason for reassignment"
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowReassignModal(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowReassignModal(false)}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleReassign}>
-                Reassign VC
-              </Button>
+              <Button onClick={handleReassign}>Reassign VC</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -743,7 +861,13 @@ export default function VCInventory() {
                       <div key={index} className="border rounded p-3">
                         <div className="flex items-center justify-between">
                           <div>
-                            <Badge variant={entry.status === "active" ? "default" : "secondary"}>
+                            <Badge
+                              variant={
+                                entry.status === "active"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                            >
                               {entry.status}
                             </Badge>
                             <span className="ml-2 text-sm text-muted-foreground">
@@ -773,14 +897,17 @@ export default function VCInventory() {
                         <div key={index} className="border rounded p-3">
                           <div className="flex items-center justify-between">
                             <div>
-                              <span className="font-medium">{entry.customerName}</span>
+                              <span className="font-medium">
+                                {entry.customerName}
+                              </span>
                               <span className="ml-2 text-sm text-muted-foreground">
                                 by {entry.assignedBy}
                               </span>
                             </div>
                             <span className="text-sm text-muted-foreground">
                               {new Date(entry.startDate).toLocaleDateString()}
-                              {entry.endDate && ` - ${new Date(entry.endDate).toLocaleDateString()}`}
+                              {entry.endDate &&
+                                ` - ${new Date(entry.endDate).toLocaleDateString()}`}
                               {!entry.endDate && " - Current"}
                             </span>
                           </div>
@@ -803,12 +930,18 @@ export default function VCInventory() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete VC</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete VC {deleteVC?.vcNumber}? This action cannot be undone.
+                Are you sure you want to delete VC {deleteVC?.vcNumber}? This
+                action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setDeleteVC(null)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteVC} className="bg-red-600 hover:bg-red-700">
+              <AlertDialogCancel onClick={() => setDeleteVC(null)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteVC}
+                className="bg-red-600 hover:bg-red-700"
+              >
                 Delete VC
               </AlertDialogAction>
             </AlertDialogFooter>
