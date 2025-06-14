@@ -254,6 +254,10 @@ export class BillsService {
         throw new Error("User not authenticated");
       }
 
+      // If no target month provided, use current month
+      const month = targetMonth || new Date().toISOString().slice(0, 7); // YYYY-MM format
+      const dueDays = 15; // Default due date: 15th of the month
+
       console.log(`🔄 Starting bill generation for ${month}`);
 
       // Check if bills already exist for this month
@@ -262,11 +266,19 @@ export class BillsService {
         throw new Error(`Bills for ${month} already exist`);
       }
 
-      // Get all customers
-      const customers = await CustomerService.getAllCustomers();
+      // Get all customers or filtered customers
+      let customers = await CustomerService.getAllCustomers();
+
+      // Filter customers if specific customer IDs provided
+      if (customerIds && customerIds.length > 0) {
+        customers = customers.filter((customer) =>
+          customerIds.includes(customer.id),
+        );
+      }
+
       console.log(`📋 Found ${customers.length} customers`);
 
-      const success: string[] = [];
+      const success: MonthlyBill[] = [];
       const failed: {
         customerId: string;
         customerName: string;
