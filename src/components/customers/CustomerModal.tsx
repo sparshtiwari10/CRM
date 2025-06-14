@@ -737,6 +737,37 @@ export default function CustomerModal({
             ))}
           </div>
 
+          {/* VC Management Section - Only show for existing customers */}
+          {customer && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">VC Management</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Assigned VC Numbers</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Manage VC number assignments for this customer
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowVCSelector(true)}
+                  >
+                    <Hash className="mr-2 h-4 w-4" />
+                    Manage VCs
+                  </Button>
+                </div>
+
+                {customerVCs.length > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    Currently assigned: {customerVCs.length} VC{customerVCs.length !== 1 ? 's' : ''}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <DialogFooter>
             <Button
               type="button"
@@ -746,12 +777,24 @@ export default function CustomerModal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSaving || isLoading}>
+            <Button type="submit" disabled={isSaving}>
               {isSaving ? "Saving..." : customer ? "Update" : "Create"} Customer
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* VC Selector Modal */}
+      {customer && (
+        <VCSelector
+          customerId={customer.id}
+          customerName={customer.name}
+          selectedVCs={customerVCs}
+          onVCsChange={setCustomerVCs}
+          onClose={() => setShowVCSelector(false)}
+          isOpen={showVCSelector}
+        />
+      )}
     </Dialog>
   );
 }
