@@ -53,31 +53,37 @@ import { BillsService } from "@/services/billsService";
 import { CustomerService } from "@/services/customerService";
 import { PaymentInvoice, MonthlyBill, Customer } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import FirestorePermissionsDebugger from "@/utils/firestorePermissionsDebug";
 
-interface PaymentModalData {
+interface InvoiceFormData {
   customerId: string;
   customerName: string;
-  outstandingAmount: number;
-  bills: MonthlyBill[];
+  billId?: string;
+  amountPaid: number;
+  paymentMethod: "cash" | "online" | "cheque" | "bank_transfer";
+  notes?: string;
 }
+
+const initialInvoiceData: InvoiceFormData = {
+  customerId: "",
+  customerName: "",
+  billId: "",
+  amountPaid: 0,
+  paymentMethod: "cash",
+  notes: "",
+};
 
 export default function Invoices() {
   const { user } = useContext(AuthContext) as { user: any };
   const { toast } = useToast();
-  const [payments, setPayments] = useState<PaymentInvoice[]>([]);
+  const [invoices, setInvoices] = useState<PaymentInvoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [bills, setBills] = useState<MonthlyBill[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPeriod, setFilterPeriod] = useState("all");
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] =
-    useState<PaymentModalData | null>(null);
-
-  // Payment form state
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [paymentNotes, setPaymentNotes] = useState("");
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceForm, setInvoiceForm] =
+    useState<InvoiceFormData>(initialInvoiceData);
   const [submitting, setSubmitting] = useState(false);
 
   // Summary stats
@@ -94,24 +100,26 @@ export default function Invoices() {
     try {
       setLoading(true);
 
-      // Add debugging for Firestore permissions
       console.log("🔍 Loading invoice data...");
 
-      const [paymentsData, customersData] = await Promise.all([
+      const [invoicesData, customersData, billsData] = await Promise.all([
         PaymentService.getAllPayments().catch((error) => {
-          console.error("Failed to get payments:", error);
-          // Return empty array as fallback
+          console.error("Failed to get invoices:", error);
           return [];
         }),
         CustomerService.getAllCustomers().catch((error) => {
           console.error("Failed to get customers:", error);
-          // Return empty array as fallback
+          return [];
+        }),
+        BillsService.getAllBills().catch((error) => {
+          console.error("Failed to get bills:", error);
           return [];
         }),
       ]);
 
-      setPayments(paymentsData);
+      setInvoices(invoicesData);
       setCustomers(customersData);
+      setBills(billsData);
 
       // Calculate summary statistics
       const now = new Date();
@@ -119,17 +127,35 @@ export default function Invoices() {
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
       const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      const todayCollection = paymentsData
-        .filter((p) => new Date(p.paymentDate) >= today)
-        .reduce((sum, p) => sum + p.amount, 0);
+      const todayCollection = invoicesData
+        .filter((invoice) => {
+          const invoiceDate = new Date(invoice.paymentDate || invoice.paidAt);
+          return invoiceDate >= today;
+        })
+        .reduce(
+          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid),
+          0,
+        );
 
-      const weekCollection = paymentsData
-        .filter((p) => new Date(p.paymentDate) >= weekAgo)
-        .reduce((sum, p) => sum + p.amount, 0);
+      const weekCollection = invoicesData
+        .filter((invoice) => {
+          const invoiceDate = new Date(invoice.paymentDate || invoice.paidAt);
+          return invoiceDate >= weekAgo;
+        })
+        .reduce(
+          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid),
+          0,
+        );
 
-      const monthCollection = paymentsData
-        .filter((p) => new Date(p.paymentDate) >= monthAgo)
-        .reduce((sum, p) => sum + p.amount, 0);
+      const monthCollection = invoicesData
+        .filter((invoice) => {
+          const invoiceDate = new Date(invoice.paymentDate || invoice.paidAt);
+          return invoiceDate >= monthAgo;
+        })
+        .reduce(
+          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid),
+          0,
+        );
 
       const totalOutstanding = customersData.reduce(
         (sum, c) => sum + (c.currentOS || 0),
@@ -137,10 +163,17 @@ export default function Invoices() {
       );
       const totalBilled =
         customersData.reduce((sum, c) => sum + (c.currentOS || 0), 0) +
-        paymentsData.reduce((sum, p) => sum + p.amount, 0);
+        invoicesData.reduce(
+          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid),
+          0,
+        );
       const collectionRate =
         totalBilled > 0
-          ? (paymentsData.reduce((sum, p) => sum + p.amount, 0) / totalBilled) *
+          ? (invoicesData.reduce(
+              (sum, invoice) => sum + (invoice.amount || invoice.amountPaid),
+              0,
+            ) /
+              totalBilled) *
             100
           : 0;
 
@@ -155,14 +188,9 @@ export default function Invoices() {
     } catch (error) {
       console.error("Error loading data:", error);
 
-      // Run permissions diagnostic
-      console.log("🚨 Running Firestore permissions diagnostic...");
-      FirestorePermissionsDebugger.runFullDiagnostics().catch(console.error);
-
       toast({
         title: "Error",
-        description:
-          "Failed to load payment data. Check console for Firestore permissions diagnostic.",
+        description: "Failed to load invoice data. Check console for details.",
         variant: "destructive",
       });
     } finally {
@@ -174,85 +202,79 @@ export default function Invoices() {
     loadData();
   }, []);
 
-  const handleCollectPayment = async (customer: Customer) => {
-    try {
-      // Get customer's outstanding bills
-      const bills = await BillsService.getCustomerBills(customer.id);
-      const unpaidBills = bills.filter((bill) => bill.status !== "paid");
-
-      setSelectedCustomer({
-        customerId: customer.id,
-        customerName: customer.name,
-        outstandingAmount: customer.currentOS || 0,
-        bills: unpaidBills,
-      });
-      setShowPaymentModal(true);
-      setPaymentAmount(String(customer.currentOS || 0));
-    } catch (error) {
-      console.error("Error loading customer bills:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load customer bill details",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSubmitPayment = async () => {
-    if (!selectedCustomer || !paymentAmount) return;
-
+  const handleCreateInvoice = async () => {
     try {
       setSubmitting(true);
 
-      const amount = parseFloat(paymentAmount);
-      if (amount <= 0) {
+      // Validation
+      if (
+        !invoiceForm.customerId ||
+        !invoiceForm.amountPaid ||
+        invoiceForm.amountPaid <= 0
+      ) {
         toast({
-          title: "Invalid Amount",
-          description: "Payment amount must be greater than 0",
+          title: "Validation Error",
+          description:
+            "Please select a customer and enter a valid payment amount",
           variant: "destructive",
         });
         return;
       }
 
-      if (amount > selectedCustomer.outstandingAmount) {
+      const customer = customers.find((c) => c.id === invoiceForm.customerId);
+      if (!customer) {
         toast({
-          title: "Invalid Amount",
-          description: "Payment amount cannot exceed outstanding balance",
+          title: "Error",
+          description: "Selected customer not found",
           variant: "destructive",
         });
         return;
       }
 
-      // Create payment record
-      await PaymentService.createPayment({
-        customerId: selectedCustomer.customerId,
-        amount,
-        paymentMethod,
-        notes: paymentNotes,
-        collectedBy: user?.email || "",
-        appliedToBills: selectedCustomer.bills.map((bill) => ({
-          billId: bill.id,
-          amount: Math.min(amount, bill.dueAmount),
-        })),
+      // Create invoice data
+      const invoiceData = {
+        customerId: invoiceForm.customerId,
+        customerName: customer.name,
+        customerArea: customer.collectorName || customer.area || "Unknown",
+        billId: invoiceForm.billId || undefined,
+        amount: invoiceForm.amountPaid,
+        amountPaid: invoiceForm.amountPaid,
+        paymentMethod: invoiceForm.paymentMethod,
+        paymentDate: new Date().toISOString(),
+        paidAt: new Date(),
+        collectedBy: user?.uid || user?.email || "Unknown",
+        notes: invoiceForm.notes || "",
+        receiptNumber: `RCP-${Date.now()}`,
+        createdAt: new Date(),
+      };
+
+      // Create the invoice
+      await PaymentService.createPayment(invoiceData);
+
+      // Update customer's outstanding amount
+      const newCurrentOS = Math.max(
+        0,
+        (customer.currentOS || 0) - invoiceForm.amountPaid,
+      );
+      await CustomerService.updateCustomer(customer.id, {
+        previousOS: customer.currentOS || 0,
+        currentOS: newCurrentOS,
       });
 
       toast({
-        title: "Payment Recorded",
-        description: `Payment of ₹${amount} recorded successfully`,
+        title: "Invoice Created",
+        description: `Payment of ₹${invoiceForm.amountPaid} recorded for ${customer.name}`,
       });
 
       // Reset form and reload data
-      setShowPaymentModal(false);
-      setSelectedCustomer(null);
-      setPaymentAmount("");
-      setPaymentMethod("cash");
-      setPaymentNotes("");
+      setInvoiceForm(initialInvoiceData);
+      setShowInvoiceModal(false);
       loadData();
     } catch (error) {
-      console.error("Error recording payment:", error);
+      console.error("Error creating invoice:", error);
       toast({
         title: "Error",
-        description: "Failed to record payment",
+        description: "Failed to create invoice",
         variant: "destructive",
       });
     } finally {
@@ -260,20 +282,30 @@ export default function Invoices() {
     }
   };
 
+  const handleCustomerChange = (customerId: string) => {
+    const customer = customers.find((c) => c.id === customerId);
+    setInvoiceForm((prev) => ({
+      ...prev,
+      customerId,
+      customerName: customer?.name || "",
+    }));
+  };
+
   // Filter functions
-  const getFilteredPayments = () => {
-    let filtered = payments;
+  const getFilteredInvoices = () => {
+    let filtered = invoices;
 
     // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(
-        (payment) =>
-          payment.customerName
+        (invoice) =>
+          invoice.customerName
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          payment.receiptNumber
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()),
+          (invoice.receiptNumber &&
+            invoice.receiptNumber
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())),
       );
     }
 
@@ -281,25 +313,29 @@ export default function Invoices() {
     const now = new Date();
     if (filterPeriod === "today") {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      filtered = filtered.filter(
-        (payment) => new Date(payment.paymentDate) >= today,
-      );
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.paymentDate || invoice.paidAt);
+        return invoiceDate >= today;
+      });
     } else if (filterPeriod === "week") {
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(
-        (payment) => new Date(payment.paymentDate) >= weekAgo,
-      );
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.paymentDate || invoice.paidAt);
+        return invoiceDate >= weekAgo;
+      });
     } else if (filterPeriod === "month") {
       const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(
-        (payment) => new Date(payment.paymentDate) >= monthAgo,
-      );
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.paymentDate || invoice.paidAt);
+        return invoiceDate >= monthAgo;
+      });
     }
 
-    return filtered.sort(
-      (a, b) =>
-        new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime(),
-    );
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.paymentDate || a.paidAt);
+      const dateB = new Date(b.paymentDate || b.paidAt);
+      return dateB.getTime() - dateA.getTime();
+    });
   };
 
   const getCustomersWithOutstanding = () => {
@@ -340,6 +376,13 @@ export default function Invoices() {
               Manage payment collection and customer invoices
             </p>
           </div>
+          <Button
+            onClick={() => setShowInvoiceModal(true)}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Invoice
+          </Button>
         </div>
 
         {/* Summary Cards */}
@@ -400,19 +443,116 @@ export default function Invoices() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="collect" className="w-full">
+        <Tabs defaultValue="history" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="collect">Payment Collection</TabsTrigger>
-            <TabsTrigger value="history">Payment History</TabsTrigger>
+            <TabsTrigger value="history">Invoice History</TabsTrigger>
+            <TabsTrigger value="collect">Outstanding Collection</TabsTrigger>
           </TabsList>
 
-          {/* Payment Collection Tab */}
+          {/* Invoice History Tab */}
+          <TabsContent value="history" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Invoice History</CardTitle>
+                <CardDescription>
+                  View all payment transactions and invoices
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Filters */}
+                <div className="flex items-center space-x-4 mb-6">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search invoices..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={filterPeriod} onValueChange={setFilterPeriod}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Invoices</SelectItem>
+                      <SelectItem value="today">Today</SelectItem>
+                      <SelectItem value="week">This Week</SelectItem>
+                      <SelectItem value="month">This Month</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Invoices Table */}
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Receipt No.</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Collected By</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getFilteredInvoices().map((invoice) => (
+                        <TableRow key={invoice.id}>
+                          <TableCell className="font-mono">
+                            {invoice.receiptNumber ||
+                              `INV-${invoice.id.slice(-6)}`}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">
+                              {invoice.customerName}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-medium text-green-600">
+                              ₹
+                              {(
+                                invoice.amount || invoice.amountPaid
+                              ).toLocaleString()}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {invoice.paymentMethod}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(
+                              invoice.paymentDate || invoice.paidAt,
+                            ).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-muted-foreground">
+                              {invoice.collectedBy}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {getFilteredInvoices().length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No invoices found matching your criteria
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Outstanding Collection Tab */}
           <TabsContent value="collect" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Customers with Outstanding Amounts</CardTitle>
                 <CardDescription>
-                  Collect payments from customers with pending dues
+                  Quick payment collection for customers with pending dues
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -447,7 +587,7 @@ export default function Invoices() {
                             <div>
                               <div className="font-medium">{customer.name}</div>
                               <div className="text-sm text-muted-foreground">
-                                {customer.area}
+                                {customer.collectorName || customer.area}
                               </div>
                             </div>
                           </TableCell>
@@ -460,7 +600,15 @@ export default function Invoices() {
                           <TableCell>
                             <Button
                               size="sm"
-                              onClick={() => handleCollectPayment(customer)}
+                              onClick={() => {
+                                setInvoiceForm({
+                                  ...initialInvoiceData,
+                                  customerId: customer.id,
+                                  customerName: customer.name,
+                                  amountPaid: customer.currentOS || 0,
+                                });
+                                setShowInvoiceModal(true);
+                              }}
                               className="bg-green-600 hover:bg-green-700"
                             >
                               <Receipt className="h-4 w-4 mr-2" />
@@ -483,185 +631,146 @@ export default function Invoices() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* Payment History Tab */}
-          <TabsContent value="history" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment History</CardTitle>
-                <CardDescription>View all payment transactions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* Filters */}
-                <div className="flex items-center space-x-4 mb-6">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Search payments..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Select value={filterPeriod} onValueChange={setFilterPeriod}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Payments</SelectItem>
-                      <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="week">This Week</SelectItem>
-                      <SelectItem value="month">This Month</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Payments Table */}
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Receipt No.</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Method</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Collected By</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {getFilteredPayments().map((payment) => (
-                        <TableRow key={payment.id}>
-                          <TableCell className="font-mono">
-                            {payment.receiptNumber}
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium">
-                              {payment.customerName}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-medium text-green-600">
-                              ₹{payment.amount.toLocaleString()}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {payment.paymentMethod}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(payment.paymentDate).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm text-muted-foreground">
-                              {payment.collectedBy}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-
-                  {getFilteredPayments().length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No payments found matching your criteria
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
 
-        {/* Payment Collection Modal */}
-        <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        {/* Create Invoice Modal */}
+        <Dialog open={showInvoiceModal} onOpenChange={setShowInvoiceModal}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>Collect Payment</DialogTitle>
+              <DialogTitle>Create Invoice</DialogTitle>
               <DialogDescription>
-                Record payment for {selectedCustomer?.customerName}
+                Record a payment and create an invoice
               </DialogDescription>
             </DialogHeader>
 
-            {selectedCustomer && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Customer:</span>
-                    <div className="font-medium">
-                      {selectedCustomer.customerName}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Outstanding:</span>
-                    <div className="font-medium text-red-600">
-                      ₹{selectedCustomer.outstandingAmount.toLocaleString()}
-                    </div>
-                  </div>
-                </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="customer">Customer *</Label>
+                <Select
+                  value={invoiceForm.customerId}
+                  onValueChange={handleCustomerChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name} - ₹
+                        {(customer.currentOS || 0).toLocaleString()} outstanding
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Payment Amount</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value)}
-                      placeholder="Enter amount"
-                      min="0"
-                      max={selectedCustomer.outstandingAmount}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="method">Payment Method</Label>
-                    <Select
-                      value={paymentMethod}
-                      onValueChange={setPaymentMethod}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="upi">UPI</SelectItem>
-                        <SelectItem value="bank_transfer">
-                          Bank Transfer
+              <div className="space-y-2">
+                <Label htmlFor="bill">Link to Bill (Optional)</Label>
+                <Select
+                  value={invoiceForm.billId}
+                  onValueChange={(value) =>
+                    setInvoiceForm((prev) => ({ ...prev, billId: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select bill (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No specific bill</SelectItem>
+                    {bills
+                      .filter(
+                        (bill) => bill.customerId === invoiceForm.customerId,
+                      )
+                      .map((bill) => (
+                        <SelectItem key={bill.id} value={bill.id}>
+                          {bill.month} - ₹{bill.totalAmount.toLocaleString()}
                         </SelectItem>
-                        <SelectItem value="cheque">Cheque</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    value={paymentNotes}
-                    onChange={(e) => setPaymentNotes(e.target.value)}
-                    placeholder="Add any notes about this payment..."
-                    rows={3}
+                  <Label htmlFor="amount">Amount Paid *</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    value={invoiceForm.amountPaid}
+                    onChange={(e) =>
+                      setInvoiceForm((prev) => ({
+                        ...prev,
+                        amountPaid: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                    placeholder="Enter amount"
+                    min="0"
+                    step="0.01"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="method">Payment Method *</Label>
+                  <Select
+                    value={invoiceForm.paymentMethod}
+                    onValueChange={(
+                      value: "cash" | "online" | "cheque" | "bank_transfer",
+                    ) =>
+                      setInvoiceForm((prev) => ({
+                        ...prev,
+                        paymentMethod: value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="online">Online/UPI</SelectItem>
+                      <SelectItem value="bank_transfer">
+                        Bank Transfer
+                      </SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            )}
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  value={invoiceForm.notes}
+                  onChange={(e) =>
+                    setInvoiceForm((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
+                  }
+                  placeholder="Add any notes about this payment..."
+                  rows={3}
+                />
+              </div>
+            </div>
 
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setShowPaymentModal(false)}
+                onClick={() => setShowInvoiceModal(false)}
                 disabled={submitting}
               >
                 Cancel
               </Button>
               <Button
-                onClick={handleSubmitPayment}
-                disabled={submitting || !paymentAmount}
+                onClick={handleCreateInvoice}
+                disabled={
+                  submitting ||
+                  !invoiceForm.customerId ||
+                  invoiceForm.amountPaid <= 0
+                }
                 className="bg-green-600 hover:bg-green-700"
               >
-                {submitting ? "Recording..." : "Record Payment"}
+                {submitting ? "Creating..." : "Create Invoice"}
               </Button>
             </DialogFooter>
           </DialogContent>
