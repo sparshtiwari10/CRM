@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InvoiceGenerator } from "@/components/invoice/InvoiceGenerator";
+import FirebaseDebugTest from "@/components/debug/FirebaseDebugTest";
 import {
   Users,
   DollarSign,
@@ -18,6 +19,7 @@ import {
   ClipboardList,
   Calendar,
   Tv,
+  Bug,
 } from "lucide-react";
 import { Customer } from "@/types";
 import { CustomerService } from "@/services/customerService";
