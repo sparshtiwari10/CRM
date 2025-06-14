@@ -86,6 +86,7 @@ export default function CustomerModal({
   const [availableAreas, setAvailableAreas] = useState<string[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [customerVCs, setCustomerVCs] = useState<string[]>([]);
 
   // Reset form when modal opens/closes or customer changes
   useEffect(() => {
