@@ -8,7 +8,7 @@ import {
   deleteDoc,
   updateDoc,
 } from "firebase/firestore";
-import { auth } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 interface PermissionTestResult {
   collection: string;
