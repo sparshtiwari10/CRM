@@ -40,12 +40,26 @@ export class BillsService {
       return querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        billDueDate: doc.data().billDueDate?.toDate() || new Date(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+        billDueDate: doc.data().billDueDate || new Date().toISOString(),
+        createdAt: doc.data().createdAt || new Date().toISOString(),
+        updatedAt: doc.data().updatedAt || new Date().toISOString(),
       })) as MonthlyBill[];
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to get bills:", error);
+
+      // Check if it's a permissions error
+      if (error.code === "permission-denied") {
+        console.warn(
+          "🚨 Permission denied for bills collection. This may be because:",
+        );
+        console.warn("1. Firestore rules need to be updated");
+        console.warn("2. Collection doesn't exist yet");
+        console.warn("3. User doesn't have proper access");
+
+        // Return empty array as fallback for permission errors
+        return [];
+      }
+
       throw error;
     }
   }
