@@ -81,8 +81,20 @@ export class BillsService {
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as MonthlyBill[];
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to get bills for customer:", error);
+
+      // If it's an index error, fall back to optimized query
+      if (error.message && error.message.includes("requires an index")) {
+        console.warn("🔄 Index not ready, falling back to optimized query...");
+        const { BillsServiceOptimized } = await import(
+          "./billsServiceOptimized"
+        );
+        return await BillsServiceOptimized.getBillsByCustomerOptimized(
+          customerId,
+        );
+      }
+
       throw error;
     }
   }
