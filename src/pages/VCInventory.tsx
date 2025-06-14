@@ -61,7 +61,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AuthContext } from "@/contexts/AuthContext";
 import { VCInventoryService } from "@/services/vcInventoryService";
 import { CustomerService } from "@/services/customerService";
-import { PackageService } from "@/services/packageService";
+import { packageService } from "@/services/packageService";
 import { VCInventoryItem, Customer, Package } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
