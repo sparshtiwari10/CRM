@@ -250,9 +250,11 @@ export default function Invoices() {
       // Only add billId if it's not "no-bill" to avoid undefined fields
       if (invoiceForm.billId && invoiceForm.billId !== "no-bill") {
         invoiceData.billId = invoiceForm.billId;
-        receiptNumber: `RCP-${Date.now()}`,
-        createdAt: new Date(),
-      };
+      }
+
+      // Add additional required fields
+      invoiceData.receiptNumber = `RCP-${Date.now()}`;
+      invoiceData.createdAt = new Date();
 
       console.log("Creating invoice with data:", invoiceData);
 
