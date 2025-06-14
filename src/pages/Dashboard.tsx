@@ -592,6 +592,29 @@ export default function Dashboard() {
             }}
           />
         )}
+
+        {/* Firebase Debug Test Modal */}
+        {showDebugTest && (
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="w-full max-w-4xl max-h-[90vh] bg-background border rounded-lg shadow-lg overflow-hidden">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h2 className="text-lg font-semibold">Firebase Debug Test</h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowDebugTest(false)}
+                  >
+                    ×
+                  </Button>
+                </div>
+                <div className="overflow-y-auto">
+                  <FirebaseDebugTest />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
