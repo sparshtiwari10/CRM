@@ -1,0 +1,219 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to get user document
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && getUserDoc().data.role == 'admin';
+    }
+
+    // Helper function to check if user is active
+    function isActiveUser() {
+      return isAuthenticated() && getUserDoc().data.is_active == true;
+    }
+
+    // Helper function to check if user can access area
+    function canAccessArea(area) {
+      let userData = getUserDoc().data;
+      return isAdmin() ||
+             userData.collector_name == area ||
+             (userData.assigned_areas != null && area in userData.assigned_areas);
+    }
+
+    // Users collection - user profile management
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+
+      // Admins can read/write all user profiles
+      allow read, write: if isAdmin();
+
+      // Allow creation of user documents during authentication
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+
+      // Users can update their own basic profile info
+      allow update: if isAuthenticated() &&
+                   request.auth.uid == userId &&
+                   !('role' in resource.data) ||
+                   resource.data.role == request.data.role;
+    }
+
+    // Customers collection - customer data
+    match /customers/{customerId} {
+      // Admins can do everything
+      allow read, write: if isAdmin() && isActiveUser();
+
+      // Employees can read/write customers in their assigned areas
+      allow read, write: if isAuthenticated() &&
+                        isActiveUser() &&
+                        canAccessArea(resource.data.collectorName);
+
+      // Allow reading for customer area validation
+      allow read: if isAuthenticated() && isActiveUser();
+    }
+
+    // Packages collection - service packages
+    match /packages/{packageId} {
+      // All authenticated active users can read packages
+      allow read: if isAuthenticated() && isActiveUser();
+
+      // Only admins can modify packages
+      allow write: if isAdmin() && isActiveUser();
+    }
+
+    // *** TEMPORARY ACCESS FOR NEW COLLECTIONS ***
+    // These rules provide temporary access while proper rules are being deployed
+    
+    // VC Inventory collection - TEMPORARY BROAD ACCESS
+    match /vcInventory/{vcId} {
+      // Allow all authenticated active users to read/write for testing
+      allow read, write: if isAuthenticated() && isActiveUser();
+    }
+
+    // Bills collection - TEMPORARY BROAD ACCESS
+    match /bills/{billId} {
+      // Allow all authenticated active users to read/write for testing
+      allow read, write: if isAuthenticated() && isActiveUser();
+    }
+
+    // Invoices collection - TEMPORARY BROAD ACCESS
+    match /invoices/{invoiceId} {
+      // Allow all authenticated active users to read/write for testing
+      allow read, write: if isAuthenticated() && isActiveUser();
+    }
+
+    // Billing records collection (legacy - keeping for backward compatibility)
+    match /billing/{billingId} {
+      // Admins can do everything
+      allow read, write: if isAdmin() && isActiveUser();
+
+      // Employees can access billing for their areas
+      allow read, write: if isAuthenticated() &&
+                        isActiveUser() &&
+                        canAccessArea(resource.data.area);
+    }
+
+    // Service requests collection
+    match /requests/{requestId} {
+      // Admins can do everything
+      allow read, write: if isAdmin() && isActiveUser();
+
+      // Employees can read/create requests for their areas
+      allow read, create: if isAuthenticated() &&
+                         isActiveUser() &&
+                         canAccessArea(resource.data.area);
+
+      // Employees can update requests they created
+      allow update: if isAuthenticated() &&
+                   isActiveUser() &&
+                   request.auth.uid == resource.data.createdBy;
+    }
+
+    // Action requests collection - approval workflow
+    match /actionRequests/{requestId} {
+      // Admins can do everything
+      allow read, write: if isAdmin() && isActiveUser();
+
+      // Employees can create requests
+      allow create: if isAuthenticated() && isActiveUser();
+
+      // Employees can read their own requests
+      allow read: if isAuthenticated() &&
+                 isActiveUser() &&
+                 request.auth.uid == resource.data.requestedBy;
+    }
+
+    // System logs and analytics (admin only)
+    match /logs/{logId} {
+      allow read, write: if isAdmin() && isActiveUser();
+    }
+
+    match /analytics/{analyticsId} {
+      allow read, write: if isAdmin() && isActiveUser();
+    }
+
+    // Configuration and settings (admin only)
+    match /config/{configId} {
+      allow read: if isAuthenticated() && isActiveUser();
+      allow write: if isAdmin() && isActiveUser();
+    }
+
+    // Application settings collection
+    match /settings/{settingsId} {
+      // All authenticated users can read settings (for project name on login)
+      allow read: if isAuthenticated();
+
+      // Only admins can modify settings
+      allow write: if isAdmin() && isActiveUser();
+
+      // Allow unauthenticated read for project name on login page
+      allow read: if settingsId == 'app_settings';
+    }
+
+    // Areas collection - area management
+    match /areas/{areaId} {
+      // All authenticated users can read areas (for dropdowns)
+      allow read: if isAuthenticated() && isActiveUser();
+
+      // Only admins can modify areas
+      allow write: if isAdmin() && isActiveUser();
+    }
+
+    // Status logs collection - customer status change history
+    match /statusLogs/{logId} {
+      // Admins can read all status logs
+      allow read: if isAdmin() && isActiveUser();
+
+      // Employees can read logs for customers in their areas
+      allow read: if isAuthenticated() &&
+                 isActiveUser() &&
+                 canAccessArea(resource.data.area);
+
+      // Only admins can create status logs
+      allow write: if isAdmin() && isActiveUser();
+    }
+
+    // Extended billing records for customer history
+    match /customerBillingHistory/{recordId} {
+      // Admins can read all billing history
+      allow read: if isAdmin() && isActiveUser();
+
+      // Employees can read billing history for customers in their areas
+      allow read: if isAuthenticated() &&
+                 isActiveUser() &&
+                 canAccessArea(resource.data.area);
+
+      // Both admins and employees can create billing records
+      allow write: if isAuthenticated() && isActiveUser();
+    }
+
+    // Default deny rule for any other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+/*
+EMERGENCY FIRESTORE RULES - TEMPORARY FIX
+This file provides temporary broad access to new collections while proper rules are deployed.
+
+SECURITY WARNING: This provides broader access than recommended for production.
+Replace with proper area-based rules (firestore.rules) as soon as possible.
+
+To deploy this emergency fix:
+firebase deploy --only firestore:rules --project YOUR_PROJECT_ID
+
+To revert to proper rules:
+firebase deploy --only firestore:rules --project YOUR_PROJECT_ID
+*/
