@@ -16,12 +16,17 @@ import {
   Menu,
   X,
   Wrench,
+  Tv,
+  FileText,
+  Receipt,
 } from "lucide-react";
 
 // Navigation for administrators (full access)
 const adminNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Customers", href: "/customers", icon: Users },
+  { name: "VC Inventory", href: "/vc-inventory", icon: Tv },
+  { name: "Bills", href: "/bills", icon: FileText },
   { name: "Billing & Payments", href: "/billing", icon: CreditCard },
   { name: "Packages", href: "/packages", icon: Package },
   { name: "Requests", href: "/requests", icon: ClipboardList },
