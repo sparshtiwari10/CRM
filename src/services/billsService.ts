@@ -283,7 +283,25 @@ export class BillsService {
       console.log(`🔄 Starting bill generation for ${month}`);
 
       // Check if bills already exist for this month
-      const existingBills = await this.getBillsByMonth(month);
+      let existingBills;
+      try {
+        existingBills = await this.getBillsByMonth(month);
+      } catch (error: any) {
+        if (error.message && error.message.includes("requires an index")) {
+          console.warn(
+            "🔄 Index not ready, using optimized bill generation...",
+          );
+          const { BillsServiceOptimized } = await import(
+            "./billsServiceOptimized"
+          );
+          return await BillsServiceOptimized.generateMonthlyBillsOptimized(
+            targetMonth,
+            customerIds,
+          );
+        }
+        throw error;
+      }
+
       if (existingBills.length > 0) {
         throw new Error(`Bills for ${month} already exist`);
       }
