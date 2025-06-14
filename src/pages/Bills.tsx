@@ -202,7 +202,34 @@ export default function Bills() {
     }
   };
 
-  const handleToggleAutoBilling = async () => {
+  const handleDeleteBill = async (bill: MonthlyBill) => {
+    try {
+      const shouldDelete = confirm(
+        `Are you sure you want to delete the bill for ${bill.customerName} (${bill.month})? This action cannot be undone.`,
+      );
+
+      if (!shouldDelete) return;
+
+      await BillsService.deleteBill(bill.id);
+      toast({
+        title: "Bill Deleted",
+        description: `Bill for ${bill.customerName} has been deleted successfully.`,
+      });
+
+      // Reload data
+      loadData();
+    } catch (error) {
+      console.error("Error deleting bill:", error);
+      toast({
+        title: "Error",
+        description:
+          "Failed to delete bill. Only administrators can delete bills.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleAutoBilling = async () => {
     try {
       setLoadingSettings(true);
       const newState = !autoBillingEnabled;
