@@ -54,38 +54,6 @@ export class PaymentService {
     }
   }
 
-  static async getAllPayments(): Promise<PaymentInvoice[]> {
-    try {
-      const q = query(
-        collection(db, this.COLLECTION_NAME),
-        orderBy("paymentDate", "desc"),
-      );
-      const querySnapshot = await getDocs(q);
-
-      return querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as PaymentInvoice[];
-    } catch (error: any) {
-      console.error("Error fetching payments:", error);
-
-      // Check if it's a permissions error
-      if (error.code === "permission-denied") {
-        console.warn(
-          "🚨 Permission denied for invoices collection. This may be because:",
-        );
-        console.warn("1. Firestore rules need to be updated");
-        console.warn("2. Collection doesn't exist yet");
-        console.warn("3. User doesn't have proper access");
-
-        // Return empty array as fallback for permission errors
-        return [];
-      }
-
-      throw error;
-    }
-  }
-
   static async getPaymentsByBill(billId: string): Promise<PaymentInvoice[]> {
     try {
       const q = query(
