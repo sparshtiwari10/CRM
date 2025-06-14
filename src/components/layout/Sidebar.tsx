@@ -39,6 +39,7 @@ const adminNavigation = [
 const employeeNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Customers", href: "/customers", icon: Users },
+  { name: "VC Inventory", href: "/vc-inventory", icon: Tv },
   { name: "Billing & Payments", href: "/billing", icon: CreditCard },
   { name: "Requests", href: "/requests", icon: ClipboardList },
 ];
