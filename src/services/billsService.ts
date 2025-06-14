@@ -365,7 +365,7 @@ export class BillsService {
       const currentOS = Math.max(0, totalUnpaidBills - totalPayments);
 
       // Get monthly amount from active VCs
-      const packages = await PackageService.getAllPackages();
+      const packages = await packageService.getAllPackages();
       const packageMap = new Map(packages.map((p) => [p.id, p]));
 
       const monthlyAmount = activeVCs.reduce((sum, vc) => {
