@@ -590,8 +590,8 @@ export default function EnhancedCustomerTable({
                       </TableCell>
 
                       {/* Status (with Primary VC) */}
-                      <TableCell>
-                        <div className="space-y-1">
+                        <TableCell colSpan={9} className="p-0">
+                          <CustomerExpandedRow customer={customer} />
                           <Badge
                             variant={
                               displayStatus === "active"
