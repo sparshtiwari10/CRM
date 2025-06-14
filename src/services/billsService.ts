@@ -432,10 +432,18 @@ export class BillsService {
 
       const docData = {
         ...billData,
+        customerArea: customer.collectorName || "unknown", // Add for Firestore rules
         billDueDate: Timestamp.fromDate(dueDate),
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
+
+      console.log(`📝 Creating bill document for ${customer.name}:`, {
+        ...docData,
+        billDueDate: "[Date object]",
+        createdAt: "[Timestamp object]",
+        updatedAt: "[Timestamp object]",
+      });
 
       const docRef = await addDoc(
         collection(db, this.COLLECTION_NAME),
