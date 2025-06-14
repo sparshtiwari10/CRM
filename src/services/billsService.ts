@@ -334,7 +334,10 @@ export class BillsService {
       // Get active VCs for this customer
       const activeVCs = await VCInventoryService.getActiveVCsByCustomer(
         customer.id,
-      );
+      ).catch((error) => {
+        console.warn(`Failed to get VCs for ${customer.name}:`, error);
+        return [];
+      });
 
       if (activeVCs.length === 0) {
         console.log(`⚠️ No active VCs for ${customer.name}, skipping bill`);
