@@ -135,6 +135,15 @@ export class PaymentService {
     }
   }
 
+  static async getPayment(paymentId: string): Promise<PaymentInvoice> {
+    try {
+      const docRef = doc(db, this.COLLECTION_NAME, paymentId);
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        throw new Error("Payment not found");
+      }
+
       const data = docSnap.data();
       return {
         id: docSnap.id,
