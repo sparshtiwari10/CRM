@@ -245,6 +245,11 @@ export default function Invoices() {
         paidAt: new Date(),
         collectedBy: user?.uid || user?.email || "Unknown",
         notes: invoiceForm.notes || "",
+      };
+
+      // Only add billId if it's not "no-bill" to avoid undefined fields
+      if (invoiceForm.billId && invoiceForm.billId !== "no-bill") {
+        invoiceData.billId = invoiceForm.billId;
         receiptNumber: `RCP-${Date.now()}`,
         createdAt: new Date(),
       };
