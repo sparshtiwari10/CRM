@@ -580,6 +580,49 @@ export class VCInventoryService {
     }
   }
 
+  // ================== STATUS MANAGEMENT ==================
+
+  static async changeVCStatus(
+    vcId: string,
+    newStatus: "available" | "active" | "inactive" | "maintenance",
+    reason?: string,
+  ): Promise<void> {
+    try {
+      const currentUser = await authService.getCurrentUser();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      const vcRef = doc(db, this.COLLECTION_NAME, vcId);
+      const currentDoc = await getDoc(vcRef);
+
+      if (!currentDoc.exists()) {
+        throw new Error("VC item not found");
+      }
+
+      const currentData = currentDoc.data() as VCInventoryItem;
+
+      // Add status change to history
+      const statusChange: VCStatusHistory = {
+        status: newStatus,
+        changedAt: Timestamp.now(),
+        changedBy: currentUser.uid,
+        reason: reason || "Status change via admin panel",
+      };
+
+      const updateData = {
+        status: newStatus,
+        updatedAt: Timestamp.now(),
+        statusHistory: [...(currentData.statusHistory || []), statusChange],
+      };
+
+      await updateDoc(vcRef, updateData);
+    } catch (error) {
+      console.error("Failed to change VC status:", error);
+      throw error;
+    }
+  }
+
   // ================== STATISTICS & REPORTING ==================
 
   static async getVCInventoryStats(): Promise<{

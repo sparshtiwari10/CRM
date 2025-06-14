@@ -13,6 +13,7 @@ import {
   getDoc,
   addDoc,
   updateDoc,
+  setDoc,
   query,
   where,
   orderBy,
@@ -169,12 +170,18 @@ export class BillsService {
       }
 
       const settingsRef = doc(db, "settings", "auto_billing");
-      await updateDoc(settingsRef, {
-        enabled: settings.enabled,
-        dayOfMonth: settings.dayOfMonth || 1,
-        updatedAt: Timestamp.now(),
-        updatedBy: currentUser.uid,
-      });
+
+      // Use setDoc to create or update the document
+      await setDoc(
+        settingsRef,
+        {
+          enabled: settings.enabled,
+          dayOfMonth: settings.dayOfMonth || 1,
+          updatedAt: Timestamp.now(),
+          updatedBy: currentUser.uid,
+        },
+        { merge: true },
+      );
     } catch (error) {
       console.error("Failed to update auto billing settings:", error);
       throw error;
