@@ -657,7 +657,6 @@ export class BillsService {
       throw error;
     }
   }
-  }
 
   static async getBillingSummary(month?: string): Promise<{
     totalBills: number;
