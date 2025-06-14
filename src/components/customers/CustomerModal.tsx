@@ -249,12 +249,15 @@ export default function CustomerModal({
 
       // Load customer VCs
       if (customer.id) {
-        try {
-          const vcItems = await VCInventoryService.getVCItemsByCustomer(customer.id);
-          setCustomerVCs(vcItems.map(vc => vc.id));
-        } catch (error) {
-          console.error("Error loading customer VCs:", error);
-        }
+        const loadVCs = async () => {
+          try {
+            const vcItems = await VCInventoryService.getVCItemsByCustomer(customer.id);
+            setCustomerVCs(vcItems.map(vc => vc.id));
+          } catch (error) {
+            console.error("Error loading customer VCs:", error);
+          }
+        };
+        loadVCs();
       }
     } else {
       setFormData(initialFormData);
