@@ -515,7 +515,25 @@ export class BillsService {
       console.log(`🔄 Updating outstanding for customer ${customerId}`);
 
       // Get all unpaid bills for this customer
-      const customerBills = await this.getBillsByCustomer(customerId);
+      let customerBills;
+      try {
+        customerBills = await this.getBillsByCustomer(customerId);
+      } catch (error: any) {
+        if (error.message && error.message.includes("requires an index")) {
+          console.warn(
+            "🔄 Index not ready, using optimized query for customer bills...",
+          );
+          const { BillsServiceOptimized } = await import(
+            "./billsServiceOptimized"
+          );
+          await BillsServiceOptimized.updateCustomerOutstandingOptimized(
+            customerId,
+          );
+          return;
+        }
+        throw error;
+      }
+
       const unpaidBills = customerBills.filter(
         (bill) => bill.status !== "paid",
       );
