@@ -237,6 +237,16 @@ export default function Dashboard() {
               <Users className="mr-2 h-4 w-4" />
               View Customers
             </Button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                onClick={() => setShowDebugTest(true)}
+                className="text-sm border-orange-200 text-orange-600 hover:bg-orange-50"
+              >
+                <Bug className="mr-2 h-4 w-4" />
+                Debug Firebase
+              </Button>
+            )}
           </div>
         </div>
 
