@@ -21,7 +21,7 @@ import {
 import { db } from "@/lib/firebase";
 import { authService } from "./authService";
 import { VCInventoryService } from "./vcInventoryService";
-import { PackageService } from "./packageService";
+import { packageService } from "./packageService";
 import { CustomerService } from "./customerService";
 
 export class BillsService {
@@ -225,7 +225,7 @@ export class BillsService {
       }
 
       // Get all packages for pricing
-      const packages = await PackageService.getAllPackages();
+      const packages = await packageService.getAllPackages();
       const packageMap = new Map(packages.map((p) => [p.id, p]));
 
       // Build VC breakdown
