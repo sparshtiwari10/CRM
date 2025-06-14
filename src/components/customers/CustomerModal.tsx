@@ -23,6 +23,8 @@ import { Customer, Connection, CustomerStatus } from "@/types";
 import { authService } from "@/services/authService";
 import { firestoreService } from "@/services/firestoreService";
 import { AreaService } from "@/services/areaService";
+import { VCSelector } from "./VCSelector";
+import { VCInventoryService } from "@/services/vcInventoryService";
 
 interface CustomerModalProps {
   open: boolean;
@@ -230,10 +232,34 @@ export default function CustomerModal({
 
   const removeConnection = (index: number) => {
     if (formData.connections.length > 1) {
-      setFormData((prev) => ({
-        ...prev,
-        connections: prev.connections.filter((_, i) => i !== index),
-      }));
+      setFormData({
+        name: customer.name,
+        phoneNumber: customer.phoneNumber,
+        email: customer.email || "",
+        address: customer.address || "",
+        joinDate: customer.joinDate
+          ? new Date(customer.joinDate).toISOString().split("T")[0]
+          : "",
+        billDueDate: customer.billDueDate || 5,
+        status: customer.status || "active",
+        collectorName: customer.collectorName || "",
+        previousOutstanding: customer.previousOS || 0,
+        connections: customer.connections || [],
+      });
+
+      // Load customer VCs
+      if (customer.id) {
+        try {
+          const vcItems = await VCInventoryService.getVCItemsByCustomer(customer.id);
+          setCustomerVCs(vcItems.map(vc => vc.id));
+        } catch (error) {
+          console.error("Error loading customer VCs:", error);
+        }
+      }
+    } else {
+      setFormData(initialFormData);
+      setCustomerVCs([]);
+    }
     }
   };
 
