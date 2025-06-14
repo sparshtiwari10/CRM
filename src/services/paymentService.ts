@@ -38,8 +38,10 @@ export class PaymentService {
       console.error("Failed to get payments:", error);
 
       // Check if it's a permissions error
-      if (error.code === 'permission-denied') {
-        console.warn("🚨 Permission denied for invoices collection. This may be because:");
+      if (error.code === "permission-denied") {
+        console.warn(
+          "🚨 Permission denied for invoices collection. This may be because:",
+        );
         console.warn("1. Firestore rules need to be updated");
         console.warn("2. Collection doesn't exist yet");
         console.warn("3. User doesn't have proper access");
@@ -68,8 +70,10 @@ export class PaymentService {
       console.error("Error fetching payments:", error);
 
       // Check if it's a permissions error
-      if (error.code === 'permission-denied') {
-        console.warn("🚨 Permission denied for invoices collection. This may be because:");
+      if (error.code === "permission-denied") {
+        console.warn(
+          "🚨 Permission denied for invoices collection. This may be because:",
+        );
         console.warn("1. Firestore rules need to be updated");
         console.warn("2. Collection doesn't exist yet");
         console.warn("3. User doesn't have proper access");
@@ -80,7 +84,6 @@ export class PaymentService {
 
       throw error;
     }
-  }
   }
 
   static async getPaymentsByBill(billId: string): Promise<PaymentInvoice[]> {
