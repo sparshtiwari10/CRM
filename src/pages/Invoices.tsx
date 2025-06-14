@@ -301,6 +301,33 @@ export default function Invoices() {
     }
   };
 
+  const handleDeleteInvoice = async (invoice: PaymentInvoice) => {
+    try {
+      const shouldDelete = confirm(
+        `Are you sure you want to delete the invoice for ${invoice.customerName} (₹${invoice.amountPaid})? This action cannot be undone.`,
+      );
+
+      if (!shouldDelete) return;
+
+      await PaymentService.deletePayment(invoice.id);
+      toast({
+        title: "Invoice Deleted",
+        description: `Invoice for ${invoice.customerName} has been deleted successfully.`,
+      });
+
+      // Reload data
+      loadData();
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      toast({
+        title: "Error",
+        description:
+          "Failed to delete invoice. Only administrators can delete invoices.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleCustomerSelect = (customerId: string, customer: Customer) => {
     setInvoiceForm((prev) => ({
       ...prev,
