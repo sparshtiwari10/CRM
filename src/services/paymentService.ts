@@ -6,6 +6,7 @@ import {
   getDoc,
   addDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -102,6 +103,38 @@ export class PaymentService {
     }
   }
 
+  static async updatePayment(
+    paymentId: string,
+    updates: Partial<PaymentInvoice>,
+  ): Promise<void> {
+    try {
+      const docRef = doc(db, this.COLLECTION_NAME, paymentId);
+      await updateDoc(docRef, {
+        ...updates,
+        updatedAt: Timestamp.now(),
+      });
+    } catch (error) {
+      console.error("Failed to update payment:", error);
+      throw error;
+    }
+  }
+
+  static async deletePayment(paymentId: string): Promise<void> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser || currentUser.role !== "admin") {
+        throw new Error("Only administrators can delete payments/invoices");
+      }
+
+      const docRef = doc(db, this.COLLECTION_NAME, paymentId);
+      await deleteDoc(docRef);
+      console.log(`✅ Payment/Invoice ${paymentId} deleted successfully`);
+    } catch (error) {
+      console.error("Failed to delete payment:", error);
+      throw error;
+    }
+  }
+
   static async getPayment(paymentId: string): Promise<PaymentInvoice> {
     try {
       const docRef = doc(db, this.COLLECTION_NAME, paymentId);
@@ -120,6 +153,53 @@ export class PaymentService {
       } as PaymentInvoice;
     } catch (error) {
       console.error("Failed to get payment:", error);
+      throw error;
+    }
+  }
+
+  static async getPaymentsByCustomer(
+    customerId: string,
+  ): Promise<PaymentInvoice[]> {
+    try {
+      const q = query(
+        collection(db, this.COLLECTION_NAME),
+        where("customerId", "==", customerId),
+        orderBy("paidAt", "desc"),
+      );
+      const querySnapshot = await getDocs(q);
+
+      return querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        paidAt: doc.data().paidAt?.toDate() || new Date(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+      })) as PaymentInvoice[];
+    } catch (error: any) {
+      console.error("Failed to get payments for customer:", error);
+
+      // If it's an index error, fall back to simple query
+      if (error.message && error.message.includes("requires an index")) {
+        console.warn(
+          "🔄 Index not ready, using simple query for customer payments...",
+        );
+        const q = query(
+          collection(db, this.COLLECTION_NAME),
+          where("customerId", "==", customerId),
+        );
+        const querySnapshot = await getDocs(q);
+
+        const payments = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          paidAt: doc.data().paidAt?.toDate() || new Date(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+        })) as PaymentInvoice[];
+
+        // Sort in memory
+        payments.sort((a, b) => b.paidAt.getTime() - a.paidAt.getTime());
+        return payments;
+      }
+
       throw error;
     }
   }

@@ -14,6 +14,7 @@ import {
   addDoc,
   updateDoc,
   setDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -625,20 +626,34 @@ export class BillsService {
 
   // ================== UTILITY METHODS ==================
 
-  static async updateBillStatus(
+  static async updateBill(
     billId: string,
-    status: "generated" | "partial" | "paid",
+    updates: Partial<MonthlyBill>,
   ): Promise<void> {
     try {
       const docRef = doc(db, this.COLLECTION_NAME, billId);
       await updateDoc(docRef, {
-        status,
+        ...updates,
         updatedAt: Timestamp.now(),
       });
-
-      console.log(`✅ Bill ${billId} status updated to ${status}`);
     } catch (error) {
-      console.error("Failed to update bill status:", error);
+      console.error("Failed to update bill:", error);
+      throw error;
+    }
+  }
+
+  static async deleteBill(billId: string): Promise<void> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser || currentUser.role !== "admin") {
+        throw new Error("Only administrators can delete bills");
+      }
+
+      const docRef = doc(db, this.COLLECTION_NAME, billId);
+      await deleteDoc(docRef);
+      console.log(`✅ Bill ${billId} deleted successfully`);
+    } catch (error) {
+      console.error("Failed to delete bill:", error);
       throw error;
     }
   }

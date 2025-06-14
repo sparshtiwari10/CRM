@@ -10,6 +10,8 @@ import {
   Pause,
   AlertCircle,
   CheckCircle,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +52,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Bills() {
   const { user } = useContext(AuthContext) as { user: any };
   const { toast } = useToast();
+  const isAdmin = user?.role === "admin";
   const [bills, setBills] = useState<MonthlyBill[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,6 +143,36 @@ export default function Bills() {
       setGenerating(true);
 
       const targetCustomers = selectAll ? undefined : selectedCustomers;
+
+      // Check if bills already exist and offer force regenerate
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const existingBills = await BillsService.getBillsByMonth(
+        currentMonth,
+      ).catch(() => []);
+
+      if (existingBills.length > 0) {
+        const shouldForceRegenerate = confirm(
+          `Bills for ${currentMonth} already exist (${existingBills.length} bills found). Do you want to force regenerate? This will delete existing bills and create new ones.`,
+        );
+
+        if (!shouldForceRegenerate) {
+          setGenerating(false);
+          return;
+        }
+
+        // Delete existing bills for the month
+        console.log(
+          `🗑️ Deleting ${existingBills.length} existing bills for force regeneration...`,
+        );
+        for (const bill of existingBills) {
+          try {
+            await BillsService.deleteBill(bill.id);
+          } catch (error) {
+            console.warn(`Failed to delete bill ${bill.id}:`, error);
+          }
+        }
+      }
+
       const result = await BillsService.generateMonthlyBills(
         undefined, // Use current month
         targetCustomers.length > 0 ? targetCustomers : undefined,
@@ -170,7 +203,34 @@ export default function Bills() {
     }
   };
 
-  const handleToggleAutoBilling = async () => {
+  const handleDeleteBill = async (bill: MonthlyBill) => {
+    try {
+      const shouldDelete = confirm(
+        `Are you sure you want to delete the bill for ${bill.customerName} (${bill.month})? This action cannot be undone.`,
+      );
+
+      if (!shouldDelete) return;
+
+      await BillsService.deleteBill(bill.id);
+      toast({
+        title: "Bill Deleted",
+        description: `Bill for ${bill.customerName} has been deleted successfully.`,
+      });
+
+      // Reload data
+      loadData();
+    } catch (error) {
+      console.error("Error deleting bill:", error);
+      toast({
+        title: "Error",
+        description:
+          "Failed to delete bill. Only administrators can delete bills.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleAutoBilling = async () => {
     try {
       setLoadingSettings(true);
       const newState = !autoBillingEnabled;
@@ -429,6 +489,7 @@ export default function Bills() {
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead className="w-16">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -475,6 +536,18 @@ export default function Bills() {
                       </TableCell>
                       <TableCell>
                         {new Date(bill.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteBill(bill)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

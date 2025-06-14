@@ -9,6 +9,7 @@ import {
   CreditCard,
   TrendingUp,
   FileText,
+  Trash2,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import {
@@ -76,6 +77,7 @@ const initialInvoiceData: InvoiceFormData = {
 export default function Invoices() {
   const { user } = useContext(AuthContext) as { user: any };
   const { toast } = useToast();
+  const isAdmin = user?.role === "admin";
   const [invoices, setInvoices] = useState<PaymentInvoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [bills, setBills] = useState<MonthlyBill[]>([]);
@@ -233,13 +235,11 @@ export default function Invoices() {
         return;
       }
 
-      // Create invoice data
-      const invoiceData = {
+      // Create invoice data (remove undefined fields)
+      const invoiceData: any = {
         customerId: invoiceForm.customerId,
         customerName: customer.name,
         customerArea: customer.collectorName || customer.area || "Unknown",
-        billId:
-          invoiceForm.billId === "no-bill" ? undefined : invoiceForm.billId,
         amount: invoiceForm.amountPaid,
         amountPaid: invoiceForm.amountPaid,
         paymentMethod: invoiceForm.paymentMethod,
@@ -247,9 +247,16 @@ export default function Invoices() {
         paidAt: new Date(),
         collectedBy: user?.uid || user?.email || "Unknown",
         notes: invoiceForm.notes || "",
-        receiptNumber: `RCP-${Date.now()}`,
-        createdAt: new Date(),
       };
+
+      // Only add billId if it's not "no-bill" to avoid undefined fields
+      if (invoiceForm.billId && invoiceForm.billId !== "no-bill") {
+        invoiceData.billId = invoiceForm.billId;
+      }
+
+      // Add additional required fields
+      invoiceData.receiptNumber = `RCP-${Date.now()}`;
+      invoiceData.createdAt = new Date();
 
       console.log("Creating invoice with data:", invoiceData);
 
@@ -292,6 +299,33 @@ export default function Invoices() {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteInvoice = async (invoice: PaymentInvoice) => {
+    try {
+      const shouldDelete = confirm(
+        `Are you sure you want to delete the invoice for ${invoice.customerName} (₹${invoice.amountPaid})? This action cannot be undone.`,
+      );
+
+      if (!shouldDelete) return;
+
+      await PaymentService.deletePayment(invoice.id);
+      toast({
+        title: "Invoice Deleted",
+        description: `Invoice for ${invoice.customerName} has been deleted successfully.`,
+      });
+
+      // Reload data
+      loadData();
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      toast({
+        title: "Error",
+        description:
+          "Failed to delete invoice. Only administrators can delete invoices.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -510,6 +544,7 @@ export default function Invoices() {
                         <TableHead>Method</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Collected By</TableHead>
+                        <TableHead className="w-16">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -548,6 +583,18 @@ export default function Invoices() {
                             <div className="text-sm text-muted-foreground">
                               {invoice.collectedBy}
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteInvoice(invoice)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

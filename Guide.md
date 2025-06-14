@@ -1,926 +1,589 @@
 # AGV Cable TV Management System - Complete Guide
 
-## Table of Contents
+## 🎯 Project Overview
 
-1. [System Overview](#system-overview)
-2. [Current Features](#current-features)
-3. [Installation & Setup](#installation--setup)
-4. [Authentication System](#authentication-system)
-5. [User Management](#user-management)
-6. [Core Modules](#core-modules)
-7. [Technical Architecture](#technical-architecture)
-8. [Security Implementation](#security-implementation)
-9. [Deployment](#deployment)
-10. [Troubleshooting](#troubleshooting)
+The **AGV Cable TV Management System** is a comprehensive web-based application designed to manage cable TV operations including customer management, VC (Video Connection) inventory, billing, and payment collection. The system provides role-based access for administrators and field employees with area-specific permissions.
 
-## System Overview
+### 🏢 Business Context
 
-The AGV Cable TV Management System is a comprehensive web application for managing cable TV operations, including customer management, billing, package management, and employee administration. The system is built with modern web technologies and Firebase backend services.
+This system is designed for cable TV operators who need to:
 
-### Current Status: ✅ FULLY OPERATIONAL & PRODUCTION READY
+- Manage customer subscriptions and service connections
+- Track VC (Set-top box) inventory and assignments
+- Generate monthly bills automatically
+- Collect payments and manage receivables
+- Monitor customer service history and status changes
+- Manage field employees and their assigned collection areas
 
-- **Authentication:** Firebase Auth with enterprise-grade security and session management
-- **Database:** Firestore with role-based and area-based access control
-- **UI:** Modern, responsive interface with comprehensive modal systems
-- **Permissions:** Advanced role-based access with multi-area employee support
-- **Security:** Production-grade Firestore rules with granular access control
-- **Employee Management:** Multi-area assignment with secure user creation
-- **Customer Management:** Enhanced system with role-based permissions, expandable details, and request integration
-- **Bulk Management:** Admin-only bulk update tools for customer areas and packages
-- **Dynamic Settings:** Firebase-based configuration system with real-time updates
-- **Professional Interface:** Clean, modern login and settings pages
-- **Area Management:** Centralized area management system with usage tracking
+---
 
-### Technology Stack
+## 🔑 Core Features
 
-- **Frontend:** React 18, TypeScript, Tailwind CSS
-- **Backend:** Firebase (Firestore Database, Authentication)
-- **UI Framework:** Custom components with shadcn/ui
-- **State Management:** React Context API
-- **Build Tool:** Vite
-- **Deployment:** Firebase Hosting ready
+### 👥 Customer Management
 
-## Current Features
+- **Complete Customer Profiles**: Name, address, contact, service history
+- **Multi-VC Support**: Customers can have multiple video connections
+- **Service Status Tracking**: Active, inactive, demo status with history
+- **Outstanding Management**: Real-time calculation of dues and payments
+- **Area-based Organization**: Customers grouped by collection areas
 
-### ✅ Latest Bug Fixes & UI Improvements (Current Session)
+### 📱 VC Inventory Management
 
-#### Mobile Responsive Improvements
+- **VC Number Tracking**: Complete inventory of all video connection devices
+- **Assignment Management**: Track which customer has which VC
+- **Status History**: Full audit trail of VC status changes
+- **Bulk Operations**: Efficient management of multiple VCs
+- **Package Association**: Link VCs to specific service packages
 
-- **Fixed Mobile Layout:** Resolved content shifting issue on mobile devices
-- **Integrated Sidebar Toggle:** Mobile menu properly positioned in TopBar
-- **Responsive Spacing:** Consistent spacing across different screen sizes
-- **Touch-Friendly Interface:** Optimized button sizes and spacing for mobile use
+### 💰 Billing System
 
-#### Customer Page Optimizations
+- **Automated Bill Generation**: Monthly bills generated automatically
+- **Package-based Pricing**: Different service packages with varied pricing
+- **Multi-VC Billing**: Support for customers with multiple connections
+- **Outstanding Calculations**: Real-time calculation of pending amounts
+- **Force Regeneration**: Ability to regenerate bills when needed
 
-- **Removed Statistics Clutter:** Eliminated customer count metrics for cleaner interface
-- **Fixed Modal Freezing:** Resolved customer edit modal causing system freeze
-- **Enhanced Status Changes:** Fixed deactivate/activate button functionality
-- **Improved Column Alignment:** Consistent right-alignment for monetary values
-- **Better State Management:** Proper cleanup and error handling in modals
+### 🧾 Invoice & Payment Collection
 
-#### Status Management Fixes
+- **Payment Recording**: Record payments with various methods (cash, online, cheque)
+- **Receipt Generation**: Automatic receipt number generation
+- **Customer Search**: Advanced search by name, address, or VC number
+- **Outstanding Updates**: Automatic outstanding amount adjustments
+- **Payment History**: Complete payment tracking per customer
 
-- **Working Deactivate Button:** Fixed customer status change functionality
-- **Proper Error Handling:** Better validation and error messaging for status updates
-- **Admin vs Employee Actions:** Correct permission handling for different user roles
-- **Real-time Updates:** Immediate status changes without page refresh required
+### 👨‍💼 User Management & Security
 
-#### Table Layout Improvements
-
-- **Column Alignment:** Previous O/S and Current O/S properly aligned
-- **Consistent Styling:** Uniform table appearance across the application
-- **Professional Appearance:** Clean, business-appropriate data presentation
-- **Responsive Design:** Tables work correctly on mobile and desktop
-
-### ✅ Latest Production Features (Previous Sessions)
-
-#### Admin Management Tools
-
-- **Bulk Customer Management:** Select multiple customers for bulk area/package updates
-- **Advanced Filtering:** Multi-criteria search and filtering (name, phone, email, VC, area, package, status)
-- **Bulk Area Updates:** Reassign customers to different collectors/areas efficiently
-- **Bulk Package Updates:** Change packages and pricing for multiple customers simultaneously
-- **Real-time Data:** Live synchronization with Firebase for immediate updates
-- **Professional Interface:** Clean table view with selection indicators and action buttons
-
-#### Firebase-Based Settings System
-
-- **Dynamic Configuration:** All settings stored in Firebase instead of hardcoded values
-- **Project Name Control:** Login page title configurable through settings
-- **Real-time Updates:** Settings changes reflect immediately across the system
-- **Admin-Only Access:** Secure settings management restricted to administrators
-- **Persistent Storage:** Configuration survives system restarts and deployments
-- **Fallback Support:** Default values ensure system stability if Firebase unavailable
-
-#### Professional Login Interface
-
-- **Clean Design:** Removed diagnostic text and debug information for production readiness
-- **Dynamic Branding:** Project name loaded from Firebase settings
-
-### ✅ Cable TV CRM System Implementation
-
-#### Complete Cable TV Billing Workflow
-
-**New Core Features Added:**
-
-- **VC Inventory Management:** Comprehensive VC number tracking and assignment system
-- **Monthly Bill Generation:** Automated billing system with VC-based calculations
-- **Payment Collection:** Invoice management with receipt generation and tracking
-- **Financial Summaries:** Real-time outstanding calculations and payment analytics
-
-#### 1. VC Inventory System
-
-**Features:**
-
-- **Complete VC Lifecycle Management:** Creation, assignment, status tracking, and reassignment
-- **Multi-Status Support:** Available, Active, Inactive, Maintenance states with history
-- **Customer Assignment:** Link VCs to customers with ownership history tracking
-- **Area-Based Access Control:** Employees can only view VCs in their assigned areas
-- **Search & Filtering:** Advanced filtering by status, customer, package, and area
-- **Admin Controls:** VC creation, editing, and bulk operations for administrators only
-- **Real-time Statistics:** Active VC count, revenue tracking, and assignment analytics
-
-**Technical Implementation:**
-
-- **Service:** `VCInventoryService` with comprehensive CRUD operations
-- **UI:** `VCInventory.tsx` with role-based interface adaptations
-- **Firestore Collection:** `/vcInventory` with status and ownership history tracking
-
-#### 2. Bills Management System
-
-**Features:**
-
-- **Monthly Bill Generation:** System-generated bills for all active customers
-- **VC-Based Billing:** Individual VC charges calculated from inventory and packages
-- **Package Integration:** Automatic pricing from customer package assignments
-- **Bill Status Tracking:** Generated, Partial, Paid status with payment applications
-- **Admin-Only Access:** Bill generation restricted to administrators for control
-- **Financial Summaries:** Total bills, paid amounts, and pending calculations
-- **Detailed Breakdowns:** Bill details showing individual VC charges and totals
-
-**Technical Implementation:**
-
-- **Service:** `BillsService` with automated generation and status management
-- **UI:** `Bills.tsx` with admin-only controls and confirmation workflows
-- **Firestore Collection:** `/bills` with detailed VC breakdowns and status tracking
-
-#### 3. Invoice & Payment System
-
-**Features:**
-
-- **Payment Collection Interface:** Streamlined payment recording for outstanding customers
-- **Receipt Generation:** Automatic receipt numbers and payment documentation
-- **Multiple Payment Methods:** Cash, UPI, Bank Transfer, Cheque support
-- **Bill Integration:** Payments automatically applied to outstanding bills
-- **Real-time Analytics:** Daily, weekly, monthly collection summaries
-- **Outstanding Tracking:** Live calculation of customer outstanding amounts
-- **Collection Rate Monitoring:** Performance metrics and payment analytics
-- **Search & Filtering:** Find payments by customer, receipt number, and date ranges
-
-**Technical Implementation:**
-
-- **Service:** `PaymentService` with comprehensive payment processing
-- **UI:** `Invoices.tsx` (renamed from BillingPayments) with dual collection/history interface
-- **Firestore Collection:** `/invoices` with payment tracking and bill applications
-
-#### Business Logic Integration
-
-**Financial Calculations:**
-
-- **Customer Outstanding:** `sum(unpaid bills) - sum(payments)` with real-time updates
-- **Bill Status Updates:** Automatic status changes when payments received
-- **VC Revenue Tracking:** Active VC contribution to monthly revenue calculations
-- **Collection Rate Analytics:** Payment efficiency and outstanding management metrics
-
-**Data Flow:**
-
-1. **VC Assignment** → Customer gets active VCs for service
-2. **Monthly Billing** → System generates bills based on active VCs and packages
-3. **Payment Collection** → Payments applied to bills, outstanding amounts updated
-4. **Status Synchronization** → Customer financial status updated across system
-
-#### Access Control & Security
-
-**Role-Based Permissions:**
-
-- **Administrators:** Full access to all features including VC creation and bill generation
-- **Employees:** Area-restricted access to VC viewing and payment collection
-- **Area Restrictions:** Employees only see customers and VCs in assigned areas
-- **Audit Trails:** Complete history tracking for all VC changes and payments
-
-#### Navigation & User Experience
-
-**Updated Sidebar Order:**
-
-1. Dashboard
-2. Customers
-3. Requests
-4. Bills (Admin only)
-5. Invoices (Payment collection)
-6. VC Inventory
-7. Packages
-8. Management (Admin only)
-9. Employees (Admin only)
-10. Settings (Admin only)
-
-**Responsive Design:** All new interfaces optimized for mobile and desktop use
-**Real-time Updates:** Live data synchronization for financial calculations
-**User-Friendly Interface:** Intuitive workflows for complex billing operations
-
-- **Improved Error Messages:** User-friendly error handling with specific guidance
-- **Simplified Flow:** Streamlined authentication without technical instructions
-- **Professional Presentation:** Modern, business-appropriate login experience
-
-#### Enhanced Security & Access Control
-
-- **Settings Collection Rules:** Secure access to configuration data with proper permissions
-- **Public Project Name:** Login page can display branding without authentication
-- **Write Protection:** Prevents unauthorized modification of system settings
-- **Admin Verification:** Double-layer security for sensitive configuration changes
-
-#### Centralized Area Management System
-
-- **Complete CRUD Operations:** Create, read, update, delete areas with validation
-- **Usage Tracking:** Monitor area usage by customers and employees
-- **Import Functionality:** Automatically import areas from existing data
-- **Safe Deletion:** Prevent deletion of areas with assigned users
-- **Status Management:** Activate/deactivate areas as needed
-- **Centralized Control:** Single source of truth for all geographic areas
-
-#### Enhanced Customer Management System
-
-- **Role-Based Access Control:** Admin vs employee permissions with proper restrictions
-- **Expandable Table Rows:** Detailed customer information without navigation
-- **Complete Audit Trail:** Track all status changes with timestamps and reasons
-- **Request-Status Integration:** Link service requests to automatic status changes
-- **Data Validation:** Import validation against managed areas and packages
-- **Multi-Connection Support:** Display all VC numbers with individual status tracking
-
-### ✅ Core Working Features
-
-#### Authentication & User Management
-
-- Firebase Authentication with email/password
-- Automatic user document creation and management
-- Advanced role-based access control (Admin/Employee)
-- Multi-area employee assignment system
-- Secure user creation without session disruption
-- Password reset functionality
-- Account activation/deactivation
-
-#### Customer Management
-
-- Complete CRUD operations with area-based permissions
-- Advanced search and filtering by multiple criteria
-- Professional customer details modal
-- Comprehensive transaction history modal
-- Area-based access control for employees
-- Connection management with multiple connections per customer
-- Billing status tracking and outstanding management
-- CSV import/export functionality
-
-#### Package Management
-
-- Create and manage service packages
-- Real-time metrics and analytics
-- Package usage statistics
-- Revenue tracking per package
-- Package assignment to customer connections
-
-#### Billing System
-
-- Automated bill generation
-- Payment tracking (cash/online)
-- Outstanding amount management
-- Comprehensive billing history with detailed records
-- Area-based billing access for employees
-
-#### Request Management
-
-- Service request submission and tracking
-- Admin approval workflow
-- Request status management
-- Area-based request access
-
-#### Employee Administration
-
-- Create employees with secure session management
-- Multi-area assignment capability
-- Visual area management interface
-- Employee status management (active/inactive)
-- Role modification (admin/employee)
-- Password reset email functionality
-- Real-time area coverage statistics
-
-## Installation & Setup
+- **Role-based Access**: Administrator and Employee roles
+- **Area Restrictions**: Employees limited to assigned collection areas
+- **Permission System**: Granular control over what users can access
+- **Audit Trails**: Complete history of who did what and when
+
+---
+
+## 🏗️ System Architecture
+
+### Frontend Technology Stack
+
+- **React 18** with TypeScript for type safety
+- **Vite** for fast development and building
+- **Tailwind CSS** for styling
+- **Radix UI** components for accessible UI elements
+- **React Router** for navigation
+- **React Query** for data fetching and caching
+
+### Backend & Database
+
+- **Firebase Authentication** for user management
+- **Cloud Firestore** for real-time database
+- **Firebase Security Rules** for data protection
+- **Firebase Hosting** for web deployment
+
+### State Management
+
+- **React Context** for authentication state
+- **React Hooks** for component state
+- **Custom Hooks** for reusable logic
+
+---
+
+## 👤 User Roles & Permissions
+
+### 🔑 Administrator Role
+
+**Full System Access**:
+
+- ✅ Create, edit, delete customers
+- ✅ Manage VC inventory (create, assign, reassign)
+- ✅ Generate bills for all customers
+- ✅ Delete bills and invoices
+- ✅ Collect payments for any customer
+- ✅ Manage employee accounts
+- ✅ Access all areas and customer data
+- ✅ View system debug tools
+
+### 👨‍💼 Employee Role
+
+**Area-Restricted Access**:
+
+- ✅ View customers in assigned areas only
+- ✅ Collect payments from area customers
+- ✅ Update VC status (with approval for some changes)
+- ✅ View billing history for area customers
+- ❌ Cannot create or delete customers
+- ❌ Cannot delete bills or invoices
+- ❌ Cannot access other areas' data
+- ❌ Cannot manage VC inventory
+
+---
+
+## 📊 Data Structure
+
+### 👤 Customer Entity
+
+```typescript
+interface Customer {
+  id: string; // Unique identifier
+  name: string; // Customer name
+  phoneNumber: string; // Contact number
+  email?: string; // Email address
+  address: string; // Physical address
+  collectorName: string; // Assigned collection area
+  status: "active" | "inactive" | "demo";
+  currentPackage: string; // Service package name
+  packageAmount: number; // Monthly service fee
+  vcNumber: string; // Primary VC number
+  connections?: Connection[]; // Multiple VC connections
+  previousOutstanding: number; // Previous dues
+  currentOutstanding: number; // Current dues
+  joinDate: Date; // Service start date
+  statusLogs: StatusLog[]; // History of status changes
+}
+```
+
+### 📱 VC Inventory Entity
+
+```typescript
+interface VCInventoryItem {
+  id: string; // Unique identifier
+  vcNumber: string; // VC device number
+  customerId?: string; // Assigned customer
+  customerName?: string; // Customer name
+  packageId: string; // Associated package
+  area: string; // Collection area
+  status: "available" | "active" | "inactive" | "maintenance";
+  statusHistory: VCStatusHistory[]; // Status change history
+  ownershipHistory: VCOwnershipHistory[]; // Assignment history
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### 💰 Bill Entity
+
+```typescript
+interface MonthlyBill {
+  id: string; // Unique identifier
+  customerId: string; // Customer reference
+  customerName: string; // Customer name
+  month: string; // Billing month (YYYY-MM)
+  vcBreakdown: VCBillBreakdown[]; // Per-VC charges
+  totalAmount: number; // Total bill amount
+  status: "generated" | "partial" | "paid";
+  billDueDate: Date; // Payment due date
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### 🧾 Invoice Entity
+
+```typescript
+interface PaymentInvoice {
+  id: string; // Unique identifier
+  customerId: string; // Customer reference
+  customerName: string; // Customer name
+  customerArea: string; // Collection area
+  amountPaid: number; // Payment amount
+  paymentMethod: "cash" | "online" | "cheque" | "bank_transfer";
+  billId?: string; // Associated bill (optional)
+  receiptNumber: string; // Receipt identifier
+  collectedBy: string; // Employee name
+  paidAt: Date; // Payment date
+  notes?: string; // Additional notes
+  createdAt: Date;
+}
+```
+
+---
+
+## 🔄 Core Business Workflows
+
+### 1. Customer Onboarding
+
+1. **Admin creates customer** with basic details
+2. **Assign VC numbers** from available inventory
+3. **Select service package** and pricing
+4. **Set collection area** and assign to employee
+5. **Customer status** set to active
+6. **First bill generation** in next billing cycle
+
+### 2. Monthly Billing Process
+
+1. **Auto-billing trigger** on configured date
+2. **System identifies** all active customers
+3. **Calculates charges** based on assigned VCs and packages
+4. **Generates bills** for the month
+5. **Updates customer outstanding** amounts
+6. **Bills available** for payment collection
+
+### 3. Payment Collection
+
+1. **Employee searches** for customer
+2. **Views outstanding** bills and amounts
+3. **Records payment** with method and amount
+4. **System generates** receipt number
+5. **Updates customer** outstanding balance
+6. **Links payment** to specific bills (optional)
+
+### 4. VC Management
+
+1. **Admin manages** VC inventory
+2. **Assigns VCs** to customers
+3. **Tracks status** changes (active/inactive)
+4. **Reassigns VCs** when customers disconnect
+5. **Maintains history** of all changes
+
+---
+
+## 🖥️ User Interface Guide
+
+### 📊 Dashboard
+
+**Admin View**:
+
+- Customer statistics (total, active, inactive)
+- Revenue overview (collected, pending)
+- VC inventory status
+- Recent activities
+- Quick action buttons
+
+**Employee View**:
+
+- Area-specific customer stats
+- Today's collection targets
+- Recent payments collected
+- Quick payment collection access
+
+### 👥 Customers Page
+
+**Features**:
+
+- Customer list with search and filters
+- Add/Edit customer functionality
+- Expandable rows showing:
+  - Customer invoices/payment history
+  - Bills for the customer
+  - VC status change history
+- Bulk operations for multiple customers
+
+### 📱 VC Inventory Page
+
+**Features**:
+
+- Complete VC inventory list
+- Status filters (available, assigned, inactive)
+- VC assignment and reassignment
+- Status change tracking
+- Bulk status updates
+
+### 💰 Bills Page
+
+**Features**:
+
+- Monthly bill generation
+- Bills history with filters
+- Auto-billing configuration
+- Force regeneration option
+- Delete functionality (admin-only)
+
+### 🧾 Invoices Page
+
+**Features**:
+
+- Payment collection interface
+- Customer search by name/address/VC
+- Receipt generation
+- Payment history
+- Delete functionality (admin-only)
+
+---
+
+## 🛠️ Development Setup
 
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Firebase project with Firestore and Authentication enabled
+- Firebase account and project
 - Git for version control
 
-### Initial Setup
+### Installation Steps
 
-1. **Clone and Install Dependencies**
+1. **Clone repository**:
 
    ```bash
-   git clone [repository-url]
+   git clone <repository-url>
    cd agv-cable-tv-management
+   ```
+
+2. **Install dependencies**:
+
+   ```bash
    npm install
    ```
 
-2. **Firebase Configuration**
+3. **Configure Firebase**:
 
    ```bash
-   # Install Firebase CLI
-   npm install -g firebase-tools
+   # Copy environment template
+   cp .env.example .env
 
-   # Login to Firebase
-   firebase login
-
-   # Initialize project
-   firebase init
+   # Add your Firebase configuration
+   VITE_FIREBASE_API_KEY=your_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_domain
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   # ... other Firebase config
    ```
 
-3. **Environment Configuration**
-   Create `.env` file with your Firebase configuration:
-
-   ```env
-   VITE_FIREBASE_API_KEY=your-api-key
-   VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-   VITE_FIREBASE_PROJECT_ID=your-project-id
-   VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
-   VITE_FIREBASE_APP_ID=your-app-id
-   ```
-
-4. **Deploy Security Rules**
+4. **Setup Firestore**:
 
    ```bash
+   # Deploy security rules
    firebase deploy --only firestore:rules
+
+   # Deploy composite indexes
+   firebase deploy --only firestore:indexes
    ```
 
-5. **Start Development**
+5. **Start development server**:
+
    ```bash
    npm run dev
    ```
 
-## Authentication System
-
-### Firebase Authentication Integration
-
-The system uses Firebase Authentication with enhanced session management:
-
-- **Email/Password Authentication:** Secure login system
-- **Automatic User Documents:** User profiles created automatically in Firestore
-- **Role-Based Access:** Admin and Employee roles with different permissions
-- **Password Reset:** Email-based password recovery
-- **Session Management:** Secure user creation without affecting admin sessions
-
-### User Roles
-
-#### Administrator
-
-- Full system access
-- Employee management capabilities
-- Customer management across all areas
-- Package and billing management
-- System configuration access
-- Analytics and reporting access
-- Secure user creation without session disruption
-
-#### Employee
-
-- Area-based customer access (supports multiple areas)
-- Limited to assigned areas only
-- Customer management within assigned areas
-- View customer details and history for assigned customers
-- Billing access for assigned customers
-- Service request creation
-- Cannot access employee management or system settings
-
-### Security Implementation
-
-#### Production Firestore Rules
-
-The system implements comprehensive security rules with area-based access:
-
-```javascript
-// Role-based access control
-function isAdmin() {
-  return isAuthenticated() && getUserDoc().data.role == "admin";
-}
-
-// Multi-area access for employees
-function canAccessArea(area) {
-  let userData = getUserDoc().data;
-  return (
-    isAdmin() ||
-    userData.collector_name == area ||
-    (userData.assigned_areas != null && area in userData.assigned_areas)
-  );
-}
-
-// Active user validation
-function isActiveUser() {
-  return isAuthenticated() && getUserDoc().data.is_active == true;
-}
-
-// Customer access with area restrictions
-match /customers/{customerId} {
-  allow read, write: if isAdmin() && isActiveUser();
-  allow read, write: if isAuthenticated() &&
-                    isActiveUser() &&
-                    canAccessArea(resource.data.collectorName);
-}
-```
-
-#### Key Security Features
-
-- **Authentication Required:** All operations require valid Firebase Auth token
-- **Role Validation:** Server-side role checking prevents privilege escalation
-- **Area Restrictions:** Employees cannot access data outside assigned areas
-- **Active User Check:** Deactivated users lose system access immediately
-- **Session Security:** User creation doesn't compromise admin sessions
-- **Default Deny:** Unlisted collections are automatically denied access
-
-## User Management
-
-### Employee Management System
-
-#### Creating Employees (Secure Process)
-
-1. Navigate to Employee Management (Admin only)
-2. Click "Add Employee"
-3. Fill in employee details:
-   - Full name and email
-   - Temporary password
-   - Role (Admin/Employee)
-   - Assigned areas (multiple selection for employees)
-4. Employee receives password reset email automatically
-5. **Admin session remains active** throughout the process
-
-#### Multi-Area Assignment
-
-Employees can be assigned to multiple areas with visual management:
-
-- **Checkbox Interface:** Multi-select area assignment
-- **Real-time Updates:** Immediate reflection of area changes
-- **Visual Badges:** Display of assigned areas with inline editing
-- **Flexible Management:** Areas can be modified after creation
-- **Coverage Tracking:** System tracks area coverage statistics
-
-#### Employee Status Management
-
-- **Activation/Deactivation:** Toggle employee access instantly
-- **Role Modification:** Change between admin and employee roles
-- **Password Reset:** Send password reset emails on demand
-- **Area Reassignment:** Modify area assignments as needed
-- **Session Isolation:** Employee operations don't affect admin sessions
-
-## Core Modules
-
-### Customer Management
-
-#### Enhanced Permission System
-
-The system implements sophisticated area-based access control:
-
-```typescript
-// Permission checking function
-const canEditCustomer = (
-  customer: Customer,
-  user: User,
-  isAdmin: boolean,
-): boolean => {
-  if (!user) return false;
-
-  // Admins can edit all customers
-  if (isAdmin) return true;
-
-  // Employees can only edit customers in their assigned areas
-  const userAreas =
-    user.assigned_areas || (user.collector_name ? [user.collector_name] : []);
-  return userAreas.includes(customer.collectorName);
-};
-```
-
-#### Customer Data Structure
-
-```typescript
-interface Customer {
-  id: string;
-  name: string;
-  phoneNumber: string;
-  email: string;
-  address: string;
-  collectorName: string; // Area assignment
-  status: "active" | "inactive" | "demo";
-  connections: Connection[];
-  billingInfo: BillingInfo;
-  // Additional fields...
-}
-```
-
-#### Key Features
-
-- **Area-Based Access:** Employees can only view/edit customers in assigned areas
-- **Professional Modals:** Comprehensive customer details and history views
-- **Multi-Connection Support:** Customers can have multiple connections
-- **Enhanced Search:** Search across all customer fields including areas
-- **Import/Export:** CSV functionality for bulk operations
-- **Real-time Updates:** Live data synchronization with Firestore
-
-#### Customer Details Modal
-
-Provides comprehensive customer information:
-
-- **Contact Information:** Phone, email, address
-- **Service Details:** VC numbers, packages, pricing
-- **Billing Information:** Join date, payment history, outstanding amounts
-- **Connection Management:** Multiple connections with individual status
-- **Historical Data:** Complete service and billing history
-
-#### Customer History Modal
-
-Displays complete transaction history:
-
-- **Billing Records:** Payment history with amounts and dates
-- **Status Changes:** Service activation/deactivation history
-- **Plan Changes:** Package modification records
-- **Loading States:** Professional loading indicators
-- **Data Organization:** Chronological ordering with clear categorization
-
-### Package Management
-
-#### Package Types
-
-- **Standard Packages:** Predefined service packages
-- **Custom Packages:** Tailored packages for specific customers
-- **Package Metrics:** Usage statistics and revenue tracking
-
-### Billing System
-
-#### Billing Features
-
-- **Automated Generation:** Monthly billing cycles
-- **Payment Tracking:** Cash and online payment recording
-- **Outstanding Management:** Track and manage unpaid amounts
-- **Billing History:** Comprehensive payment records accessible through modals
-- **Area-Based Access:** Employees see only their area's billing
-
-### Request Management
-
-#### Workflow Process
-
-1. **Request Creation:** Service requests submitted by employees
-2. **Admin Review:** Administrators review and approve requests
-3. **Status Tracking:** Real-time status updates
-4. **Area-Based Access:** Employees see requests for their areas only
-
-### Bulk Management System (Admin Only)
-
-#### Management Features
-
-- **Multi-Customer Selection:** Checkbox interface for selecting customers across filters
-- **Bulk Area Updates:** Reassign multiple customers to different collectors/areas
-- **Bulk Package Updates:** Change packages and pricing for selected customers
-- **Advanced Filtering:** Search and filter by multiple criteria simultaneously
-- **Real-time Updates:** Live data synchronization with immediate reflection
-
-#### Management Workflow
-
-1. **Filter Customers:** Use search and filter options to find target customers
-2. **Select Customers:** Use checkboxes to select individual or all filtered customers
-3. **Choose Action:** Select bulk area update or bulk package update
-4. **Execute Changes:** Apply changes to all selected customers simultaneously
-5. **Verify Results:** System provides confirmation and updates data in real-time
-
-#### Security and Permissions
-
-- **Admin-Only Access:** Management section restricted to administrator accounts
-- **Validation Checks:** System validates all changes before applying updates
-- **Audit Trail:** All bulk operations logged for security and compliance
-- **Error Handling:** Graceful failure modes with detailed error reporting
-
-### Dynamic Settings Management
-
-#### Settings Categories
-
-- **Company Information:** Project name, company details, contact information
-- **Notification Settings:** Email, SMS, and system alert preferences
-- **System Configuration:** Timezone, date format, currency, session settings
-- **Security Settings:** Password requirements, data retention policies
-
-#### Settings Features
-
-- **Firebase Storage:** All configuration stored in Firestore database
-- **Real-time Updates:** Changes reflect immediately across all user sessions
-- **Admin Control:** Only administrators can modify system settings
-- **Default Fallbacks:** System maintains functionality even if settings unavailable
-- **Project Branding:** Login page displays configurable project name
-
-### Area Management System (Admin Only)
-
-#### Area Management Features
-
-- **Centralized Control:** Single interface for managing all geographic areas
-- **CRUD Operations:** Create, read, update, and delete areas with validation
-- **Usage Tracking:** Monitor which areas are assigned to customers and employees
-- **Import Functionality:** Automatically import areas from existing customer/employee data
-- **Status Management:** Activate or deactivate areas as organizational needs change
-- **Safe Deletion:** System prevents deletion of areas currently assigned to users
-
-#### Area Management Workflow
-
-1. **View Areas:** Browse all managed areas with usage statistics
-2. **Create Areas:** Add new geographic areas with name and description
-3. **Edit Areas:** Update existing area information
-4. **Import Areas:** One-click import from existing customer/employee assignments
-5. **Delete Areas:** Safe deletion with validation to prevent data inconsistency
-6. **Monitor Usage:** Track customer and employee assignments per area
-
-#### Integration with Other Systems
-
-- **Customer Management:** Area dropdowns use centrally managed areas
-- **Employee Management:** Multi-area assignment uses managed area list
-- **Bulk Operations:** Area updates reference centralized area database
-- **Data Consistency:** Eliminates duplicate or inconsistent area names across system
-
-#### Security and Permissions
-
-- **Admin-Only Access:** Area management restricted to administrator accounts
-- **Usage Validation:** System checks area usage before allowing deletion
-- **Audit Trail:** All area operations logged for security and compliance
-- **Data Integrity:** Prevents orphaned customer/employee assignments
-
-### Enhanced Customer Management System
-
-#### Customer Table Enhancement
-
-- **Reorganized Columns:** Name, Address, Area, Previous O/S, Package, Current O/S, Status
-- **Primary VC Display:** Shows primary VC number with status in status column
-- **Expandable Rows:** Click to expand for detailed customer information
-- **Role-Based Actions:** Different action menus for admins vs employees
-
-#### Detailed Customer Information (Expandable Rows)
-
-- **All VC Numbers:** Display of primary and secondary connections with individual status
-- **Status Change History:** Complete audit trail of status changes with timestamps and reasons
-- **Billing History:** Recent transaction history with payment details and methods
-- **Request Integration:** Links to associated service requests and their outcomes
-
-#### Permission System Integration
-
-- **Add Customer Restriction:** Only administrators can create new customers
-- **Edit Permissions:** Area-based editing restrictions for employees
-- **Status Change Workflow:** Admins can change directly, employees submit requests
-- **Data Validation:** Import validation ensures areas and packages exist in system
-
-#### Status Change Management
-
-- **Admin Direct Changes:** Immediate status updates with automatic audit logging
-- **Employee Request System:** Submit requests for admin approval through modal interface
-- **Request-Status Linking:** Automatic status changes when requests are approved
-- **Change Tracking:** Complete history of who changed what, when, and why
-
-#### Data Import Validation
-
-- **Area Validation:** Imported customers must have areas that exist in managed areas
-- **Package Validation:** Imported packages must exist in active package list
-- **Error Reporting:** Clear validation errors with suggested corrections
-- **Bulk Processing:** Validates entire import file before processing any records
-
-## Technical Architecture
-
-### Frontend Architecture
-
-- **React 18:** Modern React with hooks and functional components
-- **TypeScript:** Type-safe development with comprehensive interfaces
-- **Tailwind CSS:** Utility-first styling for responsive design
-- **shadcn/ui:** Pre-built accessible components
-- **Modal System:** Professional dialog interfaces for data interaction
-- **Vite:** Fast development and build tooling
-
-### Backend Architecture
-
-- **Firebase Firestore:** NoSQL document database with real-time updates
-- **Firebase Authentication:** Managed authentication service with session security
-- **Security Rules:** Server-side access control with area-based restrictions
-- **Cloud Functions:** Serverless backend logic (if needed)
-
-### State Management
-
-- **React Context:** Global state management for auth and theme
-- **Local State:** Component-level state with useState and useEffect
-- **Session Management:** Secure user operations without session disruption
-- **Optimistic Updates:** Immediate UI updates with server synchronization
-
-### Data Flow
-
-1. **User Authentication:** Firebase Auth validates users with session isolation
-2. **Permission Check:** Firestore rules validate data access with area restrictions
-3. **Data Retrieval:** Area-based data filtering applied automatically
-4. **UI Updates:** Real-time updates via Firestore listeners
-5. **State Sync:** Context providers manage global state securely
-
-## Security Implementation
-
-### Authentication Security
-
-- **Firebase Auth Tokens:** Secure JWT-based authentication
-- **Password Requirements:** Minimum 6 characters required
-- **Email Verification:** Password reset via email
-- **Session Isolation:** User creation doesn't affect admin sessions
-- **Session Management:** Automatic token refresh and validation
-
-### Data Security
-
-- **Role-Based Access Control (RBAC):** Admin vs Employee permissions
-- **Area-Based Access Control (ABAC):** Geographic data restrictions
-- **Multi-Area Support:** Flexible area assignment with security
-- **Active User Validation:** Deactivated users lose access
-- **Input Validation:** Client and server-side data validation
-
-### Security Rules Structure
-
-```javascript
-// Customer access with multi-area support
-match /customers/{customerId} {
-  allow read, write: if isAdmin() && isActiveUser();
-  allow read, write: if isAuthenticated() &&
-                    isActiveUser() &&
-                    canAccessArea(resource.data.collectorName);
-}
-
-// Employee management (admin only)
-match /users/{userId} {
-  allow read: if isAuthenticated() && request.auth.uid == userId;
-  allow read, write: if isAdmin();
-  allow create: if isAuthenticated() && request.auth.uid == userId;
-}
-```
-
-### Security Best Practices
-
-- **Least Privilege:** Users get minimum required permissions
-- **Defense in Depth:** Multiple layers of security validation
-- **Area Isolation:** Employees cannot access other areas' data
-- **Session Security:** User operations don't compromise active sessions
-- **Audit Trail:** All operations logged for security monitoring
-- **Regular Updates:** Security rules updated with feature changes
-
-## Deployment
-
-### Development Deployment
+### Build for Production
 
 ```bash
-# Start development server
-npm run dev
-
-# Run type checking
-npm run typecheck
-
-# Build for production
+# Build the application
 npm run build
+
+# Deploy to Firebase Hosting
+firebase deploy --only hosting
 ```
-
-### Production Deployment
-
-```bash
-# Build and deploy to Firebase Hosting
-npm run build
-firebase deploy
-
-# Deploy only Firestore rules
-firebase deploy --only firestore:rules
-
-# Deploy specific functions
-firebase deploy --only functions
-```
-
-### Environment Configuration
-
-#### Development
-
-- Local development server on port 5173
-- Firebase emulators for testing
-- Debug mode enabled
-
-#### Production
-
-- Firebase Hosting deployment
-- Production Firestore database
-- Optimized builds and caching
-- Secure session management
-
-## Troubleshooting
-
-### Common Issues
-
-#### Authentication Issues
-
-**Problem:** Users cannot log in
-**Solution:**
-
-1. Check Firebase Auth configuration
-2. Verify user document exists in Firestore
-3. Confirm user is marked as active
-4. Check Firestore security rules
-
-#### Permission Errors
-
-**Problem:** "Missing or insufficient permissions"
-**Solution:**
-
-1. Verify user role in Firestore
-2. Check area assignments for employees
-3. Confirm security rules are deployed
-4. Validate user is active and in correct areas
-
-#### Employee Edit Access Issues
-
-**Problem:** Employees can edit customers outside their areas
-**Solution:**
-
-1. Verify area assignments match customer areas
-2. Check `canEditCustomer` function in components
-3. Confirm customer `collectorName` field is populated
-4. Validate employee `assigned_areas` or `collector_name`
-
-#### Session Management Issues
-
-**Problem:** Admin gets logged out when creating employees
-**Solution:**
-
-1. Verify authService.createUser() includes session restoration
-2. Check auth state listener in AuthContext
-3. Confirm Firebase Auth configuration
-4. Validate sign-out and restoration logic
-
-### Debugging Tools
-
-#### Browser Console Commands
-
-```javascript
-// Check current user data
-firebasePermissionsFix.getCurrentUserInfo();
-
-// Test Firebase connection
-firebasePermissionsFix.testFirebaseConnection();
-
-// Run comprehensive diagnostics
-firebasePermissionsFix.runDiagnostics();
-```
-
-#### Firebase Console Monitoring
-
-1. **Authentication Tab:** Monitor user logins and status
-2. **Firestore Tab:** Check data structure and permissions
-3. **Rules Tab:** Test security rules with Rules Playground
-4. **Usage Tab:** Monitor API usage and quotas
-
-### Support and Maintenance
-
-#### Regular Maintenance Tasks
-
-1. **Security Rule Updates:** Review and update access controls
-2. **User Account Cleanup:** Remove inactive users periodically
-3. **Area Assignment Review:** Ensure proper customer-employee area mapping
-4. **Session Monitoring:** Check for session-related issues
-5. **Data Backup:** Regular Firestore data exports
-6. **Performance Monitoring:** Track app performance metrics
-
-#### Getting Help
-
-1. **Firebase Documentation:** Official Firebase guides
-2. **Console Debugging:** Use built-in diagnostic tools
-3. **Error Logs:** Check browser console for error details
-4. **Security Playground:** Test rules in Firebase Console
-5. **Permission Debugging:** Use canEditCustomer function for testing
 
 ---
 
-## Conclusion
+## 🔧 Configuration
 
-The AGV Cable TV Management System provides a robust, secure, and scalable solution for cable TV operations management. With advanced Firebase integration, sophisticated permission systems, and professional user interfaces, the system ensures data security while providing efficient operational tools.
+### Firebase Setup
 
-### Key Benefits
+1. **Create Firebase Project** at [Firebase Console](https://console.firebase.google.com)
+2. **Enable Authentication** with Email/Password provider
+3. **Enable Firestore Database** in production mode
+4. **Configure Security Rules** from `firestore.rules`
+5. **Deploy Composite Indexes** from `firestore.indexes.json`
+6. **Setup Hosting** for web deployment
 
-- **Advanced Security:** Production-ready security rules with comprehensive access control
-- **Area-Based Management:** Flexible multi-area assignment for complex organizations
-- **Session Security:** Secure user management without session disruption
-- **Professional UI:** Modern, responsive design with comprehensive modal systems
-- **Scalable Architecture:** Firebase backend handles growth automatically
-- **Operational Efficiency:** Streamlined workflows for customer and employee management
-- **Real-time Updates:** Live data synchronization across all users
+### Initial Data Setup
 
-### Security Features
+1. **Create Admin User**:
 
-- **Role-Based Access Control:** Proper admin vs employee permissions
-- **Area-Based Restrictions:** Employees limited to assigned geographic areas
-- **Multi-Area Support:** Flexible area assignment system
-- **Session Isolation:** Secure user operations without affecting admin sessions
-- **Data Validation:** Comprehensive field validation preventing system errors
-- **Active User Management:** Automatic access control for deactivated users
+   ```javascript
+   // Run in browser console after login
+   const adminUser = {
+     email: "admin@agvcable.com",
+     role: "admin",
+     name: "System Administrator",
+     is_active: true,
+   };
+   ```
 
-### User Experience Features
+2. **Setup Collection Areas**:
 
-- **Professional Modals:** Comprehensive customer details and history views
-- **Loading States:** Proper feedback during all async operations
-- **Error Handling:** Graceful failure modes with meaningful messages
-- **Responsive Design:** Works across desktop and mobile devices
-- **Real-time Updates:** Live data synchronization with instant feedback
+   ```javascript
+   // Add areas collection
+   const areas = ["Area 1", "Area 2", "Area 3"];
+   areas.forEach((area) => {
+     db.collection("areas").add({ name: area, isActive: true });
+   });
+   ```
 
-### Future Enhancements
+3. **Configure Packages**:
 
-- **Mobile Application:** React Native app for field operations
-- **Advanced Analytics:** Detailed reporting and business intelligence
-- **Payment Integration:** Online payment processing
-- **Notification System:** Real-time alerts and notifications
-- **API Integration:** Third-party service integrations
-- **Advanced Reporting:** Custom report generation with area-based filtering
+   ```javascript
+   // Add service packages
+   const packages = [
+     { name: "Basic", price: 299, channels: 50 },
+     { name: "Standard", price: 499, channels: 100 },
+     { name: "Premium", price: 799, channels: 200 },
+   ];
+   ```
 
-The system is production-ready and can be deployed immediately with proper Firebase configuration, security rule deployment, and comprehensive area-based access control for complex organizational structures.
+---
+
+## 🚀 Deployment Guide
+
+### Firebase Hosting Deployment
+
+1. **Build the application**:
+
+   ```bash
+   npm run build
+   ```
+
+2. **Deploy to Firebase**:
+
+   ```bash
+   firebase deploy
+   ```
+
+3. **Access your application**:
+   - Your app will be available at `https://your-project.web.app`
+
+### Environment Configuration
+
+**Production Environment Variables**:
+
+```env
+VITE_FIREBASE_API_KEY=production_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=sender_id
+VITE_FIREBASE_APP_ID=app_id
+```
+
+---
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+#### Firebase Connection Issues
+
+- **Verify Firebase configuration** in `.env`
+- **Check Firestore rules** for permission errors
+- **Ensure indexes are deployed** for complex queries
+
+#### Authentication Problems
+
+- **Verify Email/Password provider** is enabled
+- **Check user roles** in Firestore `users` collection
+- **Confirm security rules** allow user operations
+
+#### Performance Issues
+
+- **Deploy composite indexes** for faster queries
+- **Check Firebase usage quotas**
+- **Monitor Firestore read/write operations**
+
+### Debug Tools
+
+**Firebase Debug Component**:
+
+- Access via Dashboard > "Debug Firebase" button (admin-only)
+- Tests all Firebase operations
+- Provides detailed error reporting
+- Monitors connection status
+
+---
+
+## 📱 Mobile Responsiveness
+
+The application is fully responsive and works on:
+
+- **Desktop browsers** (Chrome, Firefox, Safari, Edge)
+- **Tablet devices** (iPad, Android tablets)
+- **Mobile phones** (iOS Safari, Android Chrome)
+
+### Mobile-Specific Features
+
+- Touch-friendly interface
+- Swipe gestures for navigation
+- Optimized forms for mobile input
+- Responsive tables and layouts
+
+---
+
+## 🔐 Security Features
+
+### Data Protection
+
+- **Role-based access control** for all operations
+- **Area-based data restrictions** for employees
+- **Audit trails** for all data modifications
+- **Secure authentication** with Firebase Auth
+
+### Firestore Security Rules
+
+- **Read/Write permissions** based on user roles
+- **Field-level validation** for data integrity
+- **Area-based access control** for employees
+- **Admin-only operations** for sensitive actions
+
+---
+
+## 📈 Analytics & Monitoring
+
+### Business Metrics
+
+- **Customer growth** tracking
+- **Revenue collection** monitoring
+- **Outstanding amounts** analysis
+- **Employee performance** metrics
+
+### Technical Monitoring
+
+- **Firebase usage** tracking
+- **Error rate** monitoring
+- **Performance metrics** analysis
+- **User activity** logging
+
+---
+
+## 🔄 Backup & Recovery
+
+### Data Backup
+
+- **Firestore exports** for data backup
+- **Regular automated backups** recommended
+- **Export customer data** in CSV format
+- **Backup authentication users**
+
+### Disaster Recovery
+
+- **Multi-region deployment** options
+- **Data restoration** procedures
+- **Backup validation** processes
+- **Recovery time objectives** defined
+
+---
+
+## 📞 Support & Maintenance
+
+### Regular Maintenance
+
+- **Update dependencies** monthly
+- **Monitor Firebase quotas** and usage
+- **Review security rules** quarterly
+- **Backup data** weekly
+
+### Support Contacts
+
+- **Technical Issues**: Review error logs and debug tools
+- **Business Logic**: Refer to this guide and documentation
+- **Firebase Issues**: Check Firebase Console and status page
+
+---
+
+## 🎯 Future Enhancements
+
+### Planned Features
+
+- **Advanced reporting** and analytics dashboard
+- **SMS notifications** for bill reminders
+- **Mobile app** for field employees
+- **Integration** with accounting software
+- **Bulk data import/export** improvements
+
+### Performance Optimizations
+
+- **Caching strategies** for better performance
+- **Offline support** for mobile users
+- **Progressive Web App** features
+- **Advanced search** capabilities
+
+---
+
+**Last Updated**: Current Development Session  
+**Version**: 1.0.0  
+**Status**: Production Ready ✅
