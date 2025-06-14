@@ -9,6 +9,7 @@ import {
   CreditCard,
   TrendingUp,
   FileText,
+  Trash2,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import {
