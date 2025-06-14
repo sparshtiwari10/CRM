@@ -122,7 +122,7 @@ export default function VCInventory() {
       // Load customers and packages for reference
       const [customersData, packagesData] = await Promise.all([
         CustomerService.getAllCustomers(),
-        PackageService.getAllPackages(),
+        packageService.getAllPackages(),
       ]);
 
       setVCItems(vcData);
