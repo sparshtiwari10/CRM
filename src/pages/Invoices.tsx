@@ -53,6 +53,7 @@ import { BillsService } from "@/services/billsService";
 import { CustomerService } from "@/services/customerService";
 import { PaymentInvoice, MonthlyBill, Customer } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import FirestorePermissionsDebugger from "@/utils/firestorePermissionsDebug";
 
 interface PaymentModalData {
   customerId: string;
@@ -92,9 +93,21 @@ export default function Invoices() {
   const loadData = async () => {
     try {
       setLoading(true);
+
+      // Add debugging for Firestore permissions
+      console.log("🔍 Loading invoice data...");
+
       const [paymentsData, customersData] = await Promise.all([
-        PaymentService.getAllPayments(),
-        CustomerService.getAllCustomers(),
+        PaymentService.getAllPayments().catch((error) => {
+          console.error("Failed to get payments:", error);
+          // Return empty array as fallback
+          return [];
+        }),
+        CustomerService.getAllCustomers().catch((error) => {
+          console.error("Failed to get customers:", error);
+          // Return empty array as fallback
+          return [];
+        }),
       ]);
 
       setPayments(paymentsData);
@@ -141,9 +154,15 @@ export default function Invoices() {
       });
     } catch (error) {
       console.error("Error loading data:", error);
+
+      // Run permissions diagnostic
+      console.log("🚨 Running Firestore permissions diagnostic...");
+      FirestorePermissionsDebugger.runFullDiagnostics().catch(console.error);
+
       toast({
         title: "Error",
-        description: "Failed to load payment data",
+        description:
+          "Failed to load payment data. Check console for Firestore permissions diagnostic.",
         variant: "destructive",
       });
     } finally {
