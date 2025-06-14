@@ -251,8 +251,10 @@ export default function CustomerModal({
       if (customer.id) {
         const loadVCs = async () => {
           try {
-            const vcItems = await VCInventoryService.getVCItemsByCustomer(customer.id);
-            setCustomerVCs(vcItems.map(vc => vc.id));
+            const vcItems = await VCInventoryService.getVCItemsByCustomer(
+              customer.id,
+            );
+            setCustomerVCs(vcItems.map((vc) => vc.id));
           } catch (error) {
             console.error("Error loading customer VCs:", error);
           }
@@ -262,7 +264,6 @@ export default function CustomerModal({
     } else {
       setFormData(initialFormData);
       setCustomerVCs([]);
-    }
     }
   };
 
@@ -764,7 +765,8 @@ export default function CustomerModal({
 
                 {customerVCs.length > 0 && (
                   <div className="text-sm text-muted-foreground">
-                    Currently assigned: {customerVCs.length} VC{customerVCs.length !== 1 ? 's' : ''}
+                    Currently assigned: {customerVCs.length} VC
+                    {customerVCs.length !== 1 ? "s" : ""}
                   </div>
                 )}
               </div>
