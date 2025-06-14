@@ -168,7 +168,7 @@ export default function VCInventory() {
   const handleAddVC = () => {
     setFormData({
       vcNumber: "",
-      customerId: "",
+      customerId: "unassigned",
       packageId: "",
       status: "inactive",
       reason: "",
@@ -180,7 +180,7 @@ export default function VCInventory() {
     setSelectedVC(vc);
     setFormData({
       vcNumber: vc.vcNumber,
-      customerId: vc.customerId,
+      customerId: vc.customerId || "unassigned",
       packageId: vc.packageId,
       status: vc.status,
       reason: "",
