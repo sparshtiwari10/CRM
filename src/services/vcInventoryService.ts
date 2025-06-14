@@ -153,32 +153,50 @@ export class VCInventoryService {
         throw new Error("User not authenticated");
       }
 
+      // Ensure required fields are present
+      if (!vcData.vcNumber || vcData.vcNumber.trim() === "") {
+        throw new Error("VC number is required");
+      }
+
+      // Set default area if not provided
+      const area =
+        vcData.area ||
+        currentUser.collector_name ||
+        currentUser.assigned_areas?.[0] ||
+        "Unknown";
+
       const newVC = {
         ...vcData,
+        area, // Ensure area is always set
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
         createdBy: currentUser.uid,
         statusHistory: [
           {
-            status: vcData.status,
+            status: vcData.status || "available",
             changedAt: Timestamp.now(),
             changedBy: currentUser.uid,
             reason: "Initial creation",
           },
         ],
-        ownershipHistory: vcData.customerId
-          ? [
-              {
-                customerId: vcData.customerId,
-                customerName: vcData.customerName || "",
-                startDate: Timestamp.now(),
-                assignedBy: currentUser.uid,
-              },
-            ]
-          : [],
+        ownershipHistory:
+          vcData.customerId && vcData.customerId !== "unassigned"
+            ? [
+                {
+                  customerId: vcData.customerId,
+                  customerName: vcData.customerName || "",
+                  startDate: Timestamp.now(),
+                  assignedBy: currentUser.uid,
+                },
+              ]
+            : [],
       };
 
+      console.log("Creating VC with data:", newVC);
+
       const docRef = await addDoc(collection(db, this.COLLECTION_NAME), newVC);
+      console.log("VC created successfully with ID:", docRef.id);
+
       return docRef.id;
     } catch (error) {
       console.error("Failed to create VC item:", error);
