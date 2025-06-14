@@ -136,3 +136,84 @@ export interface Invoice {
   dueDate: string;
   status: "Paid" | "Pending" | "Overdue";
 }
+
+// VC Inventory Management
+export interface VCInventoryItem {
+  id: string;
+  vcNumber: string; // Unique VC number
+  customerId: string; // Reference to customer
+  customerName?: string; // Cached for display
+  packageId: string; // Reference to package
+  packageName?: string; // Cached for display
+  packageAmount?: number; // Cached for display
+  status: "active" | "inactive";
+  statusHistory: VCStatusHistory[];
+  ownershipHistory: VCOwnershipHistory[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface VCStatusHistory {
+  status: "active" | "inactive";
+  changedAt: Date;
+  changedBy: string;
+  reason?: string;
+}
+
+export interface VCOwnershipHistory {
+  customerId: string;
+  customerName: string;
+  startDate: Date;
+  endDate?: Date; // null if current owner
+  assignedBy: string;
+}
+
+// Monthly Bills System
+export interface MonthlyBill {
+  id: string;
+  customerId: string;
+  customerName: string; // Cached for display
+  month: string; // Format: YYYY-MM
+  vcBreakdown: VCBillBreakdown[];
+  totalAmount: number;
+  billDueDate: Date;
+  status: "generated" | "partial" | "paid";
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface VCBillBreakdown {
+  vcNumber: string;
+  packageId: string;
+  packageName: string;
+  amount: number;
+}
+
+// Payment Collection System
+export interface PaymentInvoice {
+  id: string;
+  customerId: string;
+  customerName: string; // Cached for display
+  billId?: string; // Optional reference to specific bill
+  billMonth?: string; // For reference
+  amountPaid: number;
+  paymentMethod: "cash" | "online" | "bank_transfer" | "cheque";
+  paidAt: Date;
+  collectedBy: string; // Employee who collected payment
+  notes?: string;
+  receiptNumber?: string;
+  createdAt: Date;
+}
+
+// Financial Summary for Customer
+export interface CustomerFinancialSummary {
+  customerId: string;
+  previousOS: number;
+  currentOS: number;
+  lastBilledDate?: Date;
+  nextDueDate?: Date;
+  totalUnpaidBills: number;
+  totalPayments: number;
+  activeVCCount: number;
+  monthlyAmount: number;
+}
