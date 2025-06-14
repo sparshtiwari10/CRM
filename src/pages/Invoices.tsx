@@ -66,7 +66,7 @@ interface InvoiceFormData {
 const initialInvoiceData: InvoiceFormData = {
   customerId: "",
   customerName: "",
-  billId: "",
+  billId: "no-bill",
   amountPaid: 0,
   paymentMethod: "cash",
   notes: "",
@@ -667,16 +667,19 @@ export default function Invoices() {
               <div className="space-y-2">
                 <Label htmlFor="bill">Link to Bill (Optional)</Label>
                 <Select
-                  value={invoiceForm.billId}
+                  value={invoiceForm.billId || "no-bill"}
                   onValueChange={(value) =>
-                    setInvoiceForm((prev) => ({ ...prev, billId: value }))
+                    setInvoiceForm((prev) => ({
+                      ...prev,
+                      billId: value === "no-bill" ? "" : value,
+                    }))
                   }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select bill (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No specific bill</SelectItem>
+                    <SelectItem value="no-bill">No specific bill</SelectItem>
                     {bills
                       .filter(
                         (bill) => bill.customerId === invoiceForm.customerId,
