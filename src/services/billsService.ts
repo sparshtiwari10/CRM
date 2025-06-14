@@ -299,7 +299,7 @@ export class BillsService {
           );
 
           if (bill) {
-            success.push(customer.id);
+            success.push(bill);
             totalAmount += bill.totalAmount;
             console.log(
               `✅ Bill generated for ${customer.name}: ₹${bill.totalAmount}`,
