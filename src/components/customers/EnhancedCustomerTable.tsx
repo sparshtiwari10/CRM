@@ -692,8 +692,11 @@ export default function EnhancedCustomerTable({
                     {/* Expanded Row Details */}
                     {isExpanded && (
                       <TableRow>
-                        <TableCell colSpan={9} className="bg-muted/30 p-6">
-                          <div className="space-y-6">
+                        <TableCell colSpan={9} className="p-0">
+                          <CustomerExpandedRow customer={customer} />
+                        </TableCell>
+                      </TableRow>
+                    )}
                             {/* All VC Numbers */}
                             <div>
                               <h4 className="font-semibold mb-3 flex items-center">
