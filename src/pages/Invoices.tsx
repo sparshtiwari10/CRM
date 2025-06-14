@@ -515,6 +515,7 @@ export default function Invoices() {
                         <TableHead>Method</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Collected By</TableHead>
+                        <TableHead className="w-16">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
