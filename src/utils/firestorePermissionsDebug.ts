@@ -8,7 +8,7 @@ import {
   deleteDoc,
   updateDoc,
 } from "firebase/firestore";
-import { auth } from "@/lib/firebase";
+import { getAuth } from "firebase/auth";
 
 interface PermissionTestResult {
   collection: string;
@@ -54,7 +54,7 @@ export class FirestorePermissionsDebugger {
       await setDoc(doc(db, collectionName, testDocId), {
         test: true,
         createdAt: new Date().toISOString(),
-        userId: auth.currentUser?.uid,
+        userId: getAuth().currentUser?.uid,
       });
       results.push({
         collection: collectionName,
@@ -235,7 +235,7 @@ export class FirestorePermissionsDebugger {
    * Get current user context for debugging
    */
   static getCurrentUserContext(): any {
-    const user = auth.currentUser;
+    const user = getAuth().currentUser;
     return {
       authenticated: !!user,
       uid: user?.uid,
