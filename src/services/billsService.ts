@@ -343,6 +343,26 @@ export class BillsService {
     dueDate: Date,
   ): Promise<MonthlyBill | null> {
     try {
+      // Check if db is available
+      if (!db) {
+        throw new Error(
+          "Database connection not available. Please check your internet connection.",
+        );
+      }
+
+      // Validate inputs
+      if (!customer || !customer.id) {
+        throw new Error("Invalid customer data provided.");
+      }
+
+      if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+        throw new Error("Invalid month format. Expected YYYY-MM format.");
+      }
+
+      console.log(
+        `🔄 Generating bill for ${customer.name} (${customer.id}) for month ${month}`,
+      );
+
       // Get active VCs for this customer
       const activeVCs = await VCInventoryService.getActiveVCsByCustomer(
         customer.id,
@@ -357,7 +377,17 @@ export class BillsService {
       }
 
       // Get all packages for pricing
-      const packages = await packageService.getAllPackages();
+      const packages = await packageService.getAllPackages().catch((error) => {
+        console.warn(`Failed to get packages:`, error);
+        return [];
+      });
+
+      if (packages.length === 0) {
+        throw new Error(
+          "No packages available. Please configure packages first.",
+        );
+      }
+
       const packageMap = new Map(packages.map((p) => [p.id, p]));
 
       // Build VC breakdown
