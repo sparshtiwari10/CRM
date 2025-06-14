@@ -77,6 +77,7 @@ const initialInvoiceData: InvoiceFormData = {
 export default function Invoices() {
   const { user } = useContext(AuthContext) as { user: any };
   const { toast } = useToast();
+  const isAdmin = user?.role === "admin";
   const [invoices, setInvoices] = useState<PaymentInvoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [bills, setBills] = useState<MonthlyBill[]>([]);
