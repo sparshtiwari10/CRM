@@ -168,7 +168,7 @@ export default function VCInventory() {
   const handleAddVC = () => {
     setFormData({
       vcNumber: "",
-      customerId: "",
+      customerId: "unassigned",
       packageId: "",
       status: "inactive",
       reason: "",
@@ -180,7 +180,7 @@ export default function VCInventory() {
     setSelectedVC(vc);
     setFormData({
       vcNumber: vc.vcNumber,
-      customerId: vc.customerId,
+      customerId: vc.customerId || "unassigned",
       packageId: vc.packageId,
       status: vc.status,
       reason: "",
@@ -256,30 +256,39 @@ export default function VCInventory() {
         // Create new VC
         const vcData = {
           vcNumber: formData.vcNumber,
-          customerId: formData.customerId,
+          customerId:
+            formData.customerId === "unassigned" ? "" : formData.customerId,
           customerName: customer?.name || "",
           packageId: formData.packageId,
           packageName: pkg?.name || "",
           packageAmount: pkg?.price || 0,
+          area:
+            customer?.collectorName ||
+            user?.collector_name ||
+            user?.assigned_areas?.[0] ||
+            "Unknown",
           status: formData.status,
+          installationDate: new Date(),
+          notes: formData.reason || "Created via admin panel",
           statusHistory: [
             {
               status: formData.status,
               changedAt: new Date(),
-              changedBy: user?.name || "Unknown",
+              changedBy: user?.uid || "Unknown",
               reason: "Initial creation",
             },
           ],
-          ownershipHistory: formData.customerId
-            ? [
-                {
-                  customerId: formData.customerId,
-                  customerName: customer?.name || "",
-                  startDate: new Date(),
-                  assignedBy: user?.name || "Unknown",
-                },
-              ]
-            : [],
+          ownershipHistory:
+            formData.customerId && formData.customerId !== "unassigned"
+              ? [
+                  {
+                    customerId: formData.customerId,
+                    customerName: customer?.name || "",
+                    startDate: new Date(),
+                    assignedBy: user?.uid || "Unknown",
+                  },
+                ]
+              : [],
         };
 
         await VCInventoryService.createVCItem(vcData);
@@ -713,16 +722,19 @@ export default function VCInventory() {
               <div>
                 <Label htmlFor="customer">Customer</Label>
                 <Select
-                  value={formData.customerId}
+                  value={formData.customerId || "unassigned"}
                   onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, customerId: value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      customerId: value === "unassigned" ? "" : value,
+                    }))
                   }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select customer (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
                     {customers.map((customer) => (
                       <SelectItem key={customer.id} value={customer.id}>
                         {customer.name} - {customer.phoneNumber}

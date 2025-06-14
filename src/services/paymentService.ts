@@ -132,7 +132,16 @@ export class PaymentService {
     try {
       const currentUser = authService.getCurrentUser();
       if (!currentUser) {
-        throw new Error("User not authenticated");
+        throw new Error(
+          "User not authenticated. Please log in to collect payments.",
+        );
+      }
+
+      // Check if db is available
+      if (!db) {
+        throw new Error(
+          "Database connection not available. Please check your internet connection.",
+        );
       }
 
       console.log(
@@ -144,13 +153,28 @@ export class PaymentService {
         paymentData.receiptNumber ||
         `RCP-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
+      // Ensure customerArea is set for permissions
+      const customerArea =
+        paymentData.customerArea ||
+        currentUser.collector_name ||
+        currentUser.assigned_areas?.[0] ||
+        "unknown";
+
       const docData = {
         ...paymentData,
+        customerArea, // Ensure this field is set for Firestore rules
         receiptNumber,
         collectedBy: currentUser.name,
+        collectedByUid: currentUser.id,
         paidAt: Timestamp.fromDate(paymentData.paidAt),
         createdAt: Timestamp.now(),
       };
+
+      console.log("Creating payment document with data:", {
+        ...docData,
+        paidAt: "[Date object]",
+        createdAt: "[Timestamp object]",
+      });
 
       const docRef = await addDoc(
         collection(db, this.COLLECTION_NAME),

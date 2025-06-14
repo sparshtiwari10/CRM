@@ -148,37 +148,84 @@ export class VCInventoryService {
     vcData: Omit<VCInventoryItem, "id" | "createdAt" | "updatedAt">,
   ): Promise<string> {
     try {
-      const currentUser = await authService.getCurrentUser();
+      const currentUser = authService.getCurrentUser();
       if (!currentUser) {
-        throw new Error("User not authenticated");
+        throw new Error(
+          "User not authenticated. Please log in to create VC items.",
+        );
+      }
+
+      // Check if db is available
+      if (!db) {
+        throw new Error(
+          "Database connection not available. Please check your internet connection.",
+        );
+      }
+
+      // Ensure required fields are present
+      if (!vcData.vcNumber || vcData.vcNumber.trim() === "") {
+        throw new Error("VC number is required and cannot be empty.");
+      }
+
+      // Validate VC number format (basic validation)
+      if (!/^[A-Za-z0-9\-_]+$/.test(vcData.vcNumber.trim())) {
+        throw new Error(
+          "VC number can only contain letters, numbers, hyphens, and underscores.",
+        );
+      }
+
+      // Set default area if not provided
+      const area =
+        vcData.area ||
+        currentUser.collector_name ||
+        currentUser.assigned_areas?.[0] ||
+        "Unknown";
+
+      // Check admin permissions for creation
+      if (!currentUser.role || currentUser.role !== "admin") {
+        throw new Error(
+          "Only administrators can create new VC items. Employees can only update existing VCs.",
+        );
       }
 
       const newVC = {
         ...vcData,
+        area, // Ensure area is always set
+        vcNumber: vcData.vcNumber.trim(), // Clean the VC number
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-        createdBy: currentUser.uid,
+        createdBy: currentUser.id, // Use user.id instead of uid for consistency
         statusHistory: [
           {
-            status: vcData.status,
+            status: vcData.status || "available",
             changedAt: Timestamp.now(),
-            changedBy: currentUser.uid,
+            changedBy: currentUser.id,
             reason: "Initial creation",
           },
         ],
-        ownershipHistory: vcData.customerId
-          ? [
-              {
-                customerId: vcData.customerId,
-                customerName: vcData.customerName || "",
-                startDate: Timestamp.now(),
-                assignedBy: currentUser.uid,
-              },
-            ]
-          : [],
+        ownershipHistory:
+          vcData.customerId && vcData.customerId !== "unassigned"
+            ? [
+                {
+                  customerId: vcData.customerId,
+                  customerName: vcData.customerName || "",
+                  startDate: Timestamp.now(),
+                  assignedBy: currentUser.id,
+                },
+              ]
+            : [],
       };
 
+      console.log("Creating VC with data:", {
+        ...newVC,
+        createdAt: "[Timestamp object]",
+        updatedAt: "[Timestamp object]",
+        statusHistory: `[${newVC.statusHistory.length} entries]`,
+      });
+
       const docRef = await addDoc(collection(db, this.COLLECTION_NAME), newVC);
+      console.log("VC created successfully with ID:", docRef.id);
+
       return docRef.id;
     } catch (error) {
       console.error("Failed to create VC item:", error);

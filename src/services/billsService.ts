@@ -81,8 +81,20 @@ export class BillsService {
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as MonthlyBill[];
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to get bills for customer:", error);
+
+      // If it's an index error, fall back to optimized query
+      if (error.message && error.message.includes("requires an index")) {
+        console.warn("🔄 Index not ready, falling back to optimized query...");
+        const { BillsServiceOptimized } = await import(
+          "./billsServiceOptimized"
+        );
+        return await BillsServiceOptimized.getBillsByCustomerOptimized(
+          customerId,
+        );
+      }
+
       throw error;
     }
   }
@@ -103,8 +115,18 @@ export class BillsService {
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as MonthlyBill[];
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to get bills for month:", error);
+
+      // If it's an index error, fall back to optimized query
+      if (error.message && error.message.includes("requires an index")) {
+        console.warn("🔄 Index not ready, falling back to optimized query...");
+        const { BillsServiceOptimized } = await import(
+          "./billsServiceOptimized"
+        );
+        return await BillsServiceOptimized.getBillsByMonthOptimized(month);
+      }
+
       throw error;
     }
   }
@@ -254,19 +276,49 @@ export class BillsService {
         throw new Error("User not authenticated");
       }
 
+      // If no target month provided, use current month
+      const month = targetMonth || new Date().toISOString().slice(0, 7); // YYYY-MM format
+      const dueDays = 15; // Default due date: 15th of the month
+
       console.log(`🔄 Starting bill generation for ${month}`);
 
       // Check if bills already exist for this month
-      const existingBills = await this.getBillsByMonth(month);
+      let existingBills;
+      try {
+        existingBills = await this.getBillsByMonth(month);
+      } catch (error: any) {
+        if (error.message && error.message.includes("requires an index")) {
+          console.warn(
+            "🔄 Index not ready, using optimized bill generation...",
+          );
+          const { BillsServiceOptimized } = await import(
+            "./billsServiceOptimized"
+          );
+          return await BillsServiceOptimized.generateMonthlyBillsOptimized(
+            targetMonth,
+            customerIds,
+          );
+        }
+        throw error;
+      }
+
       if (existingBills.length > 0) {
         throw new Error(`Bills for ${month} already exist`);
       }
 
-      // Get all customers
-      const customers = await CustomerService.getAllCustomers();
+      // Get all customers or filtered customers
+      let customers = await CustomerService.getAllCustomers();
+
+      // Filter customers if specific customer IDs provided
+      if (customerIds && customerIds.length > 0) {
+        customers = customers.filter((customer) =>
+          customerIds.includes(customer.id),
+        );
+      }
+
       console.log(`📋 Found ${customers.length} customers`);
 
-      const success: string[] = [];
+      const success: MonthlyBill[] = [];
       const failed: {
         customerId: string;
         customerName: string;
@@ -287,7 +339,7 @@ export class BillsService {
           );
 
           if (bill) {
-            success.push(customer.id);
+            success.push(bill);
             totalAmount += bill.totalAmount;
             console.log(
               `✅ Bill generated for ${customer.name}: ₹${bill.totalAmount}`,
@@ -331,10 +383,33 @@ export class BillsService {
     dueDate: Date,
   ): Promise<MonthlyBill | null> {
     try {
+      // Check if db is available
+      if (!db) {
+        throw new Error(
+          "Database connection not available. Please check your internet connection.",
+        );
+      }
+
+      // Validate inputs
+      if (!customer || !customer.id) {
+        throw new Error("Invalid customer data provided.");
+      }
+
+      if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+        throw new Error("Invalid month format. Expected YYYY-MM format.");
+      }
+
+      console.log(
+        `🔄 Generating bill for ${customer.name} (${customer.id}) for month ${month}`,
+      );
+
       // Get active VCs for this customer
       const activeVCs = await VCInventoryService.getActiveVCsByCustomer(
         customer.id,
-      );
+      ).catch((error) => {
+        console.warn(`Failed to get VCs for ${customer.name}:`, error);
+        return [];
+      });
 
       if (activeVCs.length === 0) {
         console.log(`⚠️ No active VCs for ${customer.name}, skipping bill`);
@@ -342,7 +417,17 @@ export class BillsService {
       }
 
       // Get all packages for pricing
-      const packages = await packageService.getAllPackages();
+      const packages = await packageService.getAllPackages().catch((error) => {
+        console.warn(`Failed to get packages:`, error);
+        return [];
+      });
+
+      if (packages.length === 0) {
+        throw new Error(
+          "No packages available. Please configure packages first.",
+        );
+      }
+
       const packageMap = new Map(packages.map((p) => [p.id, p]));
 
       // Build VC breakdown
@@ -387,10 +472,18 @@ export class BillsService {
 
       const docData = {
         ...billData,
+        customerArea: customer.collectorName || "unknown", // Add for Firestore rules
         billDueDate: Timestamp.fromDate(dueDate),
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       };
+
+      console.log(`📝 Creating bill document for ${customer.name}:`, {
+        ...docData,
+        billDueDate: "[Date object]",
+        createdAt: "[Timestamp object]",
+        updatedAt: "[Timestamp object]",
+      });
 
       const docRef = await addDoc(
         collection(db, this.COLLECTION_NAME),
@@ -422,7 +515,25 @@ export class BillsService {
       console.log(`🔄 Updating outstanding for customer ${customerId}`);
 
       // Get all unpaid bills for this customer
-      const customerBills = await this.getBillsByCustomer(customerId);
+      let customerBills;
+      try {
+        customerBills = await this.getBillsByCustomer(customerId);
+      } catch (error: any) {
+        if (error.message && error.message.includes("requires an index")) {
+          console.warn(
+            "🔄 Index not ready, using optimized query for customer bills...",
+          );
+          const { BillsServiceOptimized } = await import(
+            "./billsServiceOptimized"
+          );
+          await BillsServiceOptimized.updateCustomerOutstandingOptimized(
+            customerId,
+          );
+          return;
+        }
+        throw error;
+      }
+
       const unpaidBills = customerBills.filter(
         (bill) => bill.status !== "paid",
       );

@@ -51,6 +51,7 @@ import { AuthContext } from "@/contexts/AuthContext";
 import { PaymentService } from "@/services/paymentService";
 import { BillsService } from "@/services/billsService";
 import { CustomerService } from "@/services/customerService";
+import { CustomerSearchSelector } from "@/components/customers/CustomerSearchSelector";
 import { PaymentInvoice, MonthlyBill, Customer } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -66,7 +67,7 @@ interface InvoiceFormData {
 const initialInvoiceData: InvoiceFormData = {
   customerId: "",
   customerName: "",
-  billId: "",
+  billId: "no-bill",
   amountPaid: 0,
   paymentMethod: "cash",
   notes: "",
@@ -133,7 +134,7 @@ export default function Invoices() {
           return invoiceDate >= today;
         })
         .reduce(
-          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid),
+          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid || 0),
           0,
         );
 
@@ -143,7 +144,7 @@ export default function Invoices() {
           return invoiceDate >= weekAgo;
         })
         .reduce(
-          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid),
+          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid || 0),
           0,
         );
 
@@ -153,7 +154,7 @@ export default function Invoices() {
           return invoiceDate >= monthAgo;
         })
         .reduce(
-          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid),
+          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid || 0),
           0,
         );
 
@@ -164,13 +165,14 @@ export default function Invoices() {
       const totalBilled =
         customersData.reduce((sum, c) => sum + (c.currentOS || 0), 0) +
         invoicesData.reduce(
-          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid),
+          (sum, invoice) => sum + (invoice.amount || invoice.amountPaid || 0),
           0,
         );
       const collectionRate =
         totalBilled > 0
           ? (invoicesData.reduce(
-              (sum, invoice) => sum + (invoice.amount || invoice.amountPaid),
+              (sum, invoice) =>
+                sum + (invoice.amount || invoice.amountPaid || 0),
               0,
             ) /
               totalBilled) *
@@ -236,7 +238,8 @@ export default function Invoices() {
         customerId: invoiceForm.customerId,
         customerName: customer.name,
         customerArea: customer.collectorName || customer.area || "Unknown",
-        billId: invoiceForm.billId || undefined,
+        billId:
+          invoiceForm.billId === "no-bill" ? undefined : invoiceForm.billId,
         amount: invoiceForm.amountPaid,
         amountPaid: invoiceForm.amountPaid,
         paymentMethod: invoiceForm.paymentMethod,
@@ -248,17 +251,27 @@ export default function Invoices() {
         createdAt: new Date(),
       };
 
+      console.log("Creating invoice with data:", invoiceData);
+
       // Create the invoice
-      await PaymentService.createPayment(invoiceData);
+      const invoiceId = await PaymentService.createPayment(invoiceData);
+      console.log("Invoice created with ID:", invoiceId);
 
       // Update customer's outstanding amount
       const newCurrentOS = Math.max(
         0,
         (customer.currentOS || 0) - invoiceForm.amountPaid,
       );
+
       await CustomerService.updateCustomer(customer.id, {
         previousOS: customer.currentOS || 0,
         currentOS: newCurrentOS,
+      });
+
+      console.log("Customer outstanding updated:", {
+        customerId: customer.id,
+        previousOS: customer.currentOS || 0,
+        newCurrentOS,
       });
 
       toast({
@@ -274,7 +287,7 @@ export default function Invoices() {
       console.error("Error creating invoice:", error);
       toast({
         title: "Error",
-        description: "Failed to create invoice",
+        description: `Failed to create invoice: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -282,12 +295,13 @@ export default function Invoices() {
     }
   };
 
-  const handleCustomerChange = (customerId: string) => {
-    const customer = customers.find((c) => c.id === customerId);
+  const handleCustomerSelect = (customerId: string, customer: Customer) => {
     setInvoiceForm((prev) => ({
       ...prev,
       customerId,
-      customerName: customer?.name || "",
+      customerName: customer.name,
+      // Auto-fill amount with customer's outstanding if available
+      amountPaid: customer.currentOS || 0,
     }));
   };
 
@@ -345,7 +359,9 @@ export default function Invoices() {
         (customer) =>
           searchTerm === "" ||
           customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          customer.phoneNumber.includes(searchTerm),
+          customer.phoneNumber.includes(searchTerm) ||
+          customer.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          customer.vcNumber?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
       .sort((a, b) => (b.currentOS || 0) - (a.currentOS || 0));
   };
@@ -512,7 +528,9 @@ export default function Invoices() {
                             <span className="font-medium text-green-600">
                               ₹
                               {(
-                                invoice.amount || invoice.amountPaid
+                                invoice.amount ||
+                                invoice.amountPaid ||
+                                0
                               ).toLocaleString()}
                             </span>
                           </TableCell>
@@ -646,37 +664,32 @@ export default function Invoices() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="customer">Customer *</Label>
-                <Select
-                  value={invoiceForm.customerId}
-                  onValueChange={handleCustomerChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name} - ₹
-                        {(customer.currentOS || 0).toLocaleString()} outstanding
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CustomerSearchSelector
+                  customers={customers}
+                  selectedCustomerId={invoiceForm.customerId}
+                  onCustomerSelect={handleCustomerSelect}
+                  placeholder="Search by name, address, or VC number..."
+                  disabled={submitting}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="bill">Link to Bill (Optional)</Label>
                 <Select
-                  value={invoiceForm.billId}
+                  value={invoiceForm.billId || "no-bill"}
                   onValueChange={(value) =>
-                    setInvoiceForm((prev) => ({ ...prev, billId: value }))
+                    setInvoiceForm((prev) => ({
+                      ...prev,
+                      billId: value === "no-bill" ? "" : value,
+                    }))
                   }
+                  disabled={submitting}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select bill (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No specific bill</SelectItem>
+                    <SelectItem value="no-bill">No specific bill</SelectItem>
                     {bills
                       .filter(
                         (bill) => bill.customerId === invoiceForm.customerId,
@@ -706,6 +719,7 @@ export default function Invoices() {
                     placeholder="Enter amount"
                     min="0"
                     step="0.01"
+                    disabled={submitting}
                   />
                 </div>
                 <div className="space-y-2">
@@ -720,6 +734,7 @@ export default function Invoices() {
                         paymentMethod: value,
                       }))
                     }
+                    disabled={submitting}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -749,6 +764,7 @@ export default function Invoices() {
                   }
                   placeholder="Add any notes about this payment..."
                   rows={3}
+                  disabled={submitting}
                 />
               </div>
             </div>

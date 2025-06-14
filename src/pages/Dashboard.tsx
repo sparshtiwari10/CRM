@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InvoiceGenerator } from "@/components/invoice/InvoiceGenerator";
+import FirebaseDebugTest from "@/components/debug/FirebaseDebugTest";
 import {
   Users,
   DollarSign,
@@ -18,6 +19,7 @@ import {
   ClipboardList,
   Calendar,
   Tv,
+  Bug,
 } from "lucide-react";
 import { Customer } from "@/types";
 import { CustomerService } from "@/services/customerService";
@@ -26,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
+  const [showDebugTest, setShowDebugTest] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
@@ -234,6 +237,16 @@ export default function Dashboard() {
               <Users className="mr-2 h-4 w-4" />
               View Customers
             </Button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                onClick={() => setShowDebugTest(true)}
+                className="text-sm border-orange-200 text-orange-600 hover:bg-orange-50"
+              >
+                <Bug className="mr-2 h-4 w-4" />
+                Debug Firebase
+              </Button>
+            )}
           </div>
         </div>
 
@@ -578,6 +591,29 @@ export default function Dashboard() {
               });
             }}
           />
+        )}
+
+        {/* Firebase Debug Test Modal */}
+        {showDebugTest && (
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="w-full max-w-4xl max-h-[90vh] bg-background border rounded-lg shadow-lg overflow-hidden">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h2 className="text-lg font-semibold">Firebase Debug Test</h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowDebugTest(false)}
+                  >
+                    ×
+                  </Button>
+                </div>
+                <div className="overflow-y-auto">
+                  <FirebaseDebugTest />
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </DashboardLayout>
