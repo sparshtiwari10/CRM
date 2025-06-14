@@ -11,7 +11,9 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
-import Billing from "./pages/Billing";
+import VCInventory from "./pages/VCInventory";
+import Bills from "./pages/Bills";
+import Invoices from "./pages/Invoices";
 import Packages from "./pages/Packages";
 import Management from "./pages/Management";
 import Settings from "./pages/Settings";
@@ -69,10 +71,34 @@ function AppContent() {
           }
         />
         <Route
-          path="/billing"
+          path="/requests"
           element={
             <ProtectedRoute>
-              <Billing />
+              <RequestManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bills"
+          element={
+            <ProtectedRoute adminOnly>
+              <Bills />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/invoices"
+          element={
+            <ProtectedRoute>
+              <Invoices />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vc-inventory"
+          element={
+            <ProtectedRoute>
+              <VCInventory />
             </ProtectedRoute>
           }
         />
@@ -89,14 +115,6 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Settings />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/requests"
-          element={
-            <ProtectedRoute>
-              <RequestManagement />
             </ProtectedRoute>
           }
         />

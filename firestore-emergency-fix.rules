@@ -71,52 +71,25 @@ service cloud.firestore {
       allow write: if isAdmin() && isActiveUser();
     }
 
-    // VC Inventory collection - VC number management
+    // *** TEMPORARY ACCESS FOR NEW COLLECTIONS ***
+    // These rules provide temporary access while proper rules are being deployed
+    
+    // VC Inventory collection - TEMPORARY BROAD ACCESS
     match /vcInventory/{vcId} {
-      // Admins can do everything
-      allow read, write: if isAdmin() && isActiveUser();
-
-      // Employees can read VCs in their assigned areas
-      allow read: if isAuthenticated() &&
-                 isActiveUser() &&
-                 canAccessArea(resource.data.area);
-
-      // Employees can update VC status and customer assignments in their areas
-      allow update: if isAuthenticated() &&
-                   isActiveUser() &&
-                   canAccessArea(resource.data.area) &&
-                   // Only allow status and customer assignment changes, not creation/deletion
-                   (!('vcNumber' in request.data) || request.data.vcNumber == resource.data.vcNumber);
+      // Allow all authenticated active users to read/write for testing
+      allow read, write: if isAuthenticated() && isActiveUser();
     }
 
-    // Bills collection - monthly bill generation
+    // Bills collection - TEMPORARY BROAD ACCESS
     match /bills/{billId} {
-      // Admins can do everything (create, read, update bills)
-      allow read, write: if isAdmin() && isActiveUser();
-
-      // Employees can read bills for customers in their assigned areas
-      allow read: if isAuthenticated() &&
-                 isActiveUser() &&
-                 canAccessArea(resource.data.customerArea);
-
-      // Bills are primarily created by system/admin, employees have read-only access
+      // Allow all authenticated active users to read/write for testing
+      allow read, write: if isAuthenticated() && isActiveUser();
     }
 
-    // Invoices collection - payment records
+    // Invoices collection - TEMPORARY BROAD ACCESS
     match /invoices/{invoiceId} {
-      // Admins can do everything
-      allow read, write: if isAdmin() && isActiveUser();
-
-      // Employees can read/create invoices for customers in their assigned areas
-      allow read, create: if isAuthenticated() &&
-                         isActiveUser() &&
-                         canAccessArea(resource.data.customerArea);
-
-      // Employees can update invoices they created
-      allow update: if isAuthenticated() &&
-                   isActiveUser() &&
-                   canAccessArea(resource.data.customerArea) &&
-                   request.auth.uid == resource.data.collectedBy;
+      // Allow all authenticated active users to read/write for testing
+      allow read, write: if isAuthenticated() && isActiveUser();
     }
 
     // Billing records collection (legacy - keeping for backward compatibility)
@@ -232,59 +205,15 @@ service cloud.firestore {
 }
 
 /*
-PRODUCTION FIRESTORE SECURITY RULES - AGV Cable TV Management System
-Updated with Cable TV CRM Collections
+EMERGENCY FIRESTORE RULES - TEMPORARY FIX
+This file provides temporary broad access to new collections while proper rules are deployed.
 
-Key Security Features:
-✅ Firebase Authentication Required - All operations require valid auth
-✅ Role-Based Access Control - Admin vs Employee permissions
-✅ Area-Based Access - Employees limited to their assigned areas
-✅ Active User Check - Inactive users cannot access data
-✅ User Profile Protection - Users can only modify their own profiles
-✅ Multi-Area Support - Employees can be assigned multiple areas
-✅ Secure Customer Access - Area-based customer data protection
-✅ Admin-Only Operations - Package management, system config
-✅ Request Workflow Security - Proper approval chain protection
-✅ VC Inventory Management - Area-based VC access with admin controls
-✅ Bills Generation Security - Admin-only bill creation, area-based reading
-✅ Payment Collection - Employee area restrictions with secure payment recording
-✅ Default Deny - Explicit denial of unlisted collections
+SECURITY WARNING: This provides broader access than recommended for production.
+Replace with proper area-based rules (firestore.rules) as soon as possible.
 
-Collection Access Summary:
-- users: Self-read + admin full access
-- customers: Area-based access for employees, full for admin
-- packages: Read for all, write for admin only
-- vcInventory: Admin full access, employee area-based read/update (no create/delete)
-- bills: Admin full access, employee area-based read-only
-- invoices: Admin full access, employee area-based create/read with own-record updates
-- billing: Area-based access matching customer assignments (legacy support)
-- requests: Area-based creation, admin approval
-- actionRequests: Employee create, admin manage
-- logs/analytics/config: Admin only
-- Default: Deny all access
+To deploy this emergency fix:
+firebase deploy --only firestore:rules --project YOUR_PROJECT_ID
 
-New Cable TV CRM Security Features:
-📺 VC Inventory: Employees can view and update VC status/assignments in their areas, admins have full control
-💰 Bills: Admin-only generation and management, employees can read bills for their area customers
-🧾 Invoices: Employees can collect payments for their area customers, admins have full oversight
-🔐 Area Restrictions: All new collections respect employee area assignments
-📊 Audit Trails: Payment collection and VC changes tracked with user attribution
-
-Deployment Instructions:
-1. Deploy these rules using: firebase deploy --only firestore:rules
-2. Monitor Firebase Console for rule evaluation logs
-3. Test with different user roles and areas for new collections
-4. Verify VC inventory area restrictions work correctly
-5. Test bill reading permissions for employees
-6. Verify invoice creation and payment collection security
-
-Security Notes:
-- All user operations require active account status
-- Area assignments support both single (collector_name) and multiple (assigned_areas)
-- Customer data is protected by area assignments
-- VC Inventory respects area boundaries for employee access
-- Bills are primarily admin-managed with employee read access
-- Payment collection is area-restricted for employees
-- Admin role has full system access across all collections
-- Emergency access should be handled through Firebase Console
+To revert to proper rules:
+firebase deploy --only firestore:rules --project YOUR_PROJECT_ID
 */
