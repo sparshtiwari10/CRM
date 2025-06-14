@@ -103,14 +103,37 @@ export class PaymentService {
     }
   }
 
-  static async getPayment(paymentId: string): Promise<PaymentInvoice> {
+  static async updatePayment(
+    paymentId: string,
+    updates: Partial<PaymentInvoice>,
+  ): Promise<void> {
     try {
       const docRef = doc(db, this.COLLECTION_NAME, paymentId);
-      const docSnap = await getDoc(docRef);
+      await updateDoc(docRef, {
+        ...updates,
+        updatedAt: Timestamp.now(),
+      });
+    } catch (error) {
+      console.error("Failed to update payment:", error);
+      throw error;
+    }
+  }
 
-      if (!docSnap.exists()) {
-        throw new Error("Payment not found");
+  static async deletePayment(paymentId: string): Promise<void> {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser || currentUser.role !== "admin") {
+        throw new Error("Only administrators can delete payments/invoices");
       }
+
+      const docRef = doc(db, this.COLLECTION_NAME, paymentId);
+      await deleteDoc(docRef);
+      console.log(`✅ Payment/Invoice ${paymentId} deleted successfully`);
+    } catch (error) {
+      console.error("Failed to delete payment:", error);
+      throw error;
+    }
+  }
 
       const data = docSnap.data();
       return {
