@@ -10,6 +10,8 @@ import {
   Pause,
   AlertCircle,
   CheckCircle,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
