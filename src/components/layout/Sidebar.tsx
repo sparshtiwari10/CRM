@@ -25,11 +25,11 @@ import {
 const adminNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Customers", href: "/customers", icon: Users },
-  { name: "VC Inventory", href: "/vc-inventory", icon: Tv },
-  { name: "Bills", href: "/bills", icon: FileText },
-  { name: "Billing & Payments", href: "/billing", icon: CreditCard },
-  { name: "Packages", href: "/packages", icon: Package },
   { name: "Requests", href: "/requests", icon: ClipboardList },
+  { name: "Bills", href: "/bills", icon: FileText },
+  { name: "Invoices", href: "/invoices", icon: Receipt },
+  { name: "VC Inventory", href: "/vc-inventory", icon: Tv },
+  { name: "Packages", href: "/packages", icon: Package },
   { name: "Management", href: "/management", icon: Wrench },
   { name: "Employees", href: "/employees", icon: UserCog },
   { name: "Settings", href: "/settings", icon: Settings },
@@ -39,9 +39,9 @@ const adminNavigation = [
 const employeeNavigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Customers", href: "/customers", icon: Users },
-  { name: "VC Inventory", href: "/vc-inventory", icon: Tv },
-  { name: "Billing & Payments", href: "/billing", icon: CreditCard },
   { name: "Requests", href: "/requests", icon: ClipboardList },
+  { name: "Invoices", href: "/invoices", icon: Receipt },
+  { name: "VC Inventory", href: "/vc-inventory", icon: Tv },
 ];
 
 interface SidebarContentProps {

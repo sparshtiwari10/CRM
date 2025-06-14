@@ -13,8 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import VCInventory from "./pages/VCInventory";
 import Bills from "./pages/Bills";
-import Billing from "./pages/Billing";
-import BillingPayments from "./pages/BillingPayments";
+import Invoices from "./pages/Invoices";
 import Packages from "./pages/Packages";
 import Management from "./pages/Management";
 import Settings from "./pages/Settings";
@@ -72,10 +71,34 @@ function AppContent() {
           }
         />
         <Route
-          path="/billing"
+          path="/requests"
           element={
             <ProtectedRoute>
-              <Billing />
+              <RequestManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bills"
+          element={
+            <ProtectedRoute adminOnly>
+              <Bills />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/invoices"
+          element={
+            <ProtectedRoute>
+              <Invoices />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vc-inventory"
+          element={
+            <ProtectedRoute>
+              <VCInventory />
             </ProtectedRoute>
           }
         />
@@ -92,14 +115,6 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Settings />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/requests"
-          element={
-            <ProtectedRoute>
-              <RequestManagement />
             </ProtectedRoute>
           }
         />
