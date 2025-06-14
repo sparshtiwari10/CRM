@@ -157,6 +157,53 @@ export class PaymentService {
     }
   }
 
+  static async getPaymentsByCustomer(
+    customerId: string,
+  ): Promise<PaymentInvoice[]> {
+    try {
+      const q = query(
+        collection(db, this.COLLECTION_NAME),
+        where("customerId", "==", customerId),
+        orderBy("paidAt", "desc"),
+      );
+      const querySnapshot = await getDocs(q);
+
+      return querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        paidAt: doc.data().paidAt?.toDate() || new Date(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+      })) as PaymentInvoice[];
+    } catch (error: any) {
+      console.error("Failed to get payments for customer:", error);
+
+      // If it's an index error, fall back to simple query
+      if (error.message && error.message.includes("requires an index")) {
+        console.warn(
+          "🔄 Index not ready, using simple query for customer payments...",
+        );
+        const q = query(
+          collection(db, this.COLLECTION_NAME),
+          where("customerId", "==", customerId),
+        );
+        const querySnapshot = await getDocs(q);
+
+        const payments = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          paidAt: doc.data().paidAt?.toDate() || new Date(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+        })) as PaymentInvoice[];
+
+        // Sort in memory
+        payments.sort((a, b) => b.paidAt.getTime() - a.paidAt.getTime());
+        return payments;
+      }
+
+      throw error;
+    }
+  }
+
   // ================== PAYMENT COLLECTION ==================
 
   static async collectPayment(
