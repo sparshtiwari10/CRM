@@ -140,6 +140,36 @@ export default function Bills() {
       setGenerating(true);
 
       const targetCustomers = selectAll ? undefined : selectedCustomers;
+
+      // Check if bills already exist and offer force regenerate
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const existingBills = await BillsService.getBillsByMonth(
+        currentMonth,
+      ).catch(() => []);
+
+      if (existingBills.length > 0) {
+        const shouldForceRegenerate = confirm(
+          `Bills for ${currentMonth} already exist (${existingBills.length} bills found). Do you want to force regenerate? This will delete existing bills and create new ones.`,
+        );
+
+        if (!shouldForceRegenerate) {
+          setGenerating(false);
+          return;
+        }
+
+        // Delete existing bills for the month
+        console.log(
+          `🗑️ Deleting ${existingBills.length} existing bills for force regeneration...`,
+        );
+        for (const bill of existingBills) {
+          try {
+            await BillsService.deleteBill(bill.id);
+          } catch (error) {
+            console.warn(`Failed to delete bill ${bill.id}:`, error);
+          }
+        }
+      }
+
       const result = await BillsService.generateMonthlyBills(
         undefined, // Use current month
         targetCustomers.length > 0 ? targetCustomers : undefined,
