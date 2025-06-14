@@ -233,13 +233,11 @@ export default function Invoices() {
         return;
       }
 
-      // Create invoice data
-      const invoiceData = {
+      // Create invoice data (remove undefined fields)
+      const invoiceData: any = {
         customerId: invoiceForm.customerId,
         customerName: customer.name,
         customerArea: customer.collectorName || customer.area || "Unknown",
-        billId:
-          invoiceForm.billId === "no-bill" ? undefined : invoiceForm.billId,
         amount: invoiceForm.amountPaid,
         amountPaid: invoiceForm.amountPaid,
         paymentMethod: invoiceForm.paymentMethod,
