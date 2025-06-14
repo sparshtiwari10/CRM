@@ -75,6 +75,33 @@ export class PaymentService {
     }
   }
 
+  static async createPayment(paymentData: any): Promise<string> {
+    try {
+      const currentUser = await authService.getCurrentUser();
+      if (!currentUser) {
+        throw new Error("User not authenticated");
+      }
+
+      const newPayment = {
+        ...paymentData,
+        createdAt: Timestamp.now(),
+        paidAt: paymentData.paidAt
+          ? Timestamp.fromDate(new Date(paymentData.paidAt))
+          : Timestamp.now(),
+        collectedBy: currentUser.uid,
+      };
+
+      const docRef = await addDoc(
+        collection(db, this.COLLECTION_NAME),
+        newPayment,
+      );
+      return docRef.id;
+    } catch (error) {
+      console.error("Failed to create payment:", error);
+      throw error;
+    }
+  }
+
   static async getPayment(paymentId: string): Promise<PaymentInvoice> {
     try {
       const docRef = doc(db, this.COLLECTION_NAME, paymentId);
