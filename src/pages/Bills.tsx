@@ -3,15 +3,17 @@ import {
   Plus,
   Calendar,
   FileText,
-  Download,
-  Eye,
-  Filter,
-  Search,
+  DollarSign,
+  Users,
+  Settings,
+  Play,
+  Pause,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -36,292 +38,361 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AuthContext } from "@/contexts/AuthContext";
 import { BillsService } from "@/services/billsService";
-import { MonthlyBill } from "@/types";
+import { CustomerService } from "@/services/customerService";
+import { MonthlyBill, Customer } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Bills() {
-  const [bills, setBills] = useState<MonthlyBill[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [monthFilter, setMonthFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-
-  // Modals
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
-  const [selectedBill, setSelectedBill] = useState<MonthlyBill | null>(null);
-
-  // Generation data
-  const [generateMonth, setGenerateMonth] = useState("");
-  const [dueDays, setDueDays] = useState(15);
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const { user, isAdmin } = useContext(AuthContext);
+  const { user } = useContext(AuthContext) as { user: any };
   const { toast } = useToast();
+  const [bills, setBills] = useState<MonthlyBill[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterMonth, setFilterMonth] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
 
-  // Load bills on component mount
-  useEffect(() => {
-    loadBills();
-  }, []);
+  // Auto billing settings
+  const [autoBillingEnabled, setAutoBillingEnabled] = useState(false);
+  const [lastAutoRun, setLastAutoRun] = useState<Date | null>(null);
+  const [loadingSettings, setLoadingSettings] = useState(false);
 
-  const loadBills = async () => {
+  // Summary stats
+  const [summaryStats, setSummaryStats] = useState({
+    totalBills: 0,
+    totalAmount: 0,
+    paidAmount: 0,
+    pendingAmount: 0,
+    thisMonth: 0,
+  });
+
+  const loadData = async () => {
     try {
-      setIsLoading(true);
-      const billsData = await BillsService.getAllBills();
+      setLoading(true);
+      const [billsData, customersData, autoBillingSettings] = await Promise.all(
+        [
+          BillsService.getAllBills().catch(() => []),
+          CustomerService.getAllCustomers().catch(() => []),
+          BillsService.getAutoBillingSettings().catch(() => ({
+            enabled: false,
+            dayOfMonth: 1,
+          })),
+        ],
+      );
+
       setBills(billsData);
+      setCustomers(customersData);
+      setAutoBillingEnabled(autoBillingSettings.enabled);
+      setLastAutoRun(autoBillingSettings.lastRunDate || null);
+
+      // Calculate summary statistics
+      const totalBills = billsData.length;
+      const totalAmount = billsData.reduce(
+        (sum, bill) => sum + bill.totalAmount,
+        0,
+      );
+      const paidAmount = billsData
+        .filter((bill) => bill.status === "paid")
+        .reduce((sum, bill) => sum + bill.totalAmount, 0);
+      const pendingAmount = totalAmount - paidAmount;
+
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const thisMonth = billsData.filter(
+        (bill) => bill.month === currentMonth,
+      ).length;
+
+      setSummaryStats({
+        totalBills,
+        totalAmount,
+        paidAmount,
+        pendingAmount,
+        thisMonth,
+      });
     } catch (error) {
-      console.error("Failed to load bills:", error);
+      console.error("Error loading bills data:", error);
       toast({
         title: "Error",
         description: "Failed to load bills data",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // Get current month for default generation
-  const getCurrentMonth = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = (now.getMonth() + 1).toString().padStart(2, "0");
-    return `${year}-${month}`;
-  };
+  useEffect(() => {
+    loadData();
 
-  // Filter bills based on search and filters
-  const filteredBills = bills.filter((bill) => {
-    const matchesSearch =
-      !searchTerm ||
-      bill.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bill.month.includes(searchTerm);
+    // Check auto billing on page load
+    BillsService.runAutoBillingCheck().catch(console.error);
+  }, []);
 
-    const matchesMonth = monthFilter === "all" || bill.month === monthFilter;
-    const matchesStatus =
-      statusFilter === "all" || bill.status === statusFilter;
-
-    return matchesSearch && matchesMonth && matchesStatus;
-  });
-
-  // Get unique months for filter
-  const availableMonths = Array.from(new Set(bills.map((bill) => bill.month)))
-    .sort()
-    .reverse();
-
-  const handleGenerateBills = () => {
-    setGenerateMonth(getCurrentMonth());
-    setShowGenerateModal(true);
-  };
-
-  const handleConfirmGeneration = () => {
-    setShowGenerateModal(false);
-    setShowGenerateConfirm(true);
-  };
-
-  const handleExecuteGeneration = async () => {
+  const handleGenerateBills = async () => {
     try {
-      setIsGenerating(true);
-      setShowGenerateConfirm(false);
+      setGenerating(true);
 
-      console.log(`🔄 Starting bill generation for ${generateMonth}`);
-
+      const targetCustomers = selectAll ? undefined : selectedCustomers;
       const result = await BillsService.generateMonthlyBills(
-        generateMonth,
-        dueDays,
+        undefined, // Use current month
+        targetCustomers.length > 0 ? targetCustomers : undefined,
       );
 
-      console.log("✅ Bill generation completed:", result);
-
-      await loadBills();
-
       toast({
-        title: "Bills Generated Successfully",
-        description: `Generated ${result.summary.billsGenerated} bills for ${result.summary.totalCustomers} customers. Total amount: ₹${result.summary.totalAmount.toLocaleString()}`,
+        title: "Bill Generation Complete",
+        description: `Generated ${result.success.length} bills successfully. ${result.failed.length} failed.`,
       });
 
       if (result.failed.length > 0) {
-        console.warn("Some bills failed to generate:", result.failed);
-        toast({
-          title: "Some Bills Failed",
-          description: `${result.failed.length} bills failed to generate. Check console for details.`,
-          variant: "destructive",
-        });
+        console.warn("Failed bills:", result.failed);
       }
+
+      setShowGenerateDialog(false);
+      setSelectedCustomers([]);
+      setSelectAll(false);
+      loadData(); // Reload data
     } catch (error) {
-      console.error("Failed to generate bills:", error);
+      console.error("Error generating bills:", error);
       toast({
-        title: "Generation Failed",
-        description:
-          error instanceof Error ? error.message : "Failed to generate bills",
+        title: "Error",
+        description: "Failed to generate bills",
         variant: "destructive",
       });
     } finally {
-      setIsGenerating(false);
+      setGenerating(false);
     }
   };
 
-  const handleViewBill = (bill: MonthlyBill) => {
-    setSelectedBill(bill);
-    setShowViewModal(true);
+  const handleToggleAutoBilling = async () => {
+    try {
+      setLoadingSettings(true);
+      const newState = !autoBillingEnabled;
+
+      await BillsService.updateAutoBillingSettings({
+        enabled: newState,
+        dayOfMonth: 1, // First day of month
+      });
+
+      setAutoBillingEnabled(newState);
+
+      toast({
+        title: "Auto Billing Updated",
+        description: `Auto billing ${newState ? "enabled" : "disabled"}`,
+      });
+    } catch (error) {
+      console.error("Error updating auto billing:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update auto billing settings",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingSettings(false);
+    }
   };
 
-  const getBillingSummary = () => {
-    const totalBills = filteredBills.length;
-    const totalAmount = filteredBills.reduce(
-      (sum, bill) => sum + bill.totalAmount,
-      0,
+  const handleCustomerSelection = (customerId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedCustomers((prev) => [...prev, customerId]);
+    } else {
+      setSelectedCustomers((prev) => prev.filter((id) => id !== customerId));
+      setSelectAll(false);
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedCustomers(customers.map((c) => c.id));
+    } else {
+      setSelectedCustomers([]);
+    }
+  };
+
+  // Filter functions
+  const getFilteredBills = () => {
+    let filtered = bills;
+
+    if (filterMonth !== "all") {
+      filtered = filtered.filter((bill) => bill.month === filterMonth);
+    }
+
+    if (filterStatus !== "all") {
+      filtered = filtered.filter((bill) => bill.status === filterStatus);
+    }
+
+    return filtered.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
-    const paidBills = filteredBills.filter(
-      (bill) => bill.status === "paid",
-    ).length;
-    const paidAmount = filteredBills
-      .filter((bill) => bill.status === "paid")
-      .reduce((sum, bill) => sum + bill.totalAmount, 0);
-    const pendingAmount = totalAmount - paidAmount;
-
-    return {
-      totalBills,
-      totalAmount,
-      paidBills,
-      paidAmount,
-      pendingBills: totalBills - paidBills,
-      pendingAmount,
-    };
   };
 
-  const summary = getBillingSummary();
+  const getMonthOptions = () => {
+    const months = new Set(bills.map((bill) => bill.month));
+    return Array.from(months).sort().reverse();
+  };
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <DashboardLayout title="Bills">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <DashboardLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading bills data...</p>
+          </div>
         </div>
       </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout title="Bills">
+    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+        <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">
-              Monthly Bills
-            </h2>
+            <h1 className="text-3xl font-bold text-foreground">
+              Bills Management
+            </h1>
             <p className="text-muted-foreground">
               Generate and manage monthly customer bills
             </p>
           </div>
-          {isAdmin && (
-            <Button onClick={handleGenerateBills}>
-              <Plus className="mr-2 h-4 w-4" />
+          <div className="flex space-x-3">
+            <Button
+              onClick={() => setShowGenerateDialog(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
               Generate Bills
             </Button>
-          )}
+          </div>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Bills
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.totalBills}</div>
-              <p className="text-xs text-muted-foreground">Current filter</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Amount
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Total Bills</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{summary.totalAmount.toLocaleString()}
+                {summaryStats.totalBills}
               </div>
-              <p className="text-xs text-muted-foreground">
-                All filtered bills
-              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Paid Bills
+              <CardTitle className="text-sm font-medium">
+                Total Amount
               </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ₹{summaryStats.totalAmount.toLocaleString()}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Paid Amount</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {summary.paidBills}
+                ₹{summaryStats.paidAmount.toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                ₹{summary.paidAmount.toLocaleString()} collected
-              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pending Amount
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              <AlertCircle className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                ₹{summary.pendingAmount.toLocaleString()}
+              <div className="text-2xl font-bold text-orange-600">
+                ₹{summaryStats.pendingAmount.toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {summary.pendingBills} bills pending
-              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">This Month</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{summaryStats.thisMonth}</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Filters */}
+        {/* Auto Billing Settings */}
         <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search by customer name or month..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Settings className="h-5 w-5 mr-2" />
+              Auto Billing Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="auto-billing">
+                  Automatic Monthly Bill Generation
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Generate bills automatically on the 1st of each month
+                  {lastAutoRun && (
+                    <span className="block">
+                      Last run: {lastAutoRun.toLocaleDateString()}
+                    </span>
+                  )}
+                </p>
               </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="auto-billing"
+                  checked={autoBillingEnabled}
+                  onCheckedChange={handleToggleAutoBilling}
+                  disabled={loadingSettings}
+                />
+                {autoBillingEnabled ? (
+                  <Play className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Pause className="h-4 w-4 text-gray-400" />
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              <Select value={monthFilter} onValueChange={setMonthFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+        {/* Bills Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Bills History</CardTitle>
+
+            {/* Filters */}
+            <div className="flex space-x-4">
+              <Select value={filterMonth} onValueChange={setFilterMonth}>
+                <SelectTrigger className="w-48">
                   <SelectValue placeholder="Filter by month" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Months</SelectItem>
-                  {availableMonths.map((month) => (
+                  {getMonthOptions().map((month) => (
                     <SelectItem key={month} value={month}>
                       {new Date(month + "-01").toLocaleDateString("en-US", {
                         year: "numeric",
@@ -332,8 +403,8 @@ export default function Bills() {
                 </SelectContent>
               </Select>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-48">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -343,310 +414,154 @@ export default function Bills() {
                   <SelectItem value="paid">Paid</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </CardHeader>
 
-              {(searchTerm ||
-                monthFilter !== "all" ||
-                statusFilter !== "all") && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setMonthFilter("all");
-                    setStatusFilter("all");
-                  }}
-                  className="px-3"
-                >
-                  Clear
-                </Button>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bill ID</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Month</TableHead>
+                    <TableHead>VCs</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {getFilteredBills().map((bill) => (
+                    <TableRow key={bill.id}>
+                      <TableCell className="font-mono text-sm">
+                        {bill.id.slice(-8)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{bill.customerName}</div>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(bill.month + "-01").toLocaleDateString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "short",
+                          },
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {bill.vcBreakdown.length} VC
+                          {bill.vcBreakdown.length !== 1 ? "s" : ""}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium">
+                          ₹{bill.totalAmount.toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            bill.status === "paid"
+                              ? "default"
+                              : bill.status === "partial"
+                                ? "secondary"
+                                : "outline"
+                          }
+                        >
+                          {bill.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(bill.createdAt).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {getFilteredBills().length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No bills found matching your criteria
+                </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Bills Table */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Month</TableHead>
-                    <TableHead>VCs</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Generated</TableHead>
-                    <TableHead className="w-16">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredBills.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
-                        <div className="text-muted-foreground">
-                          {bills.length === 0
-                            ? "No bills generated yet"
-                            : "No bills match the current filters"}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredBills.map((bill) => (
-                      <TableRow key={bill.id}>
-                        <TableCell>
-                          <div className="font-medium">{bill.customerName}</div>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(bill.month + "-01").toLocaleDateString(
-                            "en-US",
-                            { year: "numeric", month: "long" },
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {bill.vcBreakdown.slice(0, 2).map((vc, index) => (
-                              <Badge
-                                key={index}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {vc.vcNumber}
-                              </Badge>
-                            ))}
-                            {bill.vcBreakdown.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{bill.vcBreakdown.length - 2} more
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          ₹{bill.totalAmount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              bill.status === "paid"
-                                ? "default"
-                                : bill.status === "partial"
-                                  ? "secondary"
-                                  : "destructive"
-                            }
-                          >
-                            {bill.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(bill.billDueDate).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(bill.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewBill(bill)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Generate Bills Modal */}
-        <Dialog open={showGenerateModal} onOpenChange={setShowGenerateModal}>
-          <DialogContent className="sm:max-w-md">
+        {/* Generate Bills Dialog */}
+        <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Generate Monthly Bills</DialogTitle>
               <DialogDescription>
-                Generate bills for all customers with active VC numbers
+                Select customers to generate bills for the current month
               </DialogDescription>
             </DialogHeader>
+
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="month">Billing Month</Label>
-                <Input
-                  id="month"
-                  type="month"
-                  value={generateMonth}
-                  onChange={(e) => setGenerateMonth(e.target.value)}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="select-all"
+                  checked={selectAll}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="rounded"
                 />
+                <Label htmlFor="select-all">Select All Customers</Label>
               </div>
-              <div>
-                <Label htmlFor="dueDays">Due Days</Label>
-                <Input
-                  id="dueDays"
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={dueDays}
-                  onChange={(e) => setDueDays(parseInt(e.target.value) || 15)}
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  Number of days from generation to due date
-                </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
+                {customers.map((customer) => (
+                  <div
+                    key={customer.id}
+                    className="flex items-center space-x-3 p-3 border rounded-lg"
+                  >
+                    <input
+                      type="checkbox"
+                      id={`customer-${customer.id}`}
+                      checked={selectedCustomers.includes(customer.id)}
+                      onChange={(e) =>
+                        handleCustomerSelection(customer.id, e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium">{customer.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {customer.phoneNumber} • {customer.collectorName}
+                      </div>
+                    </div>
+                    <Badge variant="outline">{customer.status}</Badge>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                {selectAll
+                  ? `All ${customers.length} customers selected`
+                  : `${selectedCustomers.length} customers selected`}
               </div>
             </div>
+
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setShowGenerateModal(false)}
+                onClick={() => setShowGenerateDialog(false)}
+                disabled={generating}
               >
                 Cancel
               </Button>
-              <Button onClick={handleConfirmGeneration}>Continue</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Generation Confirmation */}
-        <AlertDialog
-          open={showGenerateConfirm}
-          onOpenChange={setShowGenerateConfirm}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirm Bill Generation</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will generate bills for all customers for {generateMonth}.
-                Bills will be due {dueDays} days from generation date.
-                <br />
-                <br />
-                <strong>Note:</strong> This process cannot be undone. Are you
-                sure you want to continue?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setShowGenerateConfirm(false)}>
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleExecuteGeneration}
-                disabled={isGenerating}
+              <Button
+                onClick={handleGenerateBills}
+                disabled={
+                  generating || (!selectAll && selectedCustomers.length === 0)
+                }
+                className="bg-blue-600 hover:bg-blue-700"
               >
-                {isGenerating ? "Generating..." : "Generate Bills"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* View Bill Modal */}
-        <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
-          <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Bill Details</DialogTitle>
-              <DialogDescription>
-                Complete bill information and VC breakdown
-              </DialogDescription>
-            </DialogHeader>
-            {selectedBill && (
-              <div className="space-y-6">
-                {/* Bill Summary */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Customer Information</h4>
-                    <div className="space-y-1 text-sm">
-                      <div>
-                        <strong>Name:</strong> {selectedBill.customerName}
-                      </div>
-                      <div>
-                        <strong>Bill ID:</strong> {selectedBill.id}
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Billing Information</h4>
-                    <div className="space-y-1 text-sm">
-                      <div>
-                        <strong>Month:</strong>{" "}
-                        {new Date(
-                          selectedBill.month + "-01",
-                        ).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                        })}
-                      </div>
-                      <div>
-                        <strong>Due Date:</strong>{" "}
-                        {new Date(
-                          selectedBill.billDueDate,
-                        ).toLocaleDateString()}
-                      </div>
-                      <div>
-                        <strong>Status:</strong>{" "}
-                        <Badge
-                          variant={
-                            selectedBill.status === "paid"
-                              ? "default"
-                              : selectedBill.status === "partial"
-                                ? "secondary"
-                                : "destructive"
-                          }
-                        >
-                          {selectedBill.status}
-                        </Badge>
-                      </div>
-                      <div>
-                        <strong>Total Amount:</strong> ₹
-                        {selectedBill.totalAmount.toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* VC Breakdown */}
-                <div>
-                  <h4 className="font-semibold mb-3">VC Breakdown</h4>
-                  <div className="space-y-2">
-                    {selectedBill.vcBreakdown.map((vc, index) => (
-                      <div
-                        key={index}
-                        className="border rounded p-3 flex justify-between items-center"
-                      >
-                        <div>
-                          <div className="font-medium">{vc.vcNumber}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {vc.packageName}
-                          </div>
-                        </div>
-                        <div className="font-medium">
-                          ₹{vc.amount.toLocaleString()}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="border-t pt-3 mt-3 flex justify-between items-center font-semibold">
-                    <span>Total Amount</span>
-                    <span>₹{selectedBill.totalAmount.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                {/* Bill Dates */}
-                <div>
-                  <h4 className="font-semibold mb-3">Important Dates</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <strong>Generated:</strong>{" "}
-                      {new Date(selectedBill.createdAt).toLocaleString()}
-                    </div>
-                    <div>
-                      <strong>Due Date:</strong>{" "}
-                      {new Date(selectedBill.billDueDate).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button onClick={() => setShowViewModal(false)}>Close</Button>
+                {generating ? "Generating..." : "Generate Bills"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
